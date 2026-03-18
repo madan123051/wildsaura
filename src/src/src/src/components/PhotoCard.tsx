@@ -1,0 +1,128 @@
+import React from 'react';
+import { Heart, Share2, Download, MapPin, MessageCircle } from 'lucide-react';
+import { Photo } from '../types';
+
+interface PhotoCardProps {
+  photo: Photo;
+  onClick: () => void;
+  onLike: () => void;
+  onShare: () => void;
+  onDownload: () => void;
+  isLoggedIn: boolean;
+  onLoginRequired: () => void;
+}
+
+export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, onShare, onDownload, isLoggedIn, onLoginRequired }) => {
+  const gated = (action: () => void) => (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isLoggedIn) { onLoginRequired(); return; }
+    action();
+  };
+
+  return (
+    <div
+      className="photo-card"
+      onClick={onClick}
+      style={{
+        position: 'relative',
+        borderRadius: '0.75rem',
+        overflow: 'hidden',
+        cursor: 'pointer',
+        background: 'var(--wa-dark-card)',
+      }}
+    >
+      {/* Image */}
+      <div style={{ aspectRatio: '1/1', position: 'relative', overflow: 'hidden' }}>
+        <img
+          src={photo.imageUrl}
+          alt={photo.title}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.7s' }}
+          loading="lazy"
+        />
+        {/* Hover overlay */}
+        <div
+          className="card-overlay"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.2) 40%, transparent 100%)',
+            opacity: 0,
+            transition: 'opacity 0.3s',
+          }}
+        />
+        {/* Actions on hover */}
+        <div
+          className="card-actions"
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            padding: '0.75rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            opacity: 0,
+            transition: 'all 0.3s',
+            transform: 'translateY(4px)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <button
+              onClick={gated(onLike)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.25rem',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'color 0.2s',
+                color: photo.liked ? 'var(--wa-gold)' : 'rgba(255,255,255,0.8)',
+              }}
+            >
+              <Heart size={15} fill={photo.liked ? 'currentColor' : 'none'} />
+              <span style={{ fontSize: '0.75rem' }}>{photo.likeCount}</span>
+            </button>
+            <button
+              onClick={gated(onShare)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.8)' }}
+            >
+              <Share2 size={15} />
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onClick(); }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.8)' }}
+            >
+              <MessageCircle size={15} />
+            </button>
+          </div>
+          <button
+            onClick={gated(onDownload)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.8)' }}
+          >
+            <Download size={15} />
+          </button>
+        </div>
+      </div>
+
+      {/* Card Footer */}
+      <div style={{ padding: '0.6rem 0.75rem' }}>
+        <p className="font-playfair" style={{ fontSize: '0.75rem', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', opacity: 0.8 }}>
+          {photo.title}
+        </p>
+        {photo.location && (
+          <p className="text-wa-muted" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.7rem', marginTop: '0.2rem' }}>
+            <MapPin size={10} /> {photo.location}
+          </p>
+        )}
+      </div>
+
+      <style>{`
+        .photo-card:hover .card-overlay { opacity: 1 !important; }
+        .photo-card:hover .card-actions { opacity: 1 !important; transform: translateY(0) !important; }
+        .photo-card:hover img { transform: scale(1.1); }
+      `}</style>
+    </div>
+  );
+};
