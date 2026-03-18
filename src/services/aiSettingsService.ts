@@ -5,9 +5,9 @@ import { AISettings } from '../types';
 const SETTINGS_REF = doc(db, 'settings', 'ai_config');
 
 const DEFAULT_SETTINGS: AISettings = {
-  geminiKey: 'AIzaSyAt9uflO3WoBkBvSug9aHcDCP1FKLd-jqY',
-  deepseekKey: 'sk-80076b2fe6284809ad64ba50ebdc1d88',
-  chatgptKey: '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',
+  geminiKey: '',
+  deepseekKey: '',
+  chatgptKey: '',
   photoAnalysisProvider: 'gemini',
   storyProvider: 'gemini',
   chatProvider: 'gemini',
