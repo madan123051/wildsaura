@@ -1,5 +1,5 @@
 import { db, storage } from '../firebase';
-import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, serverTimestamp, onSnapshot, Unsubscribe } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 
 export interface FirestoreVideo {
@@ -60,4 +60,26 @@ export async function deleteVideoFromFirestore(docId: string): Promise<void> {
 
 export async function updateVideoInFirestore(docId: string, data: Partial<FirestoreVideo>): Promise<void> {
   await updateDoc(doc(db, VIDEOS_COLLECTION, docId), data);
+}
+
+/**
+ * Real-time subscription to all videos.
+ * Fires onUpdate whenever any video document changes (add/edit/delete).
+ * Returns an unsubscribe function.
+ */
+export function subscribeToVideos(
+  onUpdate: (videos: FirestoreVideo[]) => void,
+  onError?: (error: Error) => void
+): Unsubscribe {
+  const q = query(collection(db, VIDEOS_COLLECTION), orderBy('createdAt', 'desc'));
+  return onSnapshot(q,
+    (snapshot) => {
+      const videos = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as FirestoreVideo));
+      onUpdate(videos);
+    },
+    (error) => {
+      console.error('Video subscription error:', error);
+      if (onError) onError(error);
+    }
+  );
 }
