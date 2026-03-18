@@ -17,6 +17,9 @@ import { VideoSection } from './components/VideoSection';
 import { TermsConditions } from './components/TermsConditions';
 import { StoryDetail } from './components/StoryDetail';
 import { downloadPhoto } from './utils/downloadPhoto';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { auth } from './firebase';
+import { addUserLike, removeUserLike, getUserLikes } from './services/userLikesService';
 import { getPhotosFromFirestore, deletePhotoFromFirestore, updatePhotoInFirestore } from './services/photoService';
 import { getStoriesFromFirestore, addStoryToFirestore, deleteStoryFromFirestore, updateStoryInFirestore, uploadStoryCoverToStorage } from './services/storyService';
 import { getVideosFromFirestore, addVideoToFirestore, deleteVideoFromFirestore, updateVideoInFirestore, uploadVideoThumbnailToStorage, uploadVideoToStorage } from './services/videoService';
@@ -178,7 +181,59 @@ const App: React.FC = () => {
   const [videoComments, setVideoComments] = useState<Record<number, Comment[]>>({});
   const [downloadCount, setDownloadCount] = useState(0);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [userLikes, setUserLikes] = useState<Set<string>>(new Set());
   const FREE_DOWNLOADS = 2;
+
+  // ── Firebase Auth Session Persistence ──────────────────────────────────
+  const visitorRef = useRef<Visitor | null>(null);
+  useEffect(() => { visitorRef.current = visitor; }, [visitor]);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser && firebaseUser.email) {
+        // Only auto-restore if visitor not already set (page reload scenario)
+        if (!visitorRef.current) {
+          try {
+            const saved = await getVisitorFromFirestore(firebaseUser.email);
+            if (saved) {
+              setVisitor({
+                displayName: saved.displayName || firebaseUser.displayName || firebaseUser.email.split('@')[0] || 'User',
+                email: firebaseUser.email,
+                avatarColor: saved.avatarColor || '#c9a84c',
+                avatarUrl: saved.avatarUrl || firebaseUser.photoURL || undefined,
+                avatarAnimal: saved.avatarAnimal || undefined,
+                loginMethod: (saved.loginMethod || 'email') as any,
+              });
+              setDownloadCount(saved.downloadCount || 0);
+            } else {
+              setVisitor({
+                displayName: firebaseUser.displayName || firebaseUser.email.split('@')[0] || 'User',
+                email: firebaseUser.email,
+                avatarColor: '#c9a84c',
+                avatarUrl: firebaseUser.photoURL || undefined,
+                loginMethod: 'email',
+              });
+            }
+            // Load user's likes
+            try {
+              const likes = await getUserLikes(firebaseUser.email);
+              const likeSet = new Set(likes.map(l => `${l.targetType}_${l.targetId}`));
+              setUserLikes(likeSet);
+            } catch {}
+          } catch (err) {
+            console.warn('Session restore failed:', err);
+          }
+        }
+      } else {
+        if (visitorRef.current) {
+          setVisitor(null);
+          setDownloadCount(0);
+          setUserLikes(new Set());
+        }
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   // ── Deep Link State ──────────────────────────────────────────────────────
   const [pendingPhotoId, setPendingPhotoId] = useState<string | null>(() => {
@@ -391,6 +446,15 @@ const App: React.FC = () => {
     loadComments();
   }, []);
 
+  // Apply user likes to photos/stories/videos when userLikes changes
+  useEffect(() => {
+    if (userLikes.size > 0) {
+      setPhotos(prev => prev.map(p => ({ ...p, liked: userLikes.has(`photo_${p.id}`) })));
+      setStories(prev => prev.map(s => ({ ...s, liked: userLikes.has(`story_${s.id}`) })));
+      setVideos(prev => prev.map(v => ({ ...v, liked: userLikes.has(`video_${v.id}`) })));
+    }
+  }, [userLikes]);
+
   // ── Popstate Listener (Browser Back/Forward) ─────────────────────────────
   useEffect(() => {
     const onPopState = () => {
@@ -432,12 +496,25 @@ const App: React.FC = () => {
   const handleLike = useCallback((id: number) => {
     setPhotos((prev) => {
       const photo = prev.find(p => p.id === id);
-      if (photo && photo.firestoreId) {
-        const newLikeCount = photo.liked ? photo.likeCount - 1 : photo.likeCount + 1;
+      if (!photo) return prev;
+      const newLiked = !photo.liked;
+      const newLikeCount = newLiked ? photo.likeCount + 1 : photo.likeCount - 1;
+      if (photo.firestoreId) {
         updatePhotoInFirestore(photo.firestoreId, { likeCount: newLikeCount }).catch(err => console.warn('Like update failed:', err));
       }
+      // Save per-user like to Firestore
+      if (visitor?.email) {
+        if (newLiked) addUserLike(visitor.email, 'photo', id).catch(console.warn);
+        else removeUserLike(visitor.email, 'photo', id).catch(console.warn);
+      }
+      setUserLikes(prev => {
+        const next = new Set(prev);
+        if (newLiked) next.add(`photo_${id}`);
+        else next.delete(`photo_${id}`);
+        return next;
+      });
       return prev.map((p) =>
-        p.id === id ? { ...p, liked: !p.liked, likeCount: p.liked ? p.likeCount - 1 : p.likeCount + 1 } : p
+        p.id === id ? { ...p, liked: newLiked, likeCount: newLikeCount } : p
       );
     });
     if (selectedPhoto && selectedPhoto.id === id) {
@@ -445,7 +522,7 @@ const App: React.FC = () => {
         prev ? { ...prev, liked: !prev.liked, likeCount: prev.liked ? prev.likeCount - 1 : prev.likeCount + 1 } : null
       );
     }
-  }, [selectedPhoto]);
+  }, [selectedPhoto, visitor]);
 
   const handleShare = useCallback(async (photo: Photo) => {
     const photoId = photo.firestoreId || String(photo.id);
@@ -663,29 +740,41 @@ const App: React.FC = () => {
     };
     setSelectedStory(updated);
     setStories((prev) => prev.map((s) => s.id === updated.id ? updated : s));
-    // Persist to Firestore
     if (selectedStory.firestoreId) {
       updateStoryInFirestore(selectedStory.firestoreId, { likeCount: updated.likeCount }).catch(err => console.warn('Story like update failed:', err));
     }
-  }, [selectedStory]);
+    // Save per-user like to Firestore
+    if (visitor?.email) {
+      if (updated.liked) addUserLike(visitor.email, 'story', selectedStory.id).catch(console.warn);
+      else removeUserLike(visitor.email, 'story', selectedStory.id).catch(console.warn);
+    }
+    setUserLikes(prev => {
+      const next = new Set(prev);
+      if (updated.liked) next.add(`story_${selectedStory.id}`);
+      else next.delete(`story_${selectedStory.id}`);
+      return next;
+    });
+  }, [selectedStory, visitor]);
 
   // Visitor handlers
   const handleVisitorLogin = useCallback(async (v: Visitor) => {
     const userKey = v.email || '';
     let merged = v;
+    let savedDownloadCount = 0;
     // Check Firestore for saved profile
     if (userKey) {
       try {
         const savedVisitor = await getVisitorFromFirestore(userKey);
         if (savedVisitor) {
-          merged = { ...v, displayName: savedVisitor.displayName || v.displayName, avatarColor: savedVisitor.avatarColor || v.avatarColor };
-          setDownloadCount(savedVisitor.downloadCount || 0);
+          merged = { ...v, displayName: savedVisitor.displayName || v.displayName, avatarColor: savedVisitor.avatarColor || v.avatarColor, avatarUrl: savedVisitor.avatarUrl || v.avatarUrl };
+          savedDownloadCount = savedVisitor.downloadCount || 0;
+          setDownloadCount(savedDownloadCount);
         }
       } catch {}
     }
     setVisitor(merged);
     setShowVisitorLogin(false);
-    // Save to Firestore
+    // Save/update profile in Firestore (merge: true preserves existing fields)
     if (userKey) {
       saveVisitorToFirestore({
         email: merged.email,
@@ -694,14 +783,26 @@ const App: React.FC = () => {
         avatarUrl: merged.avatarUrl || '',
         avatarAnimal: merged.avatarAnimal || '',
         loginMethod: merged.loginMethod,
-        downloadCount: 0,
+        downloadCount: savedDownloadCount,
       }).catch(err => console.warn('Visitor save failed:', err));
+      // Load user's likes
+      try {
+        const likes = await getUserLikes(userKey);
+        const likeSet = new Set(likes.map(l => `${l.targetType}_${l.targetId}`));
+        setUserLikes(likeSet);
+      } catch {}
     }
   }, []);
 
   const handleVisitorLogout = useCallback(() => {
+    signOut(auth).catch(console.warn);
     setVisitor(null);
     setDownloadCount(0);
+    setUserLikes(new Set());
+    // Reset liked state on all items
+    setPhotos(prev => prev.map(p => ({ ...p, liked: false })));
+    setStories(prev => prev.map(s => ({ ...s, liked: false })));
+    setVideos(prev => prev.map(v => ({ ...v, liked: false })));
   }, []);
 
   const handleVisitorUpdate = useCallback((v: Visitor) => {
@@ -790,15 +891,28 @@ const App: React.FC = () => {
   const handleVideoLike = useCallback((id: number) => {
     setVideos((prev) => {
       const video = prev.find(v => v.id === id);
-      if (video && video.firestoreId) {
-        const newLikeCount = video.liked ? video.likeCount - 1 : video.likeCount + 1;
+      if (!video) return prev;
+      const newLiked = !video.liked;
+      const newLikeCount = newLiked ? video.likeCount + 1 : video.likeCount - 1;
+      if (video.firestoreId) {
         updateVideoInFirestore(video.firestoreId, { likeCount: newLikeCount }).catch(err => console.warn('Video like update failed:', err));
       }
+      // Save per-user like to Firestore
+      if (visitor?.email) {
+        if (newLiked) addUserLike(visitor.email, 'video', id).catch(console.warn);
+        else removeUserLike(visitor.email, 'video', id).catch(console.warn);
+      }
+      setUserLikes(prev => {
+        const next = new Set(prev);
+        if (newLiked) next.add(`video_${id}`);
+        else next.delete(`video_${id}`);
+        return next;
+      });
       return prev.map((v) =>
-        v.id === id ? { ...v, liked: !v.liked, likeCount: v.liked ? v.likeCount - 1 : v.likeCount + 1 } : v
+        v.id === id ? { ...v, liked: newLiked, likeCount: newLikeCount } : v
       );
     });
-  }, []);
+  }, [visitor]);
 
   const handleDownload = useCallback(async (photo: Photo) => {
     if (!visitor) { setShowVisitorLogin(true); return; }
