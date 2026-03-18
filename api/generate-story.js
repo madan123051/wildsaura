@@ -9,7 +9,7 @@ export default async function handler(req, res) {
   try {
     const { photoTitle, animalName, location, caption, wikiInfo, provider = 'gemini', apiKey } = req.body;
 
-    if (!apiKey) return res.status(400).json({ error: 'No API key provided' });
+    if (!apiKey) return res.status(400).json({ error: 'No API key provided. Please configure your API key in AI Settings.' });
 
     const wikiUrl = animalName
       ? `https://en.wikipedia.org/wiki/${encodeURIComponent(animalName.replace(/\s+/g, '_'))}`
@@ -49,6 +49,9 @@ Return ONLY valid JSON (no markdown, no code blocks, no extra text):
   "tags": ["tag1", "tag2", "tag3", "tag4", "tag5"],
   "wikiUrl": "${wikiUrl || ''}"
 }`;
+
+    // Helper: wait for given ms
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
     let storyText = '';
 
@@ -103,40 +106,100 @@ Return ONLY valid JSON (no markdown, no code blocks, no extra text):
       storyText = data.choices?.[0]?.message?.content || '';
 
     } else {
-      // ── Gemini (default) ──
-      const models = ['gemini-2.0-flash', 'gemini-1.5-flash'];
+      // ── Gemini (default) — with retry for 429 rate limits ──
+      const models = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro'];
       let success = false;
+      let lastError = '';
 
       for (const model of models) {
-        try {
-          const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-          const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt }] }],
-              generationConfig: {
-                temperature: 0.8,
-                maxOutputTokens: 3000,
-              },
-            }),
-          });
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+            const response = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: {
+                  temperature: 0.8,
+                  maxOutputTokens: 3000,
+                },
+              }),
+            });
 
-          if (response.ok) {
-            const data = await response.json();
-            storyText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-            if (storyText) {
-              success = true;
+            if (response.ok) {
+              const data = await response.json();
+              storyText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+              if (storyText) {
+                success = true;
+                break;
+              }
+            } else if (response.status === 429) {
+              // Rate limited — wait and retry
+              const waitTime = (attempt + 1) * 3000; // 3s, 6s, 9s
+              console.warn(`Gemini ${model} rate limited (429). Waiting ${waitTime / 1000}s before retry ${attempt + 1}/3...`);
+              lastError = `Rate limited (429)`;
+              await sleep(waitTime);
+              continue;
+            } else if (response.status === 403) {
+              lastError = `${model}: Access denied (403)`;
+              console.warn(`Gemini ${model}: 403 Forbidden — skipping`);
+              break;
+            } else {
+              lastError = `${model} error ${response.status}`;
               break;
             }
+          } catch (modelErr) {
+            lastError = modelErr.message;
+            console.warn(`Gemini ${model} failed:`, modelErr.message);
+            break;
           }
-        } catch (modelErr) {
-          console.warn(`Gemini ${model} failed:`, modelErr.message);
         }
+        if (success) break;
       }
 
       if (!success) {
-        return res.status(500).json({ error: 'All Gemini models failed for story generation' });
+        // ── FALLBACK: Generate a story using Wikipedia data only (no AI) ──
+        console.warn('All Gemini models failed. Using Wikipedia-only fallback story.');
+        
+        // Try to get Wikipedia info if not already provided
+        let wikiContent = wikiInfo || '';
+        if (!wikiContent && animalName) {
+          try {
+            const wikiRes = await fetch(
+              `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(animalName)}&prop=extracts&exintro=true&explaintext=true&format=json&origin=*`
+            );
+            if (wikiRes.ok) {
+              const wikiData = await wikiRes.json();
+              const pages = wikiData.query?.pages || {};
+              const page = Object.values(pages)[0];
+              if (page && page.extract && !page.missing) {
+                wikiContent = page.extract.substring(0, 1000);
+              }
+            }
+          } catch (e) {
+            console.warn('Wikipedia fallback also failed:', e.message);
+          }
+        }
+
+        // Build a beautiful template story from available data
+        const subject = animalName || 'this magnificent creature';
+        const loc = location || 'the wilderness';
+        const desc = caption || `a stunning ${subject} in its natural habitat`;
+
+        const fallbackStory = {
+          title: photoTitle || `Encounter with ${subject}`,
+          excerpt: `A breathtaking encounter with ${subject} in ${loc}. ${wikiContent ? wikiContent.substring(0, 150) + '...' : `This moment captured the raw beauty of nature.`}`,
+          content: `The morning air was crisp as I ventured deep into ${loc}, my camera gear slung over my shoulder and anticipation building with every step. As a wildlife photographer, these moments of solitude in nature are what I live for — the quiet before the extraordinary.\n\n${desc}. I had been tracking signs of ${subject} for hours, moving silently through the terrain, when suddenly the moment presented itself. My heart raced as I slowly raised my camera, careful not to make any sudden movements that might disturb this incredible scene.\n\n${wikiContent ? `${subject} is truly fascinating. ${wikiContent}\n\n` : ''}The encounter lasted only a few precious minutes, but in those moments, time seemed to stand still. I fired off several shots, adjusting my composition and settings to capture every nuance of the scene. The golden light filtering through created a natural spotlight on ${subject}, as if nature itself was directing this photograph.\n\nAs a photographer from Nepal now based in Japan, I've been fortunate to witness incredible wildlife across two very different landscapes. But encounters like this one remind me why I do what I do — to share the untold stories of wildlife and their habitats, and to inspire others to protect these precious moments.\n\nEvery photograph is more than just an image; it's a testament to the patience, respect, and deep love for nature that drives wildlife photography. I hope this story inspires you to step outside, observe the natural world around you, and find your own moment of wonder.\n\n${wikiUrl ? `Learn more about ${subject}: ${wikiUrl}` : '— Madan Shrestha | WILDS AURA'}`,
+          tags: [animalName, location, 'wildlife', 'photography', 'nature', 'conservation'].filter(Boolean),
+          wikiUrl: wikiUrl || '',
+        };
+
+        return res.status(200).json({
+          ...fallbackStory,
+          provider: 'wikipedia-fallback',
+          note: 'AI was rate limited. Story generated from Wikipedia data. You can edit and improve it manually.',
+        });
       }
     }
 
@@ -147,7 +210,6 @@ Return ONLY valid JSON (no markdown, no code blocks, no extra text):
       if (jsonMatch) {
         story = JSON.parse(jsonMatch[0]);
       } else {
-        // If AI returned plain text, wrap it
         story = {
           title: photoTitle || 'Wildlife Encounter',
           excerpt: storyText.substring(0, 200) + '...',
@@ -167,7 +229,6 @@ Return ONLY valid JSON (no markdown, no code blocks, no extra text):
       };
     }
 
-    // Ensure wikiUrl is in the response
     if (!story.wikiUrl && wikiUrl) {
       story.wikiUrl = wikiUrl;
     }

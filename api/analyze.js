@@ -59,8 +59,8 @@ Return ONLY the JSON object, no markdown, no code blocks, no explanation.`;
 
     } else {
       // ── Gemini Vision (default) ──
-      // Fixed model order: use stable models first, avoid rate-limited experimental ones
-      const models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+      // Use gemini-1.5-flash first — most stable and highest free-tier rate limits
+      const models = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro'];
       let success = false;
       let lastError = '';
 
@@ -87,47 +87,68 @@ Return ONLY the JSON object, no markdown, no code blocks, no explanation.`;
         };
       }
 
-      for (const model of models) {
-        try {
-          const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-          const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{
-                parts: [
-                  { text: prompt },
-                  imageParts,
-                ],
-              }],
-              generationConfig: {
-                temperature: 0.3,
-                maxOutputTokens: 2048,
-              },
-            }),
-          });
+      // Helper: wait for given ms
+      const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-          if (response.ok) {
-            const data = await response.json();
-            analysisText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-            if (analysisText) {
-              success = true;
-              break;
+      for (const model of models) {
+        // Try each model with up to 3 retries for rate limit (429) errors
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+            const response = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{
+                  parts: [
+                    { text: prompt },
+                    imageParts,
+                  ],
+                }],
+                generationConfig: {
+                  temperature: 0.3,
+                  maxOutputTokens: 2048,
+                },
+              }),
+            });
+
+            if (response.ok) {
+              const data = await response.json();
+              analysisText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+              if (analysisText) {
+                success = true;
+                break;
+              }
+            } else if (response.status === 429) {
+              // Rate limited — wait and retry
+              const waitTime = (attempt + 1) * 3000; // 3s, 6s, 9s
+              console.warn(`Gemini ${model} rate limited (429). Waiting ${waitTime / 1000}s before retry ${attempt + 1}/3...`);
+              lastError = `${model}: Rate limited (429). Retried ${attempt + 1} times.`;
+              await sleep(waitTime);
+              continue; // retry same model
+            } else if (response.status === 403) {
+              // Forbidden — API not enabled or key invalid, skip model
+              lastError = `${model}: Access denied (403). Check if Generative Language API is enabled in Google Cloud Console.`;
+              console.warn(`Gemini ${model}: 403 Forbidden — skipping`);
+              break; // skip to next model
+            } else {
+              lastError = `${model} error ${response.status}`;
+              console.warn(`Gemini ${model} failed: ${response.status}`);
+              break; // skip to next model for other errors
             }
-          } else {
-            lastError = `${model} error ${response.status}`;
-            console.warn(`Gemini ${model} failed: ${response.status}`);
+          } catch (modelErr) {
+            lastError = modelErr.message;
+            console.warn(`Gemini ${model} failed:`, modelErr.message);
+            break; // skip to next model on network errors
           }
-        } catch (modelErr) {
-          lastError = modelErr.message;
-          console.warn(`Gemini ${model} failed:`, modelErr.message);
         }
+        if (success) break;
       }
 
       if (!success) {
-        return res.status(500).json({ 
-          success: false, 
-          error: `AI analysis failed. ${lastError}. Please try again or switch to ChatGPT in AI Settings.` 
+        return res.status(500).json({
+          success: false,
+          error: `AI analysis failed after retries. ${lastError}. Tips: 1) Wait 1 minute and try again. 2) Switch to ChatGPT in AI Settings. 3) Check your API key is valid.`,
         });
       }
     }
@@ -135,10 +156,9 @@ Return ONLY the JSON object, no markdown, no code blocks, no explanation.`;
     // Parse the JSON response
     let analysis;
     try {
-      // Clean up the response — remove markdown code blocks if present
       let cleanText = analysisText.trim();
       cleanText = cleanText.replace(/^```json?\s*/i, '').replace(/\s*```$/i, '');
-      
+
       const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         analysis = JSON.parse(jsonMatch[0]);
