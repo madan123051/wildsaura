@@ -1265,13 +1265,15 @@ const App: React.FC = () => {
       <AboutSection />
       <Footer logoUrl={logoUrl} onTermsClick={handleTermsClick} />
 
-      {/* Live Stats Floating Widget */}
-      <LiveStats
-        onlineCount={onlineVisitorCount}
-        totalLikes={photos.reduce((s, p) => s + (p.likeCount || 0), 0) + stories.reduce((s, st) => s + (st.likeCount || 0), 0) + videos.reduce((s, v) => s + (v.likeCount || 0), 0)}
-        totalComments={totalCommentCount}
-        totalViews={stories.reduce((s, st) => s + (st.viewCount || 0), 0) + videos.reduce((s, v) => s + (v.viewCount || 0), 0)}
-      />
+      {/* Live Stats Floating Widget - Admin Only */}
+      {isAdmin && (
+        <LiveStats
+          onlineCount={onlineVisitorCount}
+          totalLikes={photos.reduce((s, p) => s + (p.likeCount || 0), 0) + stories.reduce((s, st) => s + (st.likeCount || 0), 0) + videos.reduce((s, v) => s + (v.likeCount || 0), 0)}
+          totalComments={totalCommentCount}
+          totalViews={stories.reduce((s, st) => s + (st.viewCount || 0), 0) + videos.reduce((s, v) => s + (v.viewCount || 0), 0)}
+        />
+      )}
 
       {selectedPhoto && (
         <PhotoModal
