@@ -82,7 +82,7 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
                 {photo.title}
               </h2>
               <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem', fontSize: '0.7rem' }} className="text-wa-muted">
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><User size={11} /> Madan</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><User size={11} /> {photo.photographer || 'Unknown'}</span>
                 {photo.location && <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(photo.location)}`} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#d4a853', textDecoration: 'none', cursor: 'pointer' }} onClick={(e) => e.stopPropagation()}><MapPin size={11} /> {photo.location}</a>}
                 <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Tag size={11} /> {photo.category}</span>
               </div>
@@ -162,7 +162,7 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
             <div>
               {photo.caption && <p className="text-wa-mid" style={{ fontSize: '0.875rem', lineHeight: 1.6, marginBottom: '1rem' }}>{photo.caption}</p>}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                <InfoCard label="Photographer" value="Madan" />
+                <InfoCard label="Photographer" value={photo.photographer || 'Unknown'} />
                 {photo.location && (
                   <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(photo.location)}`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', color: 'inherit' }} onClick={(e) => e.stopPropagation()}>
                     <InfoCard label="Location" value={photo.location} icon={<MapPin size={14} style={{ color: '#d4a853' }} />} />

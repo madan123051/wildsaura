@@ -19,6 +19,7 @@ export interface Photo {
   likeCount: number;
   liked: boolean;
   published?: boolean;
+  photographer?: string;
 }
 
 export interface Category {
@@ -64,6 +65,7 @@ export interface Story {
   viewCount: number;
   likeCount: number;
   liked: boolean;
+  photographer?: string;
 }
 
 export interface Video {
@@ -80,6 +82,7 @@ export interface Video {
   viewCount: number;
   likeCount: number;
   liked: boolean;
+  photographer?: string;
 }
 
 export interface ChatMessage {

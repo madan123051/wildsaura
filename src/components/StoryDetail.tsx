@@ -106,7 +106,7 @@ export const StoryDetail: React.FC<StoryDetailProps> = ({
             paddingBottom: '1.5rem', borderBottom: '1px solid var(--wa-border)',
             marginBottom: '2rem', flexWrap: 'wrap',
           }}>
-            <span>By <strong style={{ color: 'var(--wa-gold)' }}>Madan Shrestha</strong></span>
+            <span>By <strong style={{ color: 'var(--wa-gold)' }}>{story.photographer || 'Unknown'}</strong></span>
             <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}><Clock size={13} /> {estimateReadTime(story.content)} min read</span>
             <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}><Eye size={13} /> {story.viewCount} views</span>
             <span>{new Date(story.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>

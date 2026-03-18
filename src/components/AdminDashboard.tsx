@@ -226,6 +226,7 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
   const [tags, setTags] = useState<string[]>(initial?.tags || []);
   const [tagsInput, setTagsInput] = useState(initial?.tags?.join(', ') || '');
   const [animalName, setAnimalName] = useState(initial?.animalName || '');
+  const [photographer, setPhotographer] = useState(initial?.photographer || '');
   const [wikiSummary, setWikiSummary] = useState(initial?.wikiSummary || '');
   const [aiStatus, setAiStatus] = useState('');
   const [exifStatus, setExifStatus] = useState('');
@@ -422,6 +423,7 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
       type: mediaType === 'video' ? 'video' : 'photo',
       cameraModel, lens, aperture, shutterSpeed, iso, focalLength,
       tags: finalTags, animalName, wikiSummary,
+      photographer,
       likeCount: initial?.likeCount || 0, liked: initial?.liked || false,
       published: initial?.published !== false,
     });
@@ -502,6 +504,10 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
         <div>
           <label style={labelStyle}>Location</label>
           <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. Chitwan, Nepal" style={inputStyle} />
+        </div>
+        <div style={{ marginBottom: '0.75rem' }}>
+          <label style={labelStyle}>📸 Photographer Name</label>
+          <input value={photographer} onChange={(e) => setPhotographer(e.target.value)} placeholder="e.g. Madan Shrestha" style={inputStyle} />
         </div>
         <div style={{ gridColumn: '1 / -1' }}>
           <label style={labelStyle}>Caption</label>
@@ -592,6 +598,7 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(initial?.coverImageUrl || null);
   const [aiGenerating, setAiGenerating] = useState(false);
+  const [photographer, setPhotographer] = useState(initial?.photographer || '');
 
   const autoSlug = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
@@ -746,6 +753,7 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
       id: initial?.id || nextId,
       firestoreId: initial?.firestoreId,
       title, slug: slug || autoSlug(title), excerpt, content, coverImageUrl,
+      photographer,
       tags: tagsStr.split(',').map((t) => t.trim()).filter(Boolean),
       createdAt: initial?.createdAt || new Date().toISOString().split('T')[0],
       viewCount: initial?.viewCount || 0,
@@ -810,6 +818,10 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
           <label style={labelStyle}>Title *</label>
           <input value={title} onChange={(e) => handleTitleChange(e.target.value)} required placeholder="Story title" style={inputStyle} />
         </div>
+        <div style={{ marginBottom: '0.75rem' }}>
+          <label style={labelStyle}>📸 Photographer Name</label>
+          <input value={photographer} onChange={(e) => setPhotographer(e.target.value)} placeholder="e.g. Madan Shrestha" style={inputStyle} />
+        </div>
         <div>
           <label style={labelStyle}>Slug</label>
           <input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="auto-generated-slug" style={inputStyle} />
@@ -862,6 +874,7 @@ const VideoForm: React.FC<VideoFormProps> = ({ initial, onSave, onCancel, nextId
   const [uploadingThumb, setUploadingThumb] = useState(false);
   const [videoPreview, setVideoPreview] = useState<string | null>(initial?.videoUrl || null);
   const [thumbPreview, setThumbPreview] = useState<string | null>(initial?.thumbnailUrl || null);
+  const [photographer, setPhotographer] = useState(initial?.photographer || '');
 
   const handleVideoUpload = useCallback(async (file: File) => {
     setUploadingVideo(true);
@@ -937,6 +950,7 @@ const VideoForm: React.FC<VideoFormProps> = ({ initial, onSave, onCancel, nextId
       thumbnailUrl,
       location,
       duration,
+      photographer,
       tags: tagsStr.split(',').map((t) => t.trim()).filter(Boolean),
       createdAt: initial?.createdAt || new Date().toISOString().split('T')[0],
       viewCount: initial?.viewCount || 0,
@@ -1009,6 +1023,10 @@ const VideoForm: React.FC<VideoFormProps> = ({ initial, onSave, onCancel, nextId
         <div>
           <label style={labelStyle}>Location</label>
           <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. Chitwan, Nepal" style={inputStyle} />
+        </div>
+        <div style={{ marginBottom: '0.75rem' }}>
+          <label style={labelStyle}>📸 Photographer Name</label>
+          <input value={photographer} onChange={(e) => setPhotographer(e.target.value)} placeholder="e.g. Madan Shrestha" style={inputStyle} />
         </div>
         <div>
           <label style={labelStyle}>Duration</label>
