@@ -11,6 +11,8 @@ import { uploadPhotoToStorage, addPhotoToFirestore } from '../services/photoServ
 import { getAISettings } from '../services/aiSettingsService';
 import { AISettingsPanel } from './AISettings';
 import { applyWatermark } from '../utils/watermark';
+import { compressImageForAI } from '../utils/imageCompressor';
+import { readExifFromFile } from '../utils/exifReader';
 
 
 
@@ -232,6 +234,22 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
     const isVideo = file.type.startsWith('video/');
     setMediaType(isVideo ? 'video' : 'photo');
 
+    // Extract EXIF data from JPEG photos (auto-fill camera fields)
+    if (!isVideo) {
+      try {
+        const exif = await readExifFromFile(file);
+        if (exif.cameraModel) setCameraModel(exif.cameraModel);
+        if (exif.lens) setLens(exif.lens);
+        if (exif.aperture) setAperture(exif.aperture);
+        if (exif.shutterSpeed) setShutterSpeed(exif.shutterSpeed);
+        if (exif.iso) setIso(exif.iso);
+        if (exif.focalLength) setFocalLength(exif.focalLength);
+        console.log('📷 EXIF data extracted:', exif);
+      } catch (err) {
+        console.warn('EXIF extraction failed:', err);
+      }
+    }
+
     // Read as data URL for preview
     const reader = new FileReader();
     reader.onload = async () => {
@@ -254,8 +272,16 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
     setAiStatus('🔍 Analyzing with AI...');
     try {
       if (previewDataUrl && previewDataUrl.startsWith('data:')) {
+        // Compress image before AI analysis (max 1024x1024)
+        let imageForAI = previewDataUrl;
+        try {
+          imageForAI = await compressImageForAI(previewDataUrl, 1024, 0.8);
+          setAiStatus('📸 Image compressed, analyzing with AI...');
+        } catch (err) {
+          console.warn('Compression failed, using original:', err);
+        }
         // Use AI Vision for real analysis
-        const result = await analyzePhoto(previewDataUrl);
+        const result = await analyzePhoto(imageForAI);
         
         if (result.success) {
           // AI worked! Fill fields
@@ -478,9 +504,9 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
         )}
 
         <div style={{ gridColumn: '1 / -1', borderTop: '1px solid rgba(201,168,76,0.1)', paddingTop: '1rem', marginTop: '0.5rem' }}>
-          <span className="font-cinzel" style={{ fontSize: '0.7rem', color: 'var(--wa-gold)', letterSpacing: '0.1em' }}>Camera & EXIF Data</span>
+          <span className="font-cinzel" style={{ fontSize: '0.7rem', color: 'var(--wa-gold)', letterSpacing: '0.1em' }}>📷 Camera & EXIF Data (auto-filled from photo)</span>
         </div>
-        <div><label style={labelStyle}>Camera Model</label><input value={cameraModel} onChange={(e) => setCameraModel(e.target.value)} placeholder="From EXIF data" style={inputStyle} /></div>
+        <div><label style={labelStyle}>Camera Model</label><input value={cameraModel} onChange={(e) => setCameraModel(e.target.value)} placeholder="Auto-detected from JPEG" style={inputStyle} /></div>
         <div><label style={labelStyle}>Lens</label><input value={lens} onChange={(e) => setLens(e.target.value)} placeholder="RF 100-500mm" style={inputStyle} /></div>
         <div><label style={labelStyle}>Aperture</label><input value={aperture} onChange={(e) => setAperture(e.target.value)} placeholder="f/5.6" style={inputStyle} /></div>
         <div><label style={labelStyle}>Shutter Speed</label><input value={shutterSpeed} onChange={(e) => setShutterSpeed(e.target.value)} placeholder="1/1000s" style={inputStyle} /></div>
