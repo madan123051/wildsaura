@@ -16,6 +16,7 @@ import { StoriesSection } from './components/StoriesSection';
 import { StoryDetail } from './components/StoryDetail';
 import { downloadPhoto } from './utils/downloadPhoto';
 import { getPhotosFromFirestore, deletePhotoFromFirestore } from './services/photoService';
+import { getStoriesFromFirestore, addStoryToFirestore, deleteStoryFromFirestore, updateStoryInFirestore, uploadStoryCoverToStorage } from './services/storyService';
 
 const logoUrl = '/photos/logo.png';
 
@@ -257,20 +258,54 @@ const App: React.FC = () => {
       }
     } catch (e) { /* ignore */ }
 
-    // Load saved stories from localStorage
-    const savedStories = localStorage.getItem('wa_stories');
-    if (savedStories) {
+    // Load stories from Firestore
+    const loadStories = async () => {
       try {
-        const parsed = JSON.parse(savedStories);
-        if (parsed.length > 0) {
+        const firestoreStories = await getStoriesFromFirestore();
+        if (firestoreStories.length > 0) {
+          const mapped: Story[] = firestoreStories.map((fs, idx) => ({
+            id: Date.now() + idx + 5000,
+            firestoreId: fs.id,
+            title: fs.title,
+            slug: fs.slug,
+            excerpt: fs.excerpt,
+            content: fs.content,
+            coverImageUrl: fs.coverImageUrl,
+            tags: fs.tags || [],
+            createdAt: fs.createdAt?.toDate?.()?.toISOString?.()?.split('T')[0] || new Date().toISOString().split('T')[0],
+            viewCount: fs.viewCount || 0,
+            likeCount: fs.likeCount || 0,
+            liked: false,
+          }));
           setStories(prev => {
-            const existingIds = new Set(prev.map(s => s.id));
-            const newOnes = parsed.filter((s: Story) => !existingIds.has(s.id));
+            const existingTitles = new Set(prev.map(s => s.title.toLowerCase().trim()));
+            const newOnes = mapped.filter(s => !existingTitles.has(s.title.toLowerCase().trim()));
+            if (newOnes.length === 0) return prev;
             return [...newOnes, ...prev];
           });
         }
+      } catch (err) {
+        console.warn('Firestore stories load failed:', err);
+      }
+
+      // Also load from localStorage as fallback
+      try {
+        const savedStories = localStorage.getItem('wa_stories');
+        if (savedStories) {
+          const parsed = JSON.parse(savedStories);
+          if (parsed.length > 0) {
+            setStories(prev => {
+              const existingIds = new Set(prev.map(s => s.id));
+              const existingTitles = new Set(prev.map(s => s.title.toLowerCase().trim()));
+              const newOnes = parsed.filter((s: Story) => !existingIds.has(s.id) && !existingTitles.has(s.title.toLowerCase().trim()));
+              if (newOnes.length === 0) return prev;
+              return [...newOnes, ...prev];
+            });
+          }
+        }
       } catch {}
-    }
+    };
+    loadStories();
   }, []);
 
   const scrollToGallery = useCallback(() => {
@@ -377,13 +412,53 @@ const App: React.FC = () => {
   }, []);
 
   // Story handlers — now persist to localStorage
-  const handleAddStory = useCallback((story: Story) => {
+  const handleAddStory = useCallback(async (story: Story) => {
+    // Save to Firestore
+    try {
+      let finalCoverUrl = story.coverImageUrl;
+      if (story.coverImageUrl && story.coverImageUrl.startsWith('data:')) {
+        try {
+          finalCoverUrl = await uploadStoryCoverToStorage(story.coverImageUrl, `cover_${Date.now()}.jpg`);
+        } catch (err) {
+          console.warn('Firebase Storage upload for story cover failed:', err);
+        }
+      }
+      const firestoreId = await addStoryToFirestore({
+        title: story.title,
+        slug: story.slug,
+        excerpt: story.excerpt,
+        content: story.content,
+        coverImageUrl: finalCoverUrl,
+        tags: story.tags,
+        viewCount: story.viewCount || 0,
+        likeCount: story.likeCount || 0,
+      });
+      story = { ...story, firestoreId, coverImageUrl: finalCoverUrl };
+    } catch (err) {
+      console.warn('Firestore story save failed:', err);
+    }
     setStories((prev) => { const next = [story, ...prev]; saveStoriesToLocal(next); return next; });
   }, [saveStoriesToLocal]);
   const handleDeleteStory = useCallback((id: number) => {
+    const story = stories.find(s => s.id === id);
+    if (story?.firestoreId) {
+      deleteStoryFromFirestore(story.firestoreId).catch(err => console.warn('Firestore story delete failed:', err));
+    }
     setStories((prev) => { const next = prev.filter((s) => s.id !== id); saveStoriesToLocal(next); return next; });
-  }, [saveStoriesToLocal]);
+  }, [stories, saveStoriesToLocal]);
   const handleUpdateStory = useCallback((updated: Story) => {
+    if (updated.firestoreId) {
+      updateStoryInFirestore(updated.firestoreId, {
+        title: updated.title,
+        slug: updated.slug,
+        excerpt: updated.excerpt,
+        content: updated.content,
+        coverImageUrl: updated.coverImageUrl,
+        tags: updated.tags,
+        viewCount: updated.viewCount,
+        likeCount: updated.likeCount,
+      }).catch(err => console.warn('Firestore story update failed:', err));
+    }
     setStories((prev) => { const next = prev.map((s) => s.id === updated.id ? updated : s); saveStoriesToLocal(next); return next; });
   }, [saveStoriesToLocal]);
 

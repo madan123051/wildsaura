@@ -50,6 +50,7 @@ export interface Visitor {
 
 export interface Story {
   id: number;
+  firestoreId?: string;
   title: string;
   slug: string;
   excerpt: string;
