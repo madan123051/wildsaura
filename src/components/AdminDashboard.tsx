@@ -2,15 +2,17 @@ import React, { useState, useRef, useCallback } from 'react';
 import {
   LayoutDashboard, Image, Plus, Pencil, Trash2, LogOut, Eye, EyeOff,
   MapPin, Heart, BarChart3, TrendingUp, X, Save, Search, BookOpen,
-  Upload, Sparkles, Film, Camera, FileImage, Loader2, Info
+  Upload, Sparkles, Film, Camera, FileImage, Loader2, Info,
+  Settings, Cpu
 } from 'lucide-react';
 import { Photo, Story } from '../types';
 import { analyzePhoto, getAnimalInfo } from '../utils/aiService';
 import { uploadPhotoToStorage, addPhotoToFirestore } from '../services/photoService';
+import { AISettingsPanel } from './AISettings';
 
 
 
-type AdminView = 'dashboard' | 'photos' | 'add' | 'stories' | 'add-story';
+type AdminView = 'dashboard' | 'photos' | 'add' | 'stories' | 'add-story' | 'ai-settings';
 
 interface AdminDashboardProps {
   logoUrl?: string;
@@ -239,10 +241,10 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
 
   const handleAiFill = useCallback(async () => {
     setAiGenerating(true);
-    setAiStatus('🔍 Analyzing with Gemini AI...');
+    setAiStatus('🔍 Analyzing with AI...');
     try {
       if (previewDataUrl && previewDataUrl.startsWith('data:')) {
-        // Use Gemini Vision for real analysis
+        // Use AI Vision for real analysis
         const result = await analyzePhoto(previewDataUrl);
         
         if (result.success) {
@@ -395,7 +397,7 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
           {aiGenerating ? (
             <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> {aiStatus || 'AI is analyzing...'}</>
           ) : (
-            <><Sparkles size={18} /> 🤖 Gemini + Wikipedia</>
+            <><Sparkles size={18} /> 🤖 AI Auto-Fill + Wikipedia</>
           )}
         </button>
         {aiStatus && !aiGenerating && (
@@ -568,7 +570,7 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
     if (!title && !coverImageUrl) { alert('Please add a title or cover image first'); return; }
     setAiGenerating(true);
     try {
-      // Step 1: If cover image exists, analyze it with Gemini Vision
+      // Step 1: If cover image exists, analyze it with AI Vision
       let animalName = '';
       let imageAnalysis = '';
       if (coverImageUrl) {
@@ -597,7 +599,7 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
         } catch {}
       }
 
-      // Step 3: Generate story with Gemini using image analysis + Wikipedia
+      // Step 3: Generate story with AI using image analysis + Wikipedia
       const storyRes = await fetch('/api/generate-story', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -770,6 +772,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     if (view === 'add') return 'Add New Photo';
     if (view === 'stories') return editingStory ? 'Edit Story' : 'Manage Stories';
     if (view === 'add-story') return 'Add New Story';
+    if (view === 'ai-settings') return 'AI Configuration';
     return '';
   };
 
@@ -818,6 +821,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </button>
           <button style={sidebarItemStyle(view === 'add-story')} onClick={() => { setView('add-story'); setEditingStory(null); }}>
             <Plus size={18} /> Add Story
+          </button>
+
+          <div style={{ borderTop: '1px solid rgba(201,168,76,0.08)', margin: '0.5rem 0', paddingTop: '0.5rem' }}>
+            <p style={{ fontSize: '0.6rem', color: 'rgba(235,230,220,0.25)', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0 1rem', marginBottom: '0.25rem' }}>Settings</p>
+          </div>
+          <button style={sidebarItemStyle(view === 'ai-settings')} onClick={() => { setView('ai-settings'); setEditingPhoto(null); setEditingStory(null); }}>
+            <Cpu size={18} /> AI Settings
           </button>
         </nav>
 
@@ -1007,6 +1017,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <StoryForm onSave={handleSaveNewStory} onCancel={() => setView('stories')} nextId={nextStoryId} />
             </div>
           )}
+
+          {/* AI Settings View */}
+          {view === 'ai-settings' && <AISettingsPanel />}
         </div>
       </main>
     </div>

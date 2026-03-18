@@ -71,3 +71,12 @@ export interface ChatMessage {
   text: string;
   timestamp: string;
 }
+
+export interface AISettings {
+  geminiKey: string;
+  deepseekKey: string;
+  chatgptKey: string;
+  photoAnalysisProvider: 'gemini' | 'chatgpt';
+  storyProvider: 'gemini' | 'deepseek' | 'chatgpt';
+  chatProvider: 'gemini' | 'deepseek' | 'chatgpt';
+}

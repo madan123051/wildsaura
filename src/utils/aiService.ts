@@ -1,4 +1,8 @@
-// AI Service for Vercel deployment - calls API routes instead of local scripts
+// AI Service for Vercel deployment - calls API routes with multi-provider support
+import { getAISettings } from '../services/aiSettingsService';
+import { AISettings } from '../types';
+
+// ── Interfaces ──────────────────────────────────────────────────────────────
 
 export interface PhotoAnalysis {
   title: string;
@@ -15,12 +19,64 @@ export interface AnalysisResult {
   error?: string;
 }
 
+export interface ChatResponse {
+  text: string;
+  matchingPhotoTitles: string[];
+  wikiSummary?: string;
+  animalName?: string;
+  suggestedAnimals?: string[];
+}
+
+export interface StoryResult {
+  success: boolean;
+  title?: string;
+  excerpt?: string;
+  content?: string;
+  tags?: string[];
+  wikiUrl?: string;
+  error?: string;
+}
+
+// ── Settings Cache ──────────────────────────────────────────────────────────
+
+let cachedSettings: AISettings | null = null;
+let cacheTime = 0;
+const CACHE_DURATION = 300000; // 5 minutes
+
+async function getSettings(): Promise<AISettings> {
+  if (cachedSettings && Date.now() - cacheTime < CACHE_DURATION) return cachedSettings;
+  cachedSettings = await getAISettings();
+  cacheTime = Date.now();
+  return cachedSettings;
+}
+
+function getKeyForProvider(settings: AISettings, provider: string): string {
+  switch (provider) {
+    case 'gemini': return settings.geminiKey;
+    case 'deepseek': return settings.deepseekKey;
+    case 'chatgpt': return settings.chatgptKey;
+    default: return settings.geminiKey;
+  }
+}
+
+// Clear cache (useful when settings are updated in admin panel)
+export function clearAISettingsCache(): void {
+  cachedSettings = null;
+  cacheTime = 0;
+}
+
+// ── Photo Analysis ──────────────────────────────────────────────────────────
+
 export async function analyzePhoto(imageData: string): Promise<AnalysisResult> {
   try {
+    const settings = await getSettings();
+    const provider = settings.photoAnalysisProvider;
+    const apiKey = getKeyForProvider(settings, provider);
+
     const response = await fetch('/api/analyze', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ imageData }),
+      body: JSON.stringify({ imageData, provider, apiKey }),
     });
     const data = await response.json();
     if (data.success && data.data) {
@@ -54,24 +110,19 @@ function getFallback(): PhotoAnalysis {
   };
 }
 
+// ── Animal Info (Wikipedia - no AI needed) ───────────────────────────────────
+
 export async function getAnimalInfo(animal: string): Promise<string> {
   try {
     const response = await fetch(`/api/wikipedia?animal=${encodeURIComponent(animal)}`);
     const data = await response.json();
     return data.success ? data.summary : '';
-  } catch (err) {
+  } catch {
     return '';
   }
 }
 
-// Chat response interface (matches old geminiAI format for AIChatbot compatibility)
-export interface ChatResponse {
-  text: string;
-  matchingPhotoTitles: string[];
-  wikiSummary?: string;
-  animalName?: string;
-  suggestedAnimals?: string[];
-}
+// ── Chat Response ───────────────────────────────────────────────────────────
 
 export async function getChatResponse(
   userMessage: string,
@@ -83,16 +134,22 @@ export async function getChatResponse(
   };
 
   try {
+    const settings = await getSettings();
+    const provider = settings.chatProvider;
+    const apiKey = getKeyForProvider(settings, provider);
+
     const response = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         message: userMessage,
         photos: galleryPhotos,
+        provider,
+        apiKey,
       }),
     });
     const data = await response.json();
-    
+
     if (data.error) {
       return { ...fallback, text: data.error };
     }
@@ -109,13 +166,61 @@ export async function getChatResponse(
   }
 }
 
-// Wikipedia summary (for admin panel)
-export async function getWikiSummary(query: string): Promise<{ title: string; summary: string; imageUrl?: string } | null> {
+// ── Story Generation (NEW) ──────────────────────────────────────────────────
+
+export async function generateStory(
+  photoTitle: string,
+  animalName: string,
+  location: string,
+  caption: string,
+  wikiInfo: string
+): Promise<StoryResult> {
+  try {
+    const settings = await getSettings();
+    const provider = settings.storyProvider;
+    const apiKey = getKeyForProvider(settings, provider);
+
+    const response = await fetch('/api/generate-story', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        photoTitle,
+        animalName,
+        location,
+        caption,
+        wikiInfo,
+        provider,
+        apiKey,
+      }),
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      return { success: false, error: data.error || 'Story generation failed' };
+    }
+
+    return {
+      success: true,
+      title: data.title,
+      excerpt: data.excerpt,
+      content: data.content,
+      tags: data.tags,
+      wikiUrl: data.wikiUrl,
+    };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'unknown';
+    return { success: false, error: `Story generation failed: ${msg}` };
+  }
+}
+
+// ── Wikipedia Summary (for admin panel) ─────────────────────────────────────
+
+export async function getWikiSummary(query: string): Promise<{ title: string; summary: string; url?: string; imageUrl?: string } | null> {
   try {
     const response = await fetch(`/api/wikipedia?animal=${encodeURIComponent(query)}`);
     const data = await response.json();
     if (data.success) {
-      return { title: query, summary: data.summary };
+      return { title: query, summary: data.summary, url: data.url };
     }
     return null;
   } catch {
