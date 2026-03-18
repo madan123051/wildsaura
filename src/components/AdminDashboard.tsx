@@ -716,7 +716,7 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
       if (searchAnimal) {
         setAiStatus(`📚 Looking up "${searchAnimal}" on Wikipedia...`);
         try {
-          const wikiRes = await fetch(\`/api/wikipedia?animal=\${encodeURIComponent(searchAnimal)}\`);
+          const wikiRes = await fetch(`/api/wikipedia?animal=${encodeURIComponent(searchAnimal)}`);
           if (wikiRes.ok) {
             const wiki = await wikiRes.json();
             wikiInfo = wiki.summary || wiki.extract || '';
@@ -739,7 +739,7 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
           photoTitle: title || animalName || 'Wildlife Photo',
           animalName: animalName,
           location: detectedLocation || imageAnalysis,
-          caption: wikiInfo ? \`Wikipedia: \${wikiInfo.substring(0, 500)}\` : '',
+          caption: wikiInfo ? `Wikipedia: ${wikiInfo.substring(0, 500)}` : '',
           wikiInfo: wikiInfo,
           provider: storyProvider,
           apiKey: storyKey,
@@ -756,7 +756,7 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
         setAiStatus('✅ Story generated! Review and edit as needed.');
       } else {
         const errData = await storyRes.json().catch(() => ({}));
-        setAiStatus(\`❌ AI generation failed: \${errData.error || 'Unknown error'}\`);
+        setAiStatus(`❌ AI generation failed: ${errData.error || 'Unknown error'}`);
       }
     } catch (err) {
       console.error('AI fill error:', err);
