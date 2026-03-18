@@ -65,6 +65,22 @@ export interface Story {
   liked: boolean;
 }
 
+export interface Video {
+  id: number;
+  firestoreId?: string;
+  title: string;
+  description: string;
+  videoUrl: string;
+  thumbnailUrl: string;
+  tags: string[];
+  location?: string;
+  duration?: string;
+  createdAt: string;
+  viewCount: number;
+  likeCount: number;
+  liked: boolean;
+}
+
 export interface ChatMessage {
   id: number;
   sender: 'user' | 'ai';

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Photo, Category, FilterTab, Visitor, Story, Comment } from './types';
+import { Photo, Category, FilterTab, Visitor, Story, Comment, Video } from './types';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
 import { CategorySection } from './components/CategorySection';
@@ -13,11 +13,13 @@ import { SearchBar } from './components/SearchBar';
 import { AIChatbot } from './components/AIChatbot';
 import { VisitorLogin } from './components/VisitorLogin';
 import { StoriesSection } from './components/StoriesSection';
+import { VideoSection } from './components/VideoSection';
 import { TermsConditions } from './components/TermsConditions';
 import { StoryDetail } from './components/StoryDetail';
 import { downloadPhoto } from './utils/downloadPhoto';
 import { getPhotosFromFirestore, deletePhotoFromFirestore, updatePhotoInFirestore } from './services/photoService';
 import { getStoriesFromFirestore, addStoryToFirestore, deleteStoryFromFirestore, updateStoryInFirestore, uploadStoryCoverToStorage } from './services/storyService';
+import { getVideosFromFirestore, addVideoToFirestore, deleteVideoFromFirestore, updateVideoInFirestore, uploadVideoThumbnailToStorage, uploadVideoToStorage } from './services/videoService';
 import { addCommentToFirestore, getCommentsForTarget, getAllComments } from './services/commentService';
 import { saveVisitorToFirestore, getVisitorFromFirestore, updateVisitorDownloadCount, updateVisitorProfile } from './services/visitorService';
 
@@ -162,6 +164,7 @@ const App: React.FC = () => {
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [photos, setPhotos] = useState<Photo[]>(SAMPLE_PHOTOS);
   const [stories, setStories] = useState<Story[]>(SAMPLE_STORIES);
+  const [videos, setVideos] = useState<Video[]>([]);
   const [selectedStory, setSelectedStory] = useState<Story | null>(null);
   const galleryRef = useRef<HTMLElement | null>(null);
 
@@ -320,6 +323,35 @@ const App: React.FC = () => {
       }
     };
     loadStories();
+
+
+    // Load videos from Firestore
+    const loadVideos = async () => {
+      try {
+        const firestoreVideos = await getVideosFromFirestore();
+        if (firestoreVideos.length > 0) {
+          const mapped: Video[] = firestoreVideos.map((fv, idx) => ({
+            id: Date.now() + idx + 9000,
+            firestoreId: fv.id,
+            title: fv.title,
+            description: fv.description || '',
+            videoUrl: fv.videoUrl,
+            thumbnailUrl: fv.thumbnailUrl || '',
+            tags: fv.tags || [],
+            location: fv.location || '',
+            duration: fv.duration || '',
+            createdAt: fv.createdAt?.toDate?.()?.toISOString?.()?.split('T')[0] || new Date().toISOString().split('T')[0],
+            viewCount: fv.viewCount || 0,
+            likeCount: fv.likeCount || 0,
+            liked: false,
+          }));
+          setVideos(mapped);
+        }
+      } catch (err) {
+        console.warn('Firestore videos load failed:', err);
+      }
+    };
+    loadVideos();
 
     // Load all comments from Firestore
     const loadComments = async () => {
@@ -544,6 +576,68 @@ const App: React.FC = () => {
       }).catch(err => console.warn('Firestore story update failed:', err));
     }
     setStories((prev) => prev.map((s) => s.id === updated.id ? updated : s));
+  }, []);
+
+  // Video handlers
+  const handleAddVideo = useCallback(async (video: Video) => {
+    try {
+      let finalVideoUrl = video.videoUrl;
+      let finalThumbnailUrl = video.thumbnailUrl;
+      if (video.videoUrl && video.videoUrl.startsWith('data:')) {
+        try {
+          finalVideoUrl = await uploadVideoToStorage(video.videoUrl, `video_${Date.now()}.mp4`);
+        } catch (err) {
+          console.warn('Firebase Storage video upload failed:', err);
+        }
+      }
+      if (video.thumbnailUrl && video.thumbnailUrl.startsWith('data:')) {
+        try {
+          finalThumbnailUrl = await uploadVideoThumbnailToStorage(video.thumbnailUrl, `thumb_${Date.now()}.jpg`);
+        } catch (err) {
+          console.warn('Firebase Storage thumbnail upload failed:', err);
+        }
+      }
+      const firestoreId = await addVideoToFirestore({
+        title: video.title,
+        description: video.description,
+        videoUrl: finalVideoUrl,
+        thumbnailUrl: finalThumbnailUrl,
+        tags: video.tags,
+        location: video.location || '',
+        duration: video.duration || '',
+        viewCount: video.viewCount || 0,
+        likeCount: video.likeCount || 0,
+      });
+      video = { ...video, firestoreId, videoUrl: finalVideoUrl, thumbnailUrl: finalThumbnailUrl };
+    } catch (err) {
+      console.warn('Firestore video save failed:', err);
+    }
+    setVideos((prev) => [video, ...prev]);
+  }, []);
+
+  const handleDeleteVideo = useCallback((id: number) => {
+    const video = videos.find(v => v.id === id);
+    if (video?.firestoreId) {
+      deleteVideoFromFirestore(video.firestoreId).catch(err => console.warn('Firestore video delete failed:', err));
+    }
+    setVideos((prev) => prev.filter((v) => v.id !== id));
+  }, [videos]);
+
+  const handleUpdateVideo = useCallback((updated: Video) => {
+    if (updated.firestoreId) {
+      updateVideoInFirestore(updated.firestoreId, {
+        title: updated.title,
+        description: updated.description,
+        videoUrl: updated.videoUrl,
+        thumbnailUrl: updated.thumbnailUrl,
+        tags: updated.tags,
+        location: updated.location || '',
+        duration: updated.duration || '',
+        viewCount: updated.viewCount,
+        likeCount: updated.likeCount,
+      }).catch(err => console.warn('Firestore video update failed:', err));
+    }
+    setVideos((prev) => prev.map((v) => v.id === updated.id ? updated : v));
   }, []);
 
   const handleStoryClick = useCallback((story: Story) => {
@@ -806,6 +900,10 @@ const App: React.FC = () => {
         onAddStory={handleAddStory}
         onDeleteStory={handleDeleteStory}
         onUpdateStory={handleUpdateStory}
+        videos={videos}
+        onAddVideo={handleAddVideo}
+        onDeleteVideo={handleDeleteVideo}
+        onUpdateVideo={handleUpdateVideo}
       />
     );
   }
@@ -921,6 +1019,7 @@ const App: React.FC = () => {
         onLoginRequired={() => setShowVisitorLogin(true)}
       />
       <StoriesSection stories={stories} onStoryClick={handleStoryClick} />
+      <VideoSection videos={videos} />
       <AboutSection />
       <Footer logoUrl={logoUrl} onTermsClick={handleTermsClick} />
 

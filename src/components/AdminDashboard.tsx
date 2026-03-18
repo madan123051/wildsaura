@@ -5,14 +5,14 @@ import {
   Upload, Sparkles, Film, Camera, FileImage, Loader2, Info,
   Settings, Cpu
 } from 'lucide-react';
-import { Photo, Story } from '../types';
+import { Photo, Story, Video } from '../types';
 import { analyzePhoto, getAnimalInfo } from '../utils/aiService';
 import { uploadPhotoToStorage, addPhotoToFirestore } from '../services/photoService';
 import { AISettingsPanel } from './AISettings';
 
 
 
-type AdminView = 'dashboard' | 'photos' | 'add' | 'stories' | 'add-story' | 'ai-settings';
+type AdminView = 'dashboard' | 'photos' | 'add' | 'stories' | 'add-story' | 'videos' | 'add-video' | 'ai-settings';
 
 interface AdminDashboardProps {
   logoUrl?: string;
@@ -26,6 +26,10 @@ interface AdminDashboardProps {
   onAddStory: (story: Story) => void;
   onDeleteStory: (id: number) => void;
   onUpdateStory: (story: Story) => void;
+  videos: Video[];
+  onAddVideo: (video: Video) => void;
+  onDeleteVideo: (id: number) => void;
+  onUpdateVideo: (video: Video) => void;
 }
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
@@ -728,21 +732,212 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
   );
 };
 
+// ── Video Form with Upload ─────────────────────────────────────────────────
+interface VideoFormProps {
+  initial?: Video;
+  onSave: (data: Video) => void;
+  onCancel: () => void;
+  nextId: number;
+}
+
+const VideoForm: React.FC<VideoFormProps> = ({ initial, onSave, onCancel, nextId }) => {
+  const [title, setTitle] = useState(initial?.title || '');
+  const [description, setDescription] = useState(initial?.description || '');
+  const [videoUrl, setVideoUrl] = useState(initial?.videoUrl || '');
+  const [thumbnailUrl, setThumbnailUrl] = useState(initial?.thumbnailUrl || '');
+  const [location, setLocation] = useState(initial?.location || '');
+  const [duration, setDuration] = useState(initial?.duration || '');
+  const [tagsStr, setTagsStr] = useState(initial?.tags?.join(', ') || '');
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [uploadingThumb, setUploadingThumb] = useState(false);
+  const [videoPreview, setVideoPreview] = useState<string | null>(initial?.videoUrl || null);
+  const [thumbPreview, setThumbPreview] = useState<string | null>(initial?.thumbnailUrl || null);
+
+  const handleVideoUpload = useCallback(async (file: File) => {
+    setUploadingVideo(true);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      setVideoPreview(dataUrl);
+      setVideoUrl(dataUrl);
+      setUploadingVideo(false);
+    };
+    reader.readAsDataURL(file);
+  }, []);
+
+  const handleThumbnailUpload = useCallback(async (file: File) => {
+    setUploadingThumb(true);
+    try {
+      // Compress thumbnail like story cover (max 800px, JPEG 0.6)
+      const bitmap = await createImageBitmap(file);
+      const MAX_DIM = 800;
+      let w = bitmap.width, h = bitmap.height;
+      if (w > MAX_DIM || h > MAX_DIM) {
+        const scale = MAX_DIM / Math.max(w, h);
+        w = Math.round(w * scale);
+        h = Math.round(h * scale);
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(bitmap, 0, 0, w, h);
+      const compressedUrl = canvas.toDataURL('image/jpeg', 0.6);
+      setThumbPreview(compressedUrl);
+      setThumbnailUrl(compressedUrl);
+
+      // Also try uploading to Firebase Storage for persistence
+      try {
+        const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
+        const { storage } = await import('../firebase');
+        const storageRef = ref(storage, `video-thumbnails/${Date.now()}_${file.name}`);
+        const response = await fetch(compressedUrl);
+        const blob = await response.blob();
+        await uploadBytes(storageRef, blob);
+        const firebaseUrl = await getDownloadURL(storageRef);
+        setThumbnailUrl(firebaseUrl);
+      } catch {
+        console.log('Firebase upload failed, using compressed data URL');
+      }
+    } catch {
+      // Fallback to basic data URL
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result as string;
+        setThumbPreview(dataUrl);
+        setThumbnailUrl(dataUrl);
+      };
+      reader.readAsDataURL(file);
+    }
+    setUploadingThumb(false);
+  }, []);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!videoUrl) return;
+    onSave({
+      id: initial?.id || nextId,
+      title,
+      description,
+      videoUrl,
+      thumbnailUrl,
+      location,
+      duration,
+      tags: tagsStr.split(',').map((t) => t.trim()).filter(Boolean),
+      createdAt: initial?.createdAt || new Date().toISOString().split('T')[0],
+      viewCount: initial?.viewCount || 0,
+      likeCount: initial?.likeCount || 0,
+      liked: initial?.liked || false,
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      {/* Video Upload */}
+      <div style={{ marginBottom: '1.5rem' }}>
+        <UploadZone
+          onFileSelected={handleVideoUpload}
+          previewUrl={videoPreview}
+          uploading={uploadingVideo}
+          accept="video/*"
+          label="Video File"
+        />
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: '1rem 0' }}>
+        <div style={{ flex: 1, height: 1, background: 'rgba(201,168,76,0.15)' }} />
+        <span style={{ fontSize: '0.7rem', color: 'rgba(235,230,220,0.3)', letterSpacing: '0.1em' }}>OR PASTE VIDEO URL</span>
+        <div style={{ flex: 1, height: 1, background: 'rgba(201,168,76,0.15)' }} />
+      </div>
+      <div style={{ marginBottom: '1.5rem' }}>
+        <input
+          value={videoUrl.startsWith('data:') ? '' : videoUrl}
+          onChange={(e) => { setVideoUrl(e.target.value); setVideoPreview(e.target.value || null); }}
+          placeholder="https://example.com/video.mp4"
+          style={inputStyle}
+        />
+      </div>
+
+      {/* Thumbnail Upload */}
+      <div style={{ marginBottom: '1.5rem' }}>
+        <UploadZone
+          onFileSelected={handleThumbnailUpload}
+          previewUrl={thumbPreview}
+          uploading={uploadingThumb}
+          accept="image/*"
+          label="Thumbnail Image"
+        />
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: '1rem 0' }}>
+        <div style={{ flex: 1, height: 1, background: 'rgba(201,168,76,0.15)' }} />
+        <span style={{ fontSize: '0.7rem', color: 'rgba(235,230,220,0.3)', letterSpacing: '0.1em' }}>OR PASTE THUMBNAIL URL</span>
+        <div style={{ flex: 1, height: 1, background: 'rgba(201,168,76,0.15)' }} />
+      </div>
+      <div style={{ marginBottom: '1.5rem' }}>
+        <input
+          value={thumbnailUrl.startsWith('data:') ? '' : thumbnailUrl}
+          onChange={(e) => { setThumbnailUrl(e.target.value); setThumbPreview(e.target.value || null); }}
+          placeholder="https://example.com/thumbnail.jpg"
+          style={inputStyle}
+        />
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
+        <div style={{ gridColumn: '1 / -1' }}>
+          <label style={labelStyle}>Title *</label>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="Video title" style={inputStyle} />
+        </div>
+        <div style={{ gridColumn: '1 / -1' }}>
+          <label style={labelStyle}>Description</label>
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Video description..." rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
+        </div>
+        <div>
+          <label style={labelStyle}>Location</label>
+          <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. Chitwan, Nepal" style={inputStyle} />
+        </div>
+        <div>
+          <label style={labelStyle}>Duration</label>
+          <input value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="e.g. 2:34" style={inputStyle} />
+        </div>
+        <div style={{ gridColumn: '1 / -1' }}>
+          <label style={labelStyle}>Tags (comma separated)</label>
+          <input value={tagsStr} onChange={(e) => setTagsStr(e.target.value)} placeholder="wildlife, adventure, nepal" style={inputStyle} />
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>
+        <button type="button" onClick={onCancel} style={{
+          padding: '0.6rem 1.25rem', background: 'rgba(255,255,255,0.05)',
+          border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px',
+          color: 'rgba(235,230,220,0.6)', cursor: 'pointer', fontSize: '0.8rem',
+        }}>Cancel</button>
+        <button type="submit" className="btn-gold" style={{
+          padding: '0.6rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem',
+        }}><Save size={16} /> {initial ? 'Update Video' : 'Add Video'}</button>
+      </div>
+    </form>
+  );
+};
+
 // ── Main Dashboard ───────────────────────────────────────────────────────────
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   logoUrl, photos, onAddPhoto, onUpdatePhoto, onDeletePhoto, onLogout, onViewSite,
   stories, onAddStory, onDeleteStory, onUpdateStory,
+  videos, onAddVideo, onDeleteVideo, onUpdateVideo,
 }) => {
   const [view, setView] = useState<AdminView>('dashboard');
   const [editingPhoto, setEditingPhoto] = useState<Photo | null>(null);
   const [editingStory, setEditingStory] = useState<Story | null>(null);
+  const [editingVideo, setEditingVideo] = useState<Video | null>(null);
   const [search, setSearch] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   const [storyDeleteConfirm, setStoryDeleteConfirm] = useState<number | null>(null);
+  const [videoDeleteConfirm, setVideoDeleteConfirm] = useState<number | null>(null);
 
   const totalLikes = photos.reduce((sum, p) => sum + p.likeCount, 0);
   const nextPhotoId = Math.max(0, ...photos.map((p) => p.id)) + 1;
   const nextStoryId = Math.max(0, ...stories.map((s) => s.id)) + 1;
+  const nextVideoId = Math.max(0, ...videos.map((v) => v.id)) + 1;
 
   const filteredPhotos = photos.filter((p) =>
     p.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -756,6 +951,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const handleSaveNewStory = (data: Story) => { onAddStory(data); setView('stories'); };
   const handleSaveEditStory = (data: Story) => { onUpdateStory(data); setEditingStory(null); };
   const handleDeleteStory = (id: number) => { onDeleteStory(id); setStoryDeleteConfirm(null); };
+
+  const handleSaveNewVideo = (data: Video) => { onAddVideo(data); setView('videos'); };
+  const handleSaveEditVideo = (data: Video) => { onUpdateVideo(data); setEditingVideo(null); };
+  const handleDeleteVideo = (id: number) => { onDeleteVideo(id); setVideoDeleteConfirm(null); };
 
   const sidebarItemStyle = (active: boolean): React.CSSProperties => ({
     display: 'flex', alignItems: 'center', gap: '0.6rem',
@@ -772,6 +971,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     if (view === 'add') return 'Add New Photo';
     if (view === 'stories') return editingStory ? 'Edit Story' : 'Manage Stories';
     if (view === 'add-story') return 'Add New Story';
+    if (view === 'videos') return editingVideo ? 'Edit Video' : 'Manage Videos';
+    if (view === 'add-video') return 'Add New Video';
     if (view === 'ai-settings') return 'AI Configuration';
     return '';
   };
@@ -802,7 +1003,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
 
         <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', flex: 1 }}>
-          <button style={sidebarItemStyle(view === 'dashboard')} onClick={() => { setView('dashboard'); setEditingPhoto(null); setEditingStory(null); }}>
+          <button style={sidebarItemStyle(view === 'dashboard')} onClick={() => { setView('dashboard'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); }}>
             <LayoutDashboard size={18} /> Overview
           </button>
           <button style={sidebarItemStyle(view === 'photos')} onClick={() => { setView('photos'); setEditingPhoto(null); }}>
@@ -822,11 +1023,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <button style={sidebarItemStyle(view === 'add-story')} onClick={() => { setView('add-story'); setEditingStory(null); }}>
             <Plus size={18} /> Add Story
           </button>
+          <button style={sidebarItemStyle(view === 'videos')} onClick={() => { setView('videos'); setEditingVideo(null); }}>
+            <Film size={18} /> Videos
+          </button>
+          <button style={sidebarItemStyle(view === 'add-video')} onClick={() => { setView('add-video'); setEditingVideo(null); }}>
+            <Plus size={18} /> Add Video
+          </button>
 
           <div style={{ borderTop: '1px solid rgba(201,168,76,0.08)', margin: '0.5rem 0', paddingTop: '0.5rem' }}>
             <p style={{ fontSize: '0.6rem', color: 'rgba(235,230,220,0.25)', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0 1rem', marginBottom: '0.25rem' }}>Settings</p>
           </div>
-          <button style={sidebarItemStyle(view === 'ai-settings')} onClick={() => { setView('ai-settings'); setEditingPhoto(null); setEditingStory(null); }}>
+          <button style={sidebarItemStyle(view === 'ai-settings')} onClick={() => { setView('ai-settings'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); }}>
             <Cpu size={18} /> AI Settings
           </button>
         </nav>
@@ -866,7 +1073,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <StatCard icon={<Image size={24} />} label="Total Photos" value={photos.length} color="blue" />
                 <StatCard icon={<Heart size={24} />} label="Total Likes" value={totalLikes} color="red" />
                 <StatCard icon={<BookOpen size={24} />} label="Stories" value={stories.length} color="green" />
-                <StatCard icon={<TrendingUp size={24} />} label="Avg Likes" value={photos.length ? Math.round(totalLikes / photos.length) : 0} color="gold" />
+                <StatCard icon={<Film size={24} />} label="Videos" value={videos.length} color="gold" />
               </div>
 
               <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.1)', borderRadius: '12px', padding: '1.5rem', marginBottom: '2rem' }}>
@@ -1015,6 +1222,73 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           {view === 'add-story' && (
             <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.1)', borderRadius: '12px', padding: '1.5rem' }}>
               <StoryForm onSave={handleSaveNewStory} onCancel={() => setView('stories')} nextId={nextStoryId} />
+            </div>
+          )}
+
+          {/* Videos View */}
+          {view === 'videos' && !editingVideo && (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: '1.5rem' }}>
+                <button className="btn-gold" onClick={() => setView('add-video')} style={{ padding: '0.55rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem' }}>
+                  <Plus size={16} /> Add Video
+                </button>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+                {videos.map((v) => (
+                  <div key={v.id} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.1)', borderRadius: '12px', overflow: 'hidden' }}>
+                    <div style={{ position: 'relative' }}>
+                      {v.thumbnailUrl ? (
+                        <img src={v.thumbnailUrl} alt={v.title} style={{ width: '100%', height: 140, objectFit: 'cover' }} />
+                      ) : (
+                        <div style={{ width: '100%', height: 140, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Film size={32} style={{ color: 'var(--wa-gold)', opacity: 0.4 }} />
+                        </div>
+                      )}
+                      {v.duration && (
+                        <div style={{ position: 'absolute', bottom: 8, right: 8, padding: '0.2rem 0.5rem', borderRadius: '4px', background: 'rgba(0,0,0,0.8)', color: '#fff', fontSize: '0.7rem', fontWeight: 600 }}>
+                          {v.duration}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ padding: '1rem' }}>
+                      <h4 style={{ color: 'var(--wa-light)', fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.35rem' }}>{v.title}</h4>
+                      <p style={{ fontSize: '0.75rem', color: 'rgba(235,230,220,0.4)', marginBottom: '0.5rem', lineHeight: 1.4 }}>{v.description?.substring(0, 100) || 'No description'}...</p>
+                      <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+                        {v.tags.map((t) => (
+                          <span key={t} style={{ padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.6rem', background: 'rgba(201,168,76,0.1)', color: 'var(--wa-gold)' }}>{t}</span>
+                        ))}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: '0.7rem', color: 'rgba(235,230,220,0.3)' }}>{v.viewCount} views · {v.likeCount} likes</span>
+                        <div style={{ display: 'flex', gap: '0.4rem' }}>
+                          <button onClick={() => setEditingVideo(v)} style={{ width: 32, height: 32, borderRadius: '6px', background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.2)', color: '#60a5fa', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Pencil size={14} /></button>
+                          {videoDeleteConfirm === v.id ? (
+                            <div style={{ display: 'flex', gap: '0.25rem' }}>
+                              <button onClick={() => handleDeleteVideo(v.id)} style={{ padding: '0 0.6rem', height: 32, borderRadius: '6px', background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', cursor: 'pointer', fontSize: '0.7rem' }}>Delete</button>
+                              <button onClick={() => setVideoDeleteConfirm(null)} style={{ width: 32, height: 32, borderRadius: '6px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(235,230,220,0.5)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={14} /></button>
+                            </div>
+                          ) : (
+                            <button onClick={() => setVideoDeleteConfirm(v.id)} style={{ width: 32, height: 32, borderRadius: '6px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.15)', color: 'rgba(239,68,68,0.5)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Trash2 size={14} /></button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {videos.length === 0 && <div style={{ textAlign: 'center', padding: '3rem', color: 'rgba(235,230,220,0.3)' }}>No videos yet. Upload your first one!</div>}
+            </>
+          )}
+
+          {view === 'videos' && editingVideo && (
+            <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.1)', borderRadius: '12px', padding: '1.5rem' }}>
+              <VideoForm initial={editingVideo} onSave={handleSaveEditVideo} onCancel={() => setEditingVideo(null)} nextId={nextVideoId} />
+            </div>
+          )}
+
+          {view === 'add-video' && (
+            <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.1)', borderRadius: '12px', padding: '1.5rem' }}>
+              <VideoForm onSave={handleSaveNewVideo} onCancel={() => setView('videos')} nextId={nextVideoId} />
             </div>
           )}
 
