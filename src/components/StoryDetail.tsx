@@ -186,14 +186,20 @@ export const StoryDetail: React.FC<StoryDetailProps> = ({
                     borderRadius: '10px', background: 'rgba(255,255,255,0.03)',
                     border: '1px solid var(--wa-border)',
                   }}>
-                    <div style={{
-                      width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      background: c.avatarColor || 'var(--wa-gold)',
-                      fontSize: '0.75rem', fontWeight: 700, color: '#000',
-                    }}>
-                      {c.displayName.charAt(0).toUpperCase()}
-                    </div>
+                    {c.avatarUrl ? (
+                      <img src={c.avatarUrl} alt={c.displayName} style={{
+                        width: 32, height: 32, borderRadius: '50%', flexShrink: 0, objectFit: 'cover',
+                      }} referrerPolicy="no-referrer" />
+                    ) : (
+                      <div style={{
+                        width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: c.avatarColor || 'var(--wa-gold)',
+                        fontSize: '0.75rem', fontWeight: 700, color: '#000',
+                      }}>
+                        {c.displayName.charAt(0).toUpperCase()}
+                      </div>
+                    )}
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--wa-text)' }}>{c.displayName}</span>
@@ -209,14 +215,20 @@ export const StoryDetail: React.FC<StoryDetailProps> = ({
             {visitor ? (
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                  <div style={{
-                    width: 24, height: 24, borderRadius: '50%',
-                    background: visitor.avatarColor,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '0.65rem', fontWeight: 700, color: '#000',
-                  }}>
-                    {visitor.displayName.charAt(0).toUpperCase()}
-                  </div>
+                  {visitor.avatarUrl ? (
+                    <img src={visitor.avatarUrl} alt={visitor.displayName} style={{
+                      width: 24, height: 24, borderRadius: '50%', objectFit: 'cover',
+                    }} referrerPolicy="no-referrer" />
+                  ) : (
+                    <div style={{
+                      width: 24, height: 24, borderRadius: '50%',
+                      background: visitor.avatarColor,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '0.65rem', fontWeight: 700, color: '#000',
+                    }}>
+                      {visitor.displayName.charAt(0).toUpperCase()}
+                    </div>
+                  )}
                   <span style={{ fontSize: '0.75rem', color: 'var(--wa-text-muted)' }}>
                     Commenting as <strong style={{ color: 'var(--wa-gold)' }}>{visitor.displayName}</strong>
                   </span>

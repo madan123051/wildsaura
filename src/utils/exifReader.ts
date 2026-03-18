@@ -1,6 +1,6 @@
 /**
- * Minimal EXIF reader for JPEG files — extracts camera & lens data.
- * No external dependencies needed.
+ * Robust EXIF reader for JPEG files — extracts camera & lens data.
+ * No external dependencies. Works with DSLR, mirrorless, and phone JPEGs.
  */
 
 export interface ExifData {
@@ -13,7 +13,7 @@ export interface ExifData {
   focalLength?: string;
 }
 
-// EXIF tag IDs
+// EXIF tag IDs we care about
 const TAGS: Record<number, string> = {
   0x010F: 'Make',
   0x0110: 'Model',
@@ -26,167 +26,179 @@ const TAGS: Record<number, string> = {
   0x8769: 'ExifIFDPointer',
 };
 
-function readUint16(view: DataView, offset: number, le: boolean): number {
-  return le ? view.getUint16(offset, true) : view.getUint16(offset, false);
-}
+function readU16(v: DataView, o: number, le: boolean): number { return v.getUint16(o, le); }
+function readU32(v: DataView, o: number, le: boolean): number { return v.getUint32(o, le); }
 
-function readUint32(view: DataView, offset: number, le: boolean): number {
-  return le ? view.getUint32(offset, true) : view.getUint32(offset, false);
-}
-
-function readTagValue(view: DataView, tiffStart: number, offset: number, le: boolean): string | number | null {
-  const type = readUint16(view, offset + 2, le);
-  const count = readUint32(view, offset + 4, le);
-  const valueOffset = offset + 8;
+function readTagValue(view: DataView, tiffStart: number, entry: number, le: boolean): string | number | null {
+  const type = readU16(view, entry + 2, le);
+  const count = readU32(view, entry + 4, le);
+  const valOff = entry + 8;
 
   try {
     switch (type) {
-      case 2: { // ASCII string
-        const strOffset = count > 4 ? tiffStart + readUint32(view, valueOffset, le) : valueOffset;
-        let str = '';
-        for (let i = 0; i < count - 1; i++) {
-          const c = view.getUint8(strOffset + i);
+      case 2: { // ASCII
+        const bytes = count;
+        const ptr = bytes > 4 ? tiffStart + readU32(view, valOff, le) : valOff;
+        if (ptr < 0 || ptr + bytes > view.byteLength) return null;
+        let s = '';
+        for (let i = 0; i < bytes - 1; i++) {
+          const c = view.getUint8(ptr + i);
           if (c === 0) break;
-          str += String.fromCharCode(c);
+          s += String.fromCharCode(c);
         }
-        return str.trim();
+        return s.trim();
       }
-      case 3: // SHORT
-        return readUint16(view, valueOffset, le);
-      case 4: // LONG
-        return readUint32(view, valueOffset, le);
-      case 5: { // RATIONAL (two LONGs: numerator/denominator)
-        const ratOffset = tiffStart + readUint32(view, valueOffset, le);
-        const num = readUint32(view, ratOffset, le);
-        const den = readUint32(view, ratOffset + 4, le);
+      case 3: return readU16(view, valOff, le); // SHORT
+      case 4: return readU32(view, valOff, le); // LONG
+      case 5: { // RATIONAL
+        const p = tiffStart + readU32(view, valOff, le);
+        if (p < 0 || p + 8 > view.byteLength) return null;
+        const num = readU32(view, p, le);
+        const den = readU32(view, p + 4, le);
         return den ? num / den : 0;
       }
-      default:
-        return null;
+      case 9: return view.getInt32(valOff, le); // SLONG
+      case 10: { // SRATIONAL
+        const p2 = tiffStart + readU32(view, valOff, le);
+        if (p2 < 0 || p2 + 8 > view.byteLength) return null;
+        return view.getInt32(p2 + 4, le) ? view.getInt32(p2, le) / view.getInt32(p2 + 4, le) : 0;
+      }
+      default: return null;
     }
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
-function parseIFD(view: DataView, tiffStart: number, ifdOffset: number, le: boolean): Record<string, string | number> {
-  const result: Record<string, string | number> = {};
+function parseIFD(view: DataView, tiffStart: number, ifdOff: number, le: boolean): Record<string, string | number> {
+  const r: Record<string, string | number> = {};
   try {
-    const entries = readUint16(view, ifdOffset, le);
-    for (let i = 0; i < entries; i++) {
-      const entryOffset = ifdOffset + 2 + i * 12;
-      const tag = readUint16(view, entryOffset, le);
-      const tagName = TAGS[tag];
-      if (tagName) {
-        const val = readTagValue(view, tiffStart, entryOffset, le);
-        if (val !== null) result[tagName] = val;
+    if (ifdOff < 0 || ifdOff + 2 > view.byteLength) return r;
+    const n = readU16(view, ifdOff, le);
+    if (n > 500) return r;
+    for (let i = 0; i < n; i++) {
+      const e = ifdOff + 2 + i * 12;
+      if (e + 12 > view.byteLength) break;
+      const tag = readU16(view, e, le);
+      const name = TAGS[tag];
+      if (name) {
+        const val = readTagValue(view, tiffStart, e, le);
+        if (val !== null) r[name] = val;
       }
     }
-  } catch { /* silently fail for corrupt data */ }
-  return result;
+  } catch (err) { console.warn('📷 EXIF IFD parse error:', err); }
+  return r;
 }
 
-function formatShutterSpeed(val: number): string {
-  if (val >= 1) return `${val}s`;
-  const denom = Math.round(1 / val);
-  return `1/${denom}s`;
-}
-
-function formatAperture(val: number): string {
-  return `f/${val % 1 === 0 ? val : val.toFixed(1)}`;
-}
+function fmtShutter(v: number): string { return v >= 1 ? `${v}s` : `1/${Math.round(1 / v)}s`; }
+function fmtAperture(v: number): string { return `f/${v % 1 === 0 ? v : v.toFixed(1)}`; }
 
 /**
- * Extract EXIF data from a File object. Only works with JPEG files.
+ * Extract EXIF data from a File object.
+ * Works with JPEG photos from DSLR, mirrorless, and phone cameras.
  */
 export async function readExifFromFile(file: File): Promise<ExifData> {
   const empty: ExifData = {};
+  const name = file.name.toLowerCase();
+  const type = file.type.toLowerCase();
 
-  if (!file.type.startsWith('image/jpeg') && !file.name.toLowerCase().match(/\.jpe?g$/)) {
-    return empty; // EXIF only in JPEG
+  console.log(`📷 EXIF: Reading "${file.name}" (${type}, ${(file.size / 1024).toFixed(0)}KB)`);
+
+  const isJpeg = type === 'image/jpeg' || type === 'image/jpg' || name.endsWith('.jpg') || name.endsWith('.jpeg');
+  if (!isJpeg) {
+    console.log('📷 EXIF: Not JPEG — EXIF extraction only works with .jpg/.jpeg files');
+    return empty;
   }
 
   try {
-    const buffer = await file.arrayBuffer();
-    const view = new DataView(buffer);
+    const buf = await file.arrayBuffer();
+    const view = new DataView(buf);
 
-    // Check JPEG magic bytes
-    if (view.getUint8(0) !== 0xFF || view.getUint8(1) !== 0xD8) return empty;
-
-    // Find APP1 (EXIF) marker
-    let offset = 2;
-    while (offset < view.byteLength - 4) {
-      const marker = view.getUint16(offset);
-      if (marker === 0xFFE1) break; // APP1 found
-      if ((marker & 0xFF00) !== 0xFF00) return empty; // Not a marker
-      const segLen = view.getUint16(offset + 2);
-      offset += 2 + segLen;
+    if (view.byteLength < 10 || view.getUint8(0) !== 0xFF || view.getUint8(1) !== 0xD8) {
+      console.log('📷 EXIF: Invalid JPEG (missing SOI marker FF D8)');
+      return empty;
     }
 
-    if (offset >= view.byteLength - 4) return empty;
+    // Scan for APP1 (0xFFE1) marker
+    let off = 2;
+    let found = false;
+    const limit = Math.min(view.byteLength - 4, 131072); // search first 128KB
 
-    // APP1 header: 0xFFE1 + length + "Exif\0\0"
-    const app1Start = offset + 4; // skip marker + length
-    const exifHeader = String.fromCharCode(
-      view.getUint8(app1Start), view.getUint8(app1Start + 1),
-      view.getUint8(app1Start + 2), view.getUint8(app1Start + 3)
-    );
-    if (exifHeader !== 'Exif') return empty;
+    while (off < limit) {
+      if (view.getUint8(off) !== 0xFF) { off++; continue; }
+      const mt = view.getUint8(off + 1);
+      if (mt === 0xFF) { off++; continue; }   // padding
+      if (mt === 0xDA) break;                   // SOS — stop
+      if (mt === 0xE1) { found = true; break; } // APP1!
+      // Skip segment
+      if (off + 3 < view.byteLength) {
+        const sl = view.getUint16(off + 2);
+        if (sl < 2) break;
+        off += 2 + sl;
+      } else break;
+    }
 
-    const tiffStart = app1Start + 6; // after "Exif\0\0"
-    const byteOrder = view.getUint16(tiffStart);
-    const littleEndian = byteOrder === 0x4949; // "II" = little endian, "MM" = big endian
+    if (!found) {
+      console.log('📷 EXIF: No APP1 marker found — photo has no EXIF data (common for screenshots, downloaded images)');
+      return empty;
+    }
 
-    // First IFD offset
-    const ifd0Offset = tiffStart + readUint32(view, tiffStart + 4, littleEndian);
+    // Verify "Exif\0\0" header
+    const d = off + 4;
+    if (d + 10 > view.byteLength) return empty;
+    const hdr = String.fromCharCode(view.getUint8(d), view.getUint8(d+1), view.getUint8(d+2), view.getUint8(d+3));
+    if (hdr !== 'Exif') {
+      console.log(`📷 EXIF: APP1 header is "${hdr}" not "Exif" — might be XMP data`);
+      return empty;
+    }
 
-    // Parse IFD0 (camera make/model)
-    const ifd0 = parseIFD(view, tiffStart, ifd0Offset, littleEndian);
+    const tiff = d + 6;
+    if (tiff + 8 > view.byteLength) return empty;
 
-    // Parse ExifIFD (exposure, ISO, lens, etc.)
+    const le = view.getUint16(tiff) === 0x4949;
+    if (readU16(view, tiff + 2, le) !== 42) {
+      console.log('📷 EXIF: Invalid TIFF magic');
+      return empty;
+    }
+
+    const ifd0Off = tiff + readU32(view, tiff + 4, le);
+    const ifd0 = parseIFD(view, tiff, ifd0Off, le);
+
     let exifIFD: Record<string, string | number> = {};
     if (ifd0.ExifIFDPointer) {
-      const exifOffset = tiffStart + (ifd0.ExifIFDPointer as number);
-      exifIFD = parseIFD(view, tiffStart, exifOffset, littleEndian);
+      exifIFD = parseIFD(view, tiff, tiff + (ifd0.ExifIFDPointer as number), le);
     }
 
-    const merged = { ...ifd0, ...exifIFD };
-
-    // Build friendly output
+    const m = { ...ifd0, ...exifIFD };
     const result: ExifData = {};
 
-    if (merged.Make && merged.Model) {
-      const model = String(merged.Model);
-      const make = String(merged.Make);
-      // Avoid duplication: "Canon" + "Canon EOS R5" → "Canon EOS R5"
-      result.cameraModel = model.startsWith(make) ? model : `${make} ${model}`;
-    } else if (merged.Model) {
-      result.cameraModel = String(merged.Model);
+    if (m.Make && m.Model) {
+      const model = String(m.Model).trim();
+      const make = String(m.Make).trim();
+      result.cameraMake = make;
+      result.cameraModel = model.toLowerCase().startsWith(make.toLowerCase()) ? model : `${make} ${model}`;
+    } else if (m.Model) {
+      result.cameraModel = String(m.Model).trim();
     }
 
-    if (merged.LensModel) result.lens = String(merged.LensModel);
-
-    if (typeof merged.FNumber === 'number') {
-      result.aperture = formatAperture(merged.FNumber);
+    if (m.LensModel) result.lens = String(m.LensModel).trim();
+    if (typeof m.FNumber === 'number' && m.FNumber > 0) result.aperture = fmtAperture(m.FNumber);
+    if (typeof m.ExposureTime === 'number' && m.ExposureTime > 0) result.shutterSpeed = fmtShutter(m.ExposureTime);
+    if (m.ISOSpeedRatings !== undefined) result.iso = String(m.ISOSpeedRatings);
+    if (typeof m.FocalLength === 'number' && m.FocalLength > 0) {
+      result.focalLength = `${Math.round(m.FocalLength)}mm`;
+    } else if (m.FocalLengthIn35mmFilm !== undefined) {
+      result.focalLength = `${m.FocalLengthIn35mmFilm}mm`;
     }
 
-    if (typeof merged.ExposureTime === 'number') {
-      result.shutterSpeed = formatShutterSpeed(merged.ExposureTime);
-    }
-
-    if (merged.ISOSpeedRatings !== undefined) {
-      result.iso = String(merged.ISOSpeedRatings);
-    }
-
-    if (typeof merged.FocalLength === 'number') {
-      result.focalLength = `${Math.round(merged.FocalLength)}mm`;
-    } else if (merged.FocalLengthIn35mmFilm !== undefined) {
-      result.focalLength = `${merged.FocalLengthIn35mmFilm}mm`;
+    const fields = Object.keys(result).filter(k => k !== 'cameraMake').length;
+    if (fields > 0) {
+      console.log(`📷 EXIF: ✅ Extracted ${fields} fields:`, result);
+    } else {
+      console.log('📷 EXIF: ⚠️ JPEG has EXIF but no camera data found (may be stripped)');
     }
 
     return result;
   } catch (err) {
-    console.warn('EXIF reading failed:', err);
+    console.warn('📷 EXIF: Failed:', err);
     return empty;
   }
 }

@@ -1,69 +1,73 @@
+import { collection, addDoc, getDocs, query, orderBy, onSnapshot, Unsubscribe } from 'firebase/firestore';
 import { db } from '../firebase';
-import { collection, addDoc, getDocs, deleteDoc, doc, query, where, orderBy, serverTimestamp } from 'firebase/firestore';
-
-const COMMENTS_COLLECTION = 'comments';
 
 export interface FirestoreComment {
   id?: string;
-  targetType: 'photo' | 'story';
+  targetType: 'photo' | 'story' | 'video';
   targetId: number;
   displayName: string;
   avatarColor: string;
+  avatarUrl?: string;
   content: string;
   createdAt?: any;
 }
 
 export async function addCommentToFirestore(comment: Omit<FirestoreComment, 'id'>): Promise<string> {
-  const docRef = await addDoc(collection(db, COMMENTS_COLLECTION), {
-    ...comment,
-    createdAt: serverTimestamp(),
-  });
-  return docRef.id;
+  try {
+    const docRef = await addDoc(collection(db, 'comments'), {
+      ...comment,
+      avatarUrl: comment.avatarUrl || '',
+      createdAt: new Date(),
+    });
+    return docRef.id;
+  } catch (error) {
+    console.error('Error adding comment:', error);
+    throw error;
+  }
 }
 
-export async function getCommentsForTarget(targetType: 'photo' | 'story', targetId: number): Promise<FirestoreComment[]> {
+export async function getCommentsForTarget(targetType: string, targetId: number): Promise<FirestoreComment[]> {
   try {
-    const q = query(
-      collection(db, COMMENTS_COLLECTION),
-      where('targetType', '==', targetType),
-      where('targetId', '==', targetId),
-      orderBy('createdAt', 'asc')
-    );
+    const q = query(collection(db, 'comments'), orderBy('createdAt', 'asc'));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as FirestoreComment));
-  } catch (err) {
-    // If composite index is missing, try without ordering
-    try {
-      const q = query(
-        collection(db, COMMENTS_COLLECTION),
-        where('targetType', '==', targetType),
-        where('targetId', '==', targetId)
-      );
-      const snapshot = await getDocs(q);
-      return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as FirestoreComment));
-    } catch {
-      console.warn('Firestore comments fetch failed:', err);
-      return [];
-    }
+    return snapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() } as FirestoreComment))
+      .filter(c => c.targetType === targetType && c.targetId === targetId);
+  } catch (error) {
+    console.error('Error getting comments:', error);
+    return [];
   }
 }
 
 export async function getAllComments(): Promise<FirestoreComment[]> {
   try {
-    const q = query(collection(db, COMMENTS_COLLECTION), orderBy('createdAt', 'asc'));
+    const q = query(collection(db, 'comments'), orderBy('createdAt', 'asc'));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as FirestoreComment));
-  } catch (err) {
-    try {
-      const snapshot = await getDocs(collection(db, COMMENTS_COLLECTION));
-      return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as FirestoreComment));
-    } catch {
-      console.warn('Firestore comments fetch failed:', err);
-      return [];
-    }
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FirestoreComment));
+  } catch (error) {
+    console.error('Error getting all comments:', error);
+    return [];
   }
 }
 
-export async function deleteCommentFromFirestore(docId: string): Promise<void> {
-  await deleteDoc(doc(db, COMMENTS_COLLECTION, docId));
+/**
+ * Real-time subscription to all comments.
+ * Calls onUpdate whenever comments change (add/edit/delete).
+ * Returns an unsubscribe function.
+ */
+export function subscribeToAllComments(
+  onUpdate: (comments: FirestoreComment[]) => void,
+  onError?: (error: Error) => void
+): Unsubscribe {
+  const q = query(collection(db, 'comments'), orderBy('createdAt', 'asc'));
+  return onSnapshot(q,
+    (snapshot) => {
+      const comments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FirestoreComment));
+      onUpdate(comments);
+    },
+    (error) => {
+      console.error('Comment subscription error:', error);
+      if (onError) onError(error);
+    }
+  );
 }

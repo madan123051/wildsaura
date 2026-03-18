@@ -328,14 +328,20 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
                       {visibleComments.map((c) => (
                         <div key={c.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
                           {/* Avatar */}
-                          <div style={{
-                            width: 26, height: 26, minWidth: 26, borderRadius: '50%',
-                            background: c.avatarColor || 'var(--wa-gold)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: '0.65rem', fontWeight: 700, color: '#fff',
-                          }}>
-                            {(c.displayName || '?')[0].toUpperCase()}
-                          </div>
+                          {c.avatarUrl ? (
+                            <img src={c.avatarUrl} alt={c.displayName} style={{
+                              width: 26, height: 26, minWidth: 26, borderRadius: '50%', objectFit: 'cover',
+                            }} referrerPolicy="no-referrer" />
+                          ) : (
+                            <div style={{
+                              width: 26, height: 26, minWidth: 26, borderRadius: '50%',
+                              background: c.avatarColor || 'var(--wa-gold)',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: '0.65rem', fontWeight: 700, color: '#fff',
+                            }}>
+                              {(c.displayName || '?')[0].toUpperCase()}
+                            </div>
+                          )}
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--wa-gold-light)', marginRight: '0.4rem' }}>
                               {c.displayName}
@@ -356,14 +362,20 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
                   {visitor ? (
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                       {/* Visitor avatar */}
-                      <div style={{
-                        width: 26, height: 26, minWidth: 26, borderRadius: '50%',
-                        background: visitor.avatarColor || 'var(--wa-gold)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '0.65rem', fontWeight: 700, color: '#fff',
-                      }}>
-                        {(visitor.displayName || '?')[0].toUpperCase()}
-                      </div>
+                      {visitor.avatarUrl ? (
+                        <img src={visitor.avatarUrl} alt={visitor.displayName} style={{
+                          width: 26, height: 26, minWidth: 26, borderRadius: '50%', objectFit: 'cover',
+                        }} referrerPolicy="no-referrer" />
+                      ) : (
+                        <div style={{
+                          width: 26, height: 26, minWidth: 26, borderRadius: '50%',
+                          background: visitor.avatarColor || 'var(--wa-gold)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: '0.65rem', fontWeight: 700, color: '#fff',
+                        }}>
+                          {(visitor.displayName || '?')[0].toUpperCase()}
+                        </div>
+                      )}
                       <div style={{
                         flex: 1, display: 'flex', alignItems: 'center',
                         background: 'rgba(255,255,255,0.04)', borderRadius: '20px',

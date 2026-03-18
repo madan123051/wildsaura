@@ -23,7 +23,7 @@ import { addUserLike, removeUserLike, getUserLikes } from './services/userLikesS
 import { getPhotosFromFirestore, deletePhotoFromFirestore, updatePhotoInFirestore } from './services/photoService';
 import { getStoriesFromFirestore, addStoryToFirestore, deleteStoryFromFirestore, updateStoryInFirestore, uploadStoryCoverToStorage } from './services/storyService';
 import { getVideosFromFirestore, addVideoToFirestore, deleteVideoFromFirestore, updateVideoInFirestore, uploadVideoThumbnailToStorage, uploadVideoToStorage } from './services/videoService';
-import { addCommentToFirestore, getCommentsForTarget, getAllComments } from './services/commentService';
+import { addCommentToFirestore, getCommentsForTarget, getAllComments, subscribeToAllComments } from './services/commentService';
 import { saveVisitorToFirestore, getVisitorFromFirestore, updateVisitorDownloadCount, updateVisitorProfile } from './services/visitorService';
 
 const logoUrl = '/photos/logo.png';
@@ -409,41 +409,38 @@ const App: React.FC = () => {
     };
     loadVideos();
 
-    // Load all comments from Firestore
-    const loadComments = async () => {
-      try {
-        const allComments = await getAllComments();
-        const photoMap: Record<number, Comment[]> = {};
-        const storyMap: Record<number, Comment[]> = {};
-        const videoMap: Record<number, Comment[]> = {};
-        allComments.forEach((c: any) => {
-          const comment: Comment = {
-            id: Date.now() + Math.random(),
-            firestoreId: c.id,
-            displayName: c.displayName,
-            avatarColor: c.avatarColor || '',
-            content: c.content,
-            createdAt: c.createdAt?.toDate?.()?.toISOString?.()?.split('T')[0] || new Date().toISOString().split('T')[0],
-          };
-          if (c.targetType === 'photo') {
-            if (!photoMap[c.targetId]) photoMap[c.targetId] = [];
-            photoMap[c.targetId].push(comment);
-          } else if (c.targetType === 'video') {
-            if (!videoMap[c.targetId]) videoMap[c.targetId] = [];
-            videoMap[c.targetId].push(comment);
-          } else {
-            if (!storyMap[c.targetId]) storyMap[c.targetId] = [];
-            storyMap[c.targetId].push(comment);
-          }
-        });
-        setPhotoComments(photoMap);
-        setStoryComments(storyMap);
-        setVideoComments(videoMap);
-      } catch (err) {
-        console.warn('Firestore comments load failed:', err);
-      }
-    };
-    loadComments();
+    // Real-time comment subscription (live updates!)
+    const unsubComments = subscribeToAllComments((allComments) => {
+      const photoMap: Record<number, Comment[]> = {};
+      const storyMap: Record<number, Comment[]> = {};
+      const videoMap: Record<number, Comment[]> = {};
+      allComments.forEach((c: any) => {
+        const comment: Comment = {
+          id: Date.now() + Math.random(),
+          firestoreId: c.id,
+          displayName: c.displayName,
+          avatarColor: c.avatarColor || '',
+          avatarUrl: c.avatarUrl || '',
+          content: c.content,
+          createdAt: c.createdAt?.toDate?.()?.toISOString?.()?.split('T')[0] || new Date().toISOString().split('T')[0],
+        };
+        if (c.targetType === 'photo') {
+          if (!photoMap[c.targetId]) photoMap[c.targetId] = [];
+          photoMap[c.targetId].push(comment);
+        } else if (c.targetType === 'video') {
+          if (!videoMap[c.targetId]) videoMap[c.targetId] = [];
+          videoMap[c.targetId].push(comment);
+        } else {
+          if (!storyMap[c.targetId]) storyMap[c.targetId] = [];
+          storyMap[c.targetId].push(comment);
+        }
+      });
+      setPhotoComments(photoMap);
+      setStoryComments(storyMap);
+      setVideoComments(videoMap);
+    });
+
+    return () => { unsubComments(); };
   }, []);
 
   // Apply user likes to photos/stories/videos when userLikes changes
@@ -825,6 +822,7 @@ const App: React.FC = () => {
       id: Date.now(),
       displayName: visitor.displayName,
       avatarColor: visitor.avatarColor,
+      avatarUrl: visitor.avatarUrl || '',
       content,
       createdAt: new Date().toISOString().split('T')[0],
     };
@@ -832,12 +830,13 @@ const App: React.FC = () => {
       ...prev,
       [photoId]: [...(prev[photoId] || []), newComment],
     }));
-    // Save to Firestore
+    // Save to Firestore (with avatarUrl for Google login users)
     addCommentToFirestore({
       targetType: 'photo',
       targetId: photoId,
       displayName: visitor.displayName,
       avatarColor: visitor.avatarColor || '',
+      avatarUrl: visitor.avatarUrl || '',
       content,
     }).catch(err => console.warn('Comment save failed:', err));
   }, [visitor]);
@@ -848,6 +847,7 @@ const App: React.FC = () => {
       id: Date.now(),
       displayName: visitor.displayName,
       avatarColor: visitor.avatarColor,
+      avatarUrl: visitor.avatarUrl || '',
       content,
       createdAt: new Date().toISOString().split('T')[0],
     };
@@ -855,12 +855,13 @@ const App: React.FC = () => {
       ...prev,
       [storyId]: [...(prev[storyId] || []), newComment],
     }));
-    // Save to Firestore
+    // Save to Firestore (with avatarUrl for Google login users)
     addCommentToFirestore({
       targetType: 'story',
       targetId: storyId,
       displayName: visitor.displayName,
       avatarColor: visitor.avatarColor || '',
+      avatarUrl: visitor.avatarUrl || '',
       content,
     }).catch(err => console.warn('Comment save failed:', err));
   }, [visitor]);
@@ -871,6 +872,7 @@ const App: React.FC = () => {
       id: Date.now(),
       displayName: visitor.displayName,
       avatarColor: visitor.avatarColor,
+      avatarUrl: visitor.avatarUrl || '',
       content,
       createdAt: new Date().toISOString().split('T')[0],
     };
@@ -878,12 +880,13 @@ const App: React.FC = () => {
       ...prev,
       [videoId]: [...(prev[videoId] || []), newComment],
     }));
-    // Save to Firestore
+    // Save to Firestore (with avatarUrl for Google login users)
     addCommentToFirestore({
       targetType: 'video',
       targetId: videoId,
       displayName: visitor.displayName,
       avatarColor: visitor.avatarColor || '',
+      avatarUrl: visitor.avatarUrl || '',
       content,
     }).catch(err => console.warn('Video comment save failed:', err));
   }, [visitor]);

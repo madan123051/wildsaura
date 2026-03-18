@@ -37,6 +37,7 @@ export interface Comment {
   firestoreId?: string;
   displayName: string;
   avatarColor?: string;
+  avatarUrl?: string;
   content: string;
   createdAt: string;
 }
