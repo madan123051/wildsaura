@@ -145,7 +145,11 @@ type AppView = 'home' | 'admin-login' | 'admin-dashboard' | 'story-detail';
 
 const App: React.FC = () => {
   const [view, setView] = useState<AppView>(() => {
-    if (typeof window !== 'undefined' && localStorage.getItem('wa_admin_session')) return 'admin-dashboard';
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname;
+      if (path.startsWith('/story/')) return 'story-detail';
+      if (localStorage.getItem('wa_admin_session')) return 'admin-dashboard';
+    }
     return 'home';
   });
   const [isAdmin, setIsAdmin] = useState(() => {
@@ -169,6 +173,18 @@ const App: React.FC = () => {
   const [downloadCount, setDownloadCount] = useState(0);
   const [isDownloading, setIsDownloading] = useState(false);
   const FREE_DOWNLOADS = 2;
+
+  // ── Deep Link State ──────────────────────────────────────────────────────
+  const [pendingPhotoId, setPendingPhotoId] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const m = window.location.pathname.match(/^\/photo\/(.+)$/);
+    return m ? decodeURIComponent(m[1]) : null;
+  });
+  const [pendingStorySlug, setPendingStorySlug] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const m = window.location.pathname.match(/^\/story\/(.+)$/);
+    return m ? decodeURIComponent(m[1]) : null;
+  });
 
   useEffect(() => {
     const loadPhotos = async () => {
@@ -195,10 +211,44 @@ const App: React.FC = () => {
             likeCount: fp.likeCount || 0,
             liked: false,
           }));
-          setPhotos(prev => [...mapped, ...prev]);
+          setPhotos(prev => {
+            const allPhotos = [...mapped, ...prev];
+            // Deep link: auto-open photo if pending
+            if (pendingPhotoId) {
+              const matchedPhoto = allPhotos.find(p => p.firestoreId === pendingPhotoId);
+              if (matchedPhoto) {
+                setTimeout(() => {
+                  setSelectedPhoto(matchedPhoto);
+                  setPendingPhotoId(null);
+                }, 100);
+              }
+            }
+            return allPhotos;
+          });
+        } else {
+          // Even if no Firestore photos, check sample photos for pending deep link
+          if (pendingPhotoId) {
+            const matchedPhoto = SAMPLE_PHOTOS.find(p => String(p.id) === pendingPhotoId || p.firestoreId === pendingPhotoId);
+            if (matchedPhoto) {
+              setTimeout(() => {
+                setSelectedPhoto(matchedPhoto);
+                setPendingPhotoId(null);
+              }, 100);
+            }
+          }
         }
       } catch (err) {
         console.warn('Firestore load failed:', err);
+        // Check sample photos for pending deep link on error too
+        if (pendingPhotoId) {
+          const matchedPhoto = SAMPLE_PHOTOS.find(p => String(p.id) === pendingPhotoId || p.firestoreId === pendingPhotoId);
+          if (matchedPhoto) {
+            setTimeout(() => {
+              setSelectedPhoto(matchedPhoto);
+              setPendingPhotoId(null);
+            }, 100);
+          }
+        }
       }
     };
     loadPhotos();
@@ -225,12 +275,46 @@ const App: React.FC = () => {
           setStories(prev => {
             const existingTitles = new Set(prev.map(s => s.title.toLowerCase().trim()));
             const newOnes = mapped.filter(s => !existingTitles.has(s.title.toLowerCase().trim()));
-            if (newOnes.length === 0) return prev;
-            return [...newOnes, ...prev];
+            const allStories = newOnes.length === 0 ? prev : [...newOnes, ...prev];
+            // Deep link: auto-open story if pending
+            if (pendingStorySlug) {
+              const matchedStory = allStories.find(s => s.slug === pendingStorySlug);
+              if (matchedStory) {
+                setTimeout(() => {
+                  setSelectedStory({ ...matchedStory, viewCount: matchedStory.viewCount + 1 });
+                  setView('story-detail');
+                  setPendingStorySlug(null);
+                }, 100);
+              }
+            }
+            return allStories;
           });
+        } else {
+          // Check sample stories for pending deep link
+          if (pendingStorySlug) {
+            const matchedStory = SAMPLE_STORIES.find(s => s.slug === pendingStorySlug);
+            if (matchedStory) {
+              setTimeout(() => {
+                setSelectedStory({ ...matchedStory, viewCount: matchedStory.viewCount + 1 });
+                setView('story-detail');
+                setPendingStorySlug(null);
+              }, 100);
+            }
+          }
         }
       } catch (err) {
         console.warn('Firestore stories load failed:', err);
+        // Check sample stories for pending deep link on error too
+        if (pendingStorySlug) {
+          const matchedStory = SAMPLE_STORIES.find(s => s.slug === pendingStorySlug);
+          if (matchedStory) {
+            setTimeout(() => {
+              setSelectedStory({ ...matchedStory, viewCount: matchedStory.viewCount + 1 });
+              setView('story-detail');
+              setPendingStorySlug(null);
+            }, 100);
+          }
+        }
       }
     };
     loadStories();
@@ -267,6 +351,33 @@ const App: React.FC = () => {
     loadComments();
   }, []);
 
+  // ── Popstate Listener (Browser Back/Forward) ─────────────────────────────
+  useEffect(() => {
+    const onPopState = () => {
+      const path = window.location.pathname;
+      if (path === '/' || path === '') {
+        setSelectedPhoto(null);
+        setSelectedStory(null);
+        setView('home');
+      } else if (path.startsWith('/photo/')) {
+        const photoId = decodeURIComponent(path.replace('/photo/', ''));
+        const matchedPhoto = photos.find(p => p.firestoreId === photoId || String(p.id) === photoId);
+        if (matchedPhoto) {
+          setSelectedPhoto(matchedPhoto);
+        }
+      } else if (path.startsWith('/story/')) {
+        const slug = decodeURIComponent(path.replace('/story/', ''));
+        const matchedStory = stories.find(s => s.slug === slug);
+        if (matchedStory) {
+          setSelectedStory({ ...matchedStory, viewCount: matchedStory.viewCount + 1 });
+          setView('story-detail');
+        }
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [photos, stories]);
+
   const scrollToGallery = useCallback(() => {
     galleryRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
@@ -295,7 +406,8 @@ const App: React.FC = () => {
   }, [selectedPhoto]);
 
   const handleShare = useCallback(async (photo: Photo) => {
-    const shareUrl = `https://wildsaura.com`;
+    const photoId = photo.firestoreId || String(photo.id);
+    const shareUrl = `${window.location.origin}/photo/${encodeURIComponent(photoId)}`;
     const shareText = `Check out "${photo.title}" on WILDS AURA Photography! 🐯📸`;
     
     // Try native share API first (mobile)
@@ -327,11 +439,27 @@ const App: React.FC = () => {
     }
   }, []);
 
-  const handleLogin = useCallback(() => { setIsAdmin(true); setView('admin-dashboard'); localStorage.setItem('wa_admin_session', 'true'); }, []);
-  const handleLogout = useCallback(() => { setIsAdmin(false); setView('home'); localStorage.removeItem('wa_admin_session'); }, []);
+  const handleLogin = useCallback(() => {
+    setIsAdmin(true);
+    setView('admin-dashboard');
+    localStorage.setItem('wa_admin_session', 'true');
+    window.history.pushState({}, '', '/admin');
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    setIsAdmin(false);
+    setView('home');
+    localStorage.removeItem('wa_admin_session');
+    window.history.pushState({}, '', '/');
+  }, []);
 
   const handleAdminClick = useCallback(() => {
-    setView(isAdmin ? 'admin-dashboard' : 'admin-login');
+    if (isAdmin) {
+      setView('admin-dashboard');
+      window.history.pushState({}, '', '/admin');
+    } else {
+      setView('admin-login');
+    }
   }, [isAdmin]);
 
   const handleAddPhoto = useCallback((photo: Photo) => {
@@ -418,6 +546,7 @@ const App: React.FC = () => {
     setSelectedStory({ ...story, viewCount: story.viewCount + 1 });
     setStories((prev) => prev.map((s) => s.id === story.id ? { ...s, viewCount: s.viewCount + 1 } : s));
     setView('story-detail');
+    window.history.pushState({}, '', '/story/' + encodeURIComponent(story.slug));
     window.scrollTo(0, 0);
   }, []);
 
@@ -621,10 +750,34 @@ const App: React.FC = () => {
     }, 100);
   }, [view]);
 
+  // ── Helper: Open/Close Photo with URL ────────────────────────────────────
+  const openPhoto = useCallback((photo: Photo | null) => {
+    setSelectedPhoto(photo);
+    if (photo) {
+      const photoId = photo.firestoreId || String(photo.id);
+      window.history.pushState({}, '', '/photo/' + encodeURIComponent(photoId));
+    } else {
+      window.history.pushState({}, '', '/');
+    }
+  }, []);
+
+  // ── Helper: Close Photo Modal ────────────────────────────────────────────
+  const closePhoto = useCallback(() => {
+    setSelectedPhoto(null);
+    window.history.pushState({}, '', '/');
+  }, []);
+
+  // ── Helper: Go back from story to home ───────────────────────────────────
+  const handleStoryBack = useCallback(() => {
+    setView('home');
+    setSelectedStory(null);
+    window.history.pushState({}, '', '/');
+  }, []);
+
   // ── Admin Login View ──
   if (view === 'admin-login') {
     return (
-      <AdminLogin logoUrl={logoUrl} onLogin={handleLogin} onBack={() => setView('home')} />
+      <AdminLogin logoUrl={logoUrl} onLogin={handleLogin} onBack={() => { setView('home'); window.history.pushState({}, '', '/'); }} />
     );
   }
 
@@ -638,7 +791,7 @@ const App: React.FC = () => {
         onAddPhoto={handleAddPhoto}
         onDeletePhoto={handleDeletePhoto}
         onUpdatePhoto={handleUpdatePhoto}
-        onViewSite={() => setView('home')}
+        onViewSite={() => { setView('home'); window.history.pushState({}, '', '/'); }}
         stories={stories}
         onAddStory={handleAddStory}
         onDeleteStory={handleDeleteStory}
@@ -665,7 +818,7 @@ const App: React.FC = () => {
         />
         <StoryDetail
           story={selectedStory}
-          onBack={() => { setView('home'); setSelectedStory(null); }}
+          onBack={handleStoryBack}
           onLike={handleStoryLike}
           visitor={visitor}
           comments={storyComments[selectedStory.id] || []}
@@ -673,14 +826,14 @@ const App: React.FC = () => {
           onVisitorLoginClick={() => setShowVisitorLogin(true)}
         />
         <Footer logoUrl={logoUrl} />
-        <AIChatbot photos={photos} onPhotoClick={setSelectedPhoto} />
+        <AIChatbot photos={photos} onPhotoClick={openPhoto} />
         <SearchBar
           isOpen={showSearch}
           onClose={() => { setShowSearch(false); setSearchQuery(''); }}
           query={searchQuery}
           onQueryChange={setSearchQuery}
           photos={photos}
-          onPhotoClick={(p) => { setSelectedPhoto(p); setView('home'); }}
+          onPhotoClick={(p) => { openPhoto(p); setView('home'); }}
         />
         <VisitorLogin
           isOpen={showVisitorLogin}
@@ -713,7 +866,7 @@ const App: React.FC = () => {
         filterTabs={FILTER_TABS}
         selectedCategory={selectedCategory}
         onCategoryChange={setSelectedCategory}
-        onPhotoClick={setSelectedPhoto}
+        onPhotoClick={openPhoto}
         onLike={handleLike}
         onShare={handleShare}
         onDownload={handleDownload}
@@ -728,7 +881,7 @@ const App: React.FC = () => {
       {selectedPhoto && (
         <PhotoModal
           photo={selectedPhoto}
-          onClose={() => setSelectedPhoto(null)}
+          onClose={closePhoto}
           onLike={() => handleLike(selectedPhoto.id)}
           onShare={() => handleShare(selectedPhoto)}
           onDownload={() => handleDownload(selectedPhoto)}
@@ -744,7 +897,7 @@ const App: React.FC = () => {
         />
       )}
 
-      <AIChatbot photos={photos} onPhotoClick={setSelectedPhoto} />
+      <AIChatbot photos={photos} onPhotoClick={openPhoto} />
 
       <SearchBar
         isOpen={showSearch}
@@ -752,7 +905,7 @@ const App: React.FC = () => {
         query={searchQuery}
         onQueryChange={setSearchQuery}
         photos={photos}
-        onPhotoClick={setSelectedPhoto}
+        onPhotoClick={openPhoto}
       />
 
       <VisitorLogin

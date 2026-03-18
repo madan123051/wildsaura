@@ -21,10 +21,11 @@ export const StoryDetail: React.FC<StoryDetailProps> = ({
   const [shareToast, setShareToast] = useState(false);
 
   const handleShare = async () => {
+    const shareUrl = window.location.origin + '/story/' + encodeURIComponent(story.slug);
     const shareData = {
       title: `${story.title} — WILDS AURA`,
       text: story.excerpt || `Read "${story.title}" on WILDS AURA Photography`,
-      url: window.location.origin + '/?story=' + story.slug,
+      url: shareUrl,
     };
     // Try native share on mobile
     if (navigator.share) {
@@ -32,7 +33,7 @@ export const StoryDetail: React.FC<StoryDetailProps> = ({
     }
     // Desktop: copy link
     try {
-      await navigator.clipboard.writeText(`${story.title} — WILDS AURA\n${story.excerpt}\n${shareData.url}`);
+      await navigator.clipboard.writeText(`${story.title} — WILDS AURA\n${story.excerpt}\n${shareUrl}`);
       setShareToast(true);
       setTimeout(() => setShareToast(false), 2500);
     } catch {}
