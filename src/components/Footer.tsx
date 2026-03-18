@@ -2,6 +2,7 @@ import React from 'react';
 
 interface FooterProps {
   logoUrl?: string;
+  onTermsClick?: () => void;
 }
 
 const FacebookIcon = () => (
@@ -28,7 +29,7 @@ const SOCIAL_LINKS = [
   { name: 'YouTube', href: 'https://www.youtube.com/@NatureFrame_com', Icon: YouTubeIcon },
 ];
 
-export const Footer: React.FC<FooterProps> = ({ logoUrl }) => {
+export const Footer: React.FC<FooterProps> = ({ logoUrl, onTermsClick }) => {
   return (
     <footer
       style={{
@@ -38,7 +39,7 @@ export const Footer: React.FC<FooterProps> = ({ logoUrl }) => {
       }}
     >
       <div className="wa-container" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
           {logoUrl && (
             <img
               src={logoUrl}
@@ -46,9 +47,21 @@ export const Footer: React.FC<FooterProps> = ({ logoUrl }) => {
               style={{ height: 32, width: 'auto', objectFit: 'contain', opacity: 0.8 }}
             />
           )}
-          <p className="font-cinzel text-wa-muted" style={{ fontSize: '0.7rem' }}>
+          <p className="font-cinzel text-wa-muted" style={{ fontSize: '0.7rem', margin: 0 }}>
             © {new Date().getFullYear()} Wilds Aura Photography. All Rights Reserved.
           </p>
+          {onTermsClick && (
+            <>
+              <span className="text-wa-muted" style={{ fontSize: '0.7rem' }}>|</span>
+              <button
+                onClick={onTermsClick}
+                className="nav-link"
+                style={{ fontSize: '0.65rem', letterSpacing: '0.12em' }}
+              >
+                Terms & Conditions
+              </button>
+            </>
+          )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           {SOCIAL_LINKS.map(({ name, href, Icon }) => (
