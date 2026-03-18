@@ -18,6 +18,7 @@ export interface Photo {
   wikiSummary?: string;
   likeCount: number;
   liked: boolean;
+  published?: boolean;
 }
 
 export interface Category {
@@ -33,6 +34,7 @@ export interface FilterTab {
 
 export interface Comment {
   id: number;
+  firestoreId?: string;
   displayName: string;
   avatarColor?: string;
   content: string;

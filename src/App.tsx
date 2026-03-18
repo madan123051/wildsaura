@@ -15,8 +15,10 @@ import { VisitorLogin } from './components/VisitorLogin';
 import { StoriesSection } from './components/StoriesSection';
 import { StoryDetail } from './components/StoryDetail';
 import { downloadPhoto } from './utils/downloadPhoto';
-import { getPhotosFromFirestore, deletePhotoFromFirestore } from './services/photoService';
+import { getPhotosFromFirestore, deletePhotoFromFirestore, updatePhotoInFirestore } from './services/photoService';
 import { getStoriesFromFirestore, addStoryToFirestore, deleteStoryFromFirestore, updateStoryInFirestore, uploadStoryCoverToStorage } from './services/storyService';
+import { addCommentToFirestore, getCommentsForTarget, getAllComments } from './services/commentService';
+import { saveVisitorToFirestore, getVisitorFromFirestore, updateVisitorDownloadCount, updateVisitorProfile } from './services/visitorService';
 
 const logoUrl = '/photos/logo.png';
 
@@ -158,21 +160,11 @@ const App: React.FC = () => {
   const galleryRef = useRef<HTMLElement | null>(null);
 
   // New state
-  const [visitor, setVisitor] = useState<Visitor | null>(() => {
-    if (typeof window !== 'undefined') {
-      try { const v = localStorage.getItem('wa_visitor'); return v ? JSON.parse(v) : null; } catch { return null; }
-    }
-    return null;
-  });
+  const [visitor, setVisitor] = useState<Visitor | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [showVisitorLogin, setShowVisitorLogin] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [photoComments, setPhotoComments] = useState<Record<number, Comment[]>>({
-    1: [
-      { id: 1, displayName: 'Nature Lover', avatarColor: '#c9a84c', content: 'Stunning shot! The lighting is incredible.', createdAt: '2026-03-10' },
-      { id: 2, displayName: 'PhotoFan', avatarColor: '#d4a843', content: 'Amazing composition and color grading!', createdAt: '2026-03-09' },
-    ],
-  });
+  const [photoComments, setPhotoComments] = useState<Record<number, Comment[]>>({});
   const [storyComments, setStoryComments] = useState<Record<number, Comment[]>>({});
   const [downloadCount, setDownloadCount] = useState(0);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -180,9 +172,6 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const loadPhotos = async () => {
-      let loaded = false;
-      
-      // Try Firebase first
       try {
         const firestorePhotos = await getPhotosFromFirestore();
         if (firestorePhotos.length > 0) {
@@ -207,56 +196,12 @@ const App: React.FC = () => {
             liked: false,
           }));
           setPhotos(prev => [...mapped, ...prev]);
-          loaded = true;
         }
       } catch (err) {
         console.warn('Firestore load failed:', err);
       }
-      
-      // Also load from localStorage (fallback + merge) - skip if Firebase already loaded same photos
-      try {
-        const stored = localStorage.getItem('wa_photos');
-        if (stored) {
-          const localPhotos = JSON.parse(stored) as Photo[];
-          if (localPhotos.length > 0) {
-            setPhotos(prev => {
-              // Dedup by normalized imageUrl (strip query params) AND title
-              const existingKeys = new Set(prev.map(p => p.imageUrl?.replace(/[?#].*$/, '') || ''));
-              const existingTitles = new Set(prev.map(p => p.title?.toLowerCase().trim()));
-              const newPhotos = localPhotos.filter(p => {
-                const normalizedUrl = p.imageUrl?.replace(/[?#].*$/, '') || '';
-                const normalizedTitle = p.title?.toLowerCase().trim() || '';
-                return !existingKeys.has(normalizedUrl) && !existingTitles.has(normalizedTitle);
-              });
-              if (newPhotos.length === 0) return prev;
-              return [...newPhotos, ...prev];
-            });
-            loaded = true;
-          }
-        }
-      } catch (err) {
-        console.warn('localStorage load failed:', err);
-      }
     };
     loadPhotos();
-
-    // Clean up old duplicate localStorage data (v2 cleanup)
-    try {
-      const stored = localStorage.getItem('wa_photos');
-      if (stored) {
-        const localPhotos = JSON.parse(stored) as Photo[];
-        // Remove duplicates by imageUrl - keep only first occurrence
-        const seen = new Set<string>();
-        const cleaned = localPhotos.filter(p => {
-          if (seen.has(p.imageUrl)) return false;
-          seen.add(p.imageUrl);
-          return true;
-        });
-        if (cleaned.length < localPhotos.length) {
-          localStorage.setItem('wa_photos', JSON.stringify(cleaned));
-        }
-      }
-    } catch (e) { /* ignore */ }
 
     // Load stories from Firestore
     const loadStories = async () => {
@@ -287,25 +232,39 @@ const App: React.FC = () => {
       } catch (err) {
         console.warn('Firestore stories load failed:', err);
       }
-
-      // Also load from localStorage as fallback
-      try {
-        const savedStories = localStorage.getItem('wa_stories');
-        if (savedStories) {
-          const parsed = JSON.parse(savedStories);
-          if (parsed.length > 0) {
-            setStories(prev => {
-              const existingIds = new Set(prev.map(s => s.id));
-              const existingTitles = new Set(prev.map(s => s.title.toLowerCase().trim()));
-              const newOnes = parsed.filter((s: Story) => !existingIds.has(s.id) && !existingTitles.has(s.title.toLowerCase().trim()));
-              if (newOnes.length === 0) return prev;
-              return [...newOnes, ...prev];
-            });
-          }
-        }
-      } catch {}
     };
     loadStories();
+
+    // Load all comments from Firestore
+    const loadComments = async () => {
+      try {
+        const allComments = await getAllComments();
+        const photoMap: Record<number, Comment[]> = {};
+        const storyMap: Record<number, Comment[]> = {};
+        allComments.forEach((c: any) => {
+          const comment: Comment = {
+            id: Date.now() + Math.random(),
+            firestoreId: c.id,
+            displayName: c.displayName,
+            avatarColor: c.avatarColor || '',
+            content: c.content,
+            createdAt: c.createdAt?.toDate?.()?.toISOString?.()?.split('T')[0] || new Date().toISOString().split('T')[0],
+          };
+          if (c.targetType === 'photo') {
+            if (!photoMap[c.targetId]) photoMap[c.targetId] = [];
+            photoMap[c.targetId].push(comment);
+          } else {
+            if (!storyMap[c.targetId]) storyMap[c.targetId] = [];
+            storyMap[c.targetId].push(comment);
+          }
+        });
+        setPhotoComments(photoMap);
+        setStoryComments(storyMap);
+      } catch (err) {
+        console.warn('Firestore comments load failed:', err);
+      }
+    };
+    loadComments();
   }, []);
 
   const scrollToGallery = useCallback(() => {
@@ -318,11 +277,16 @@ const App: React.FC = () => {
   }, []);
 
   const handleLike = useCallback((id: number) => {
-    setPhotos((prev) =>
-      prev.map((p) =>
+    setPhotos((prev) => {
+      const photo = prev.find(p => p.id === id);
+      if (photo && photo.firestoreId) {
+        const newLikeCount = photo.liked ? photo.likeCount - 1 : photo.likeCount + 1;
+        updatePhotoInFirestore(photo.firestoreId, { likeCount: newLikeCount }).catch(err => console.warn('Like update failed:', err));
+      }
+      return prev.map((p) =>
         p.id === id ? { ...p, liked: !p.liked, likeCount: p.liked ? p.likeCount - 1 : p.likeCount + 1 } : p
-      )
-    );
+      );
+    });
     if (selectedPhoto && selectedPhoto.id === id) {
       setSelectedPhoto((prev) =>
         prev ? { ...prev, liked: !prev.liked, likeCount: prev.liked ? prev.likeCount - 1 : prev.likeCount + 1 } : null
@@ -380,14 +344,10 @@ const App: React.FC = () => {
       );
       if (isDuplicate) return prev;
       const updated = [photo, ...prev];
-      // Save to localStorage as backup
-      try {
-        const userPhotos = updated.filter(p => !SAMPLE_PHOTOS.find(s => s.id === p.id));
-        localStorage.setItem('wa_photos', JSON.stringify(userPhotos));
-      } catch (e) { console.warn('localStorage save failed:', e); }
       return updated;
     });
   }, []);
+
   const handleDeletePhoto = useCallback((id: number | string) => {
     const photo = photos.find(p => p.id === id);
     if (photo?.firestoreId) {
@@ -395,23 +355,13 @@ const App: React.FC = () => {
     }
     setPhotos((prev) => {
       const updated = prev.filter((p) => p.id !== id);
-      try {
-        const userPhotos = updated.filter(p => !SAMPLE_PHOTOS.find(s => s.id === p.id));
-        localStorage.setItem('wa_photos', JSON.stringify(userPhotos));
-      } catch (e) { console.warn('localStorage sync failed:', e); }
       return updated;
     });
   }, [photos]);
+
   const handleUpdatePhoto = useCallback((updated: Photo) => { setPhotos((prev) => prev.map((p) => p.id === updated.id ? updated : p)); }, []);
 
-  // Helper: save user-added stories to localStorage (exclude SAMPLE_STORIES)
-  const saveStoriesToLocal = useCallback((allStories: Story[]) => {
-    const sampleIds = new Set(SAMPLE_STORIES.map(s => s.id));
-    const userStories = allStories.filter(s => !sampleIds.has(s.id));
-    try { localStorage.setItem('wa_stories', JSON.stringify(userStories)); } catch(e) { console.warn('Stories save failed', e); }
-  }, []);
-
-  // Story handlers — now persist to localStorage
+  // Story handlers
   const handleAddStory = useCallback(async (story: Story) => {
     // Save to Firestore
     try {
@@ -437,15 +387,17 @@ const App: React.FC = () => {
     } catch (err) {
       console.warn('Firestore story save failed:', err);
     }
-    setStories((prev) => { const next = [story, ...prev]; saveStoriesToLocal(next); return next; });
-  }, [saveStoriesToLocal]);
+    setStories((prev) => [story, ...prev]);
+  }, []);
+
   const handleDeleteStory = useCallback((id: number) => {
     const story = stories.find(s => s.id === id);
     if (story?.firestoreId) {
       deleteStoryFromFirestore(story.firestoreId).catch(err => console.warn('Firestore story delete failed:', err));
     }
-    setStories((prev) => { const next = prev.filter((s) => s.id !== id); saveStoriesToLocal(next); return next; });
-  }, [stories, saveStoriesToLocal]);
+    setStories((prev) => prev.filter((s) => s.id !== id));
+  }, [stories]);
+
   const handleUpdateStory = useCallback((updated: Story) => {
     if (updated.firestoreId) {
       updateStoryInFirestore(updated.firestoreId, {
@@ -459,8 +411,8 @@ const App: React.FC = () => {
         likeCount: updated.likeCount,
       }).catch(err => console.warn('Firestore story update failed:', err));
     }
-    setStories((prev) => { const next = prev.map((s) => s.id === updated.id ? updated : s); saveStoriesToLocal(next); return next; });
-  }, [saveStoriesToLocal]);
+    setStories((prev) => prev.map((s) => s.id === updated.id ? updated : s));
+  }, []);
 
   const handleStoryClick = useCallback((story: Story) => {
     setSelectedStory({ ...story, viewCount: story.viewCount + 1 });
@@ -478,45 +430,58 @@ const App: React.FC = () => {
     };
     setSelectedStory(updated);
     setStories((prev) => prev.map((s) => s.id === updated.id ? updated : s));
+    // Persist to Firestore
+    if (selectedStory.firestoreId) {
+      updateStoryInFirestore(selectedStory.firestoreId, { likeCount: updated.likeCount }).catch(err => console.warn('Story like update failed:', err));
+    }
   }, [selectedStory]);
 
   // Visitor handlers
-  const handleVisitorLogin = useCallback((v: Visitor) => {
-    // Check if we have a saved profile for this user (preserves name/avatar across logout/login)
-    const userKey = v.email || v.uid || '';
+  const handleVisitorLogin = useCallback(async (v: Visitor) => {
+    const userKey = v.email || '';
     let merged = v;
-    try {
-      const savedProfile = localStorage.getItem('wa_visitor_profile_' + userKey);
-      if (savedProfile) {
-        const saved = JSON.parse(savedProfile);
-        // Merge saved name, avatar, avatarColor into the fresh login data
-        merged = { ...v, displayName: saved.displayName || v.displayName, avatar: saved.avatar || v.avatar, avatarColor: saved.avatarColor || v.avatarColor };
-      }
-    } catch {}
-    // Also restore download count for this user
-    try {
-      const savedCount = localStorage.getItem('wa_downloads_' + userKey);
-      if (savedCount) setDownloadCount(parseInt(savedCount, 10) || 0);
-    } catch {}
+    // Check Firestore for saved profile
+    if (userKey) {
+      try {
+        const savedVisitor = await getVisitorFromFirestore(userKey);
+        if (savedVisitor) {
+          merged = { ...v, displayName: savedVisitor.displayName || v.displayName, avatarColor: savedVisitor.avatarColor || v.avatarColor };
+          setDownloadCount(savedVisitor.downloadCount || 0);
+        }
+      } catch {}
+    }
     setVisitor(merged);
     setShowVisitorLogin(false);
-    localStorage.setItem('wa_visitor', JSON.stringify(merged));
-    localStorage.setItem('wa_visitor_profile_' + userKey, JSON.stringify(merged));
+    // Save to Firestore
+    if (userKey) {
+      saveVisitorToFirestore({
+        email: merged.email,
+        displayName: merged.displayName,
+        avatarColor: merged.avatarColor,
+        avatarUrl: merged.avatarUrl || '',
+        avatarAnimal: merged.avatarAnimal || '',
+        loginMethod: merged.loginMethod,
+        downloadCount: 0,
+      }).catch(err => console.warn('Visitor save failed:', err));
+    }
   }, []);
 
   const handleVisitorLogout = useCallback(() => {
     setVisitor(null);
     setDownloadCount(0);
-    localStorage.removeItem('wa_visitor');
-    // Note: wa_visitor_profile_* and wa_downloads_* are NOT cleared — they persist per user account
   }, []);
 
   const handleVisitorUpdate = useCallback((v: Visitor) => {
     setVisitor(v);
-    localStorage.setItem('wa_visitor', JSON.stringify(v));
-    // Also save to user-specific profile key so it survives logout/login
-    const userKey = v.email || v.uid || '';
-    if (userKey) localStorage.setItem('wa_visitor_profile_' + userKey, JSON.stringify(v));
+    const userKey = v.email || '';
+    if (userKey) {
+      updateVisitorProfile(userKey, {
+        displayName: v.displayName,
+        avatarColor: v.avatarColor,
+        avatarUrl: v.avatarUrl || '',
+        avatarAnimal: v.avatarAnimal || '',
+      }).catch(err => console.warn('Visitor update failed:', err));
+    }
   }, []);
 
   // Comment handlers
@@ -533,6 +498,14 @@ const App: React.FC = () => {
       ...prev,
       [photoId]: [...(prev[photoId] || []), newComment],
     }));
+    // Save to Firestore
+    addCommentToFirestore({
+      targetType: 'photo',
+      targetId: photoId,
+      displayName: visitor.displayName,
+      avatarColor: visitor.avatarColor || '',
+      content,
+    }).catch(err => console.warn('Comment save failed:', err));
   }, [visitor]);
 
   const handleAddStoryComment = useCallback((storyId: number, content: string) => {
@@ -548,6 +521,14 @@ const App: React.FC = () => {
       ...prev,
       [storyId]: [...(prev[storyId] || []), newComment],
     }));
+    // Save to Firestore
+    addCommentToFirestore({
+      targetType: 'story',
+      targetId: storyId,
+      displayName: visitor.displayName,
+      avatarColor: visitor.avatarColor || '',
+      content,
+    }).catch(err => console.warn('Comment save failed:', err));
   }, [visitor]);
 
   const handleDownload = useCallback(async (photo: Photo) => {
@@ -558,9 +539,11 @@ const App: React.FC = () => {
       await downloadPhoto(photo.imageUrl, photo.title, applyWatermark);
       const newCount = downloadCount + 1;
       setDownloadCount(newCount);
-      // Persist download count per user
-      const userKey = visitor.email || visitor.uid || '';
-      if (userKey) localStorage.setItem('wa_downloads_' + userKey, String(newCount));
+      // Persist download count to Firestore
+      const userKey = visitor.email || '';
+      if (userKey) {
+        updateVisitorDownloadCount(userKey, newCount).catch(err => console.warn('Download count save failed:', err));
+      }
     } catch (err) {
       console.warn('Download failed:', err instanceof Error ? err.message : 'unknown');
     } finally {
@@ -583,7 +566,7 @@ const App: React.FC = () => {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
       
-      const newStory: Story = {
+      let newStory: Story = {
         id: Date.now(),
         title: data.title,
         slug: data.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
@@ -597,12 +580,24 @@ const App: React.FC = () => {
         liked: false,
       };
       
+      // Save to Firestore
+      try {
+        const firestoreId = await addStoryToFirestore({
+          title: newStory.title,
+          slug: newStory.slug,
+          excerpt: newStory.excerpt,
+          content: newStory.content,
+          coverImageUrl: newStory.coverImageUrl,
+          tags: newStory.tags,
+          viewCount: 0,
+          likeCount: 0,
+        });
+        newStory = { ...newStory, firestoreId };
+      } catch (err) {
+        console.warn('Firestore save for generated story failed:', err);
+      }
+
       setStories(prev => [newStory, ...prev]);
-      
-      // Save to localStorage
-      const saved = JSON.parse(localStorage.getItem('wa_stories') || '[]');
-      saved.unshift(newStory);
-      localStorage.setItem('wa_stories', JSON.stringify(saved));
       
       // Show success toast
       const toast = document.createElement('div');
