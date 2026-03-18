@@ -108,8 +108,8 @@ Return ONLY the JSON object, no markdown, no code blocks, no explanation.`;
                 generationConfig: {
                   temperature: 0.3,
                   maxOutputTokens: 2048,
-                  thinkingConfig: { thinkingBudget: 0 },
                 },
+                thinkingConfig: { thinkingBudget: 0 },
               }),
             });
 
