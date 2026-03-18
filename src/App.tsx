@@ -20,11 +20,12 @@ import { downloadPhoto } from './utils/downloadPhoto';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './firebase';
 import { addUserLike, removeUserLike, getUserLikes } from './services/userLikesService';
-import { getPhotosFromFirestore, deletePhotoFromFirestore, updatePhotoInFirestore } from './services/photoService';
-import { getStoriesFromFirestore, addStoryToFirestore, deleteStoryFromFirestore, updateStoryInFirestore, uploadStoryCoverToStorage } from './services/storyService';
-import { getVideosFromFirestore, addVideoToFirestore, deleteVideoFromFirestore, updateVideoInFirestore, uploadVideoThumbnailToStorage, uploadVideoToStorage } from './services/videoService';
+import { getPhotosFromFirestore, deletePhotoFromFirestore, updatePhotoInFirestore, subscribeToPhotos } from './services/photoService';
+import { getStoriesFromFirestore, addStoryToFirestore, deleteStoryFromFirestore, updateStoryInFirestore, uploadStoryCoverToStorage, subscribeToStories } from './services/storyService';
+import { getVideosFromFirestore, addVideoToFirestore, deleteVideoFromFirestore, updateVideoInFirestore, uploadVideoThumbnailToStorage, uploadVideoToStorage, subscribeToVideos } from './services/videoService';
 import { addCommentToFirestore, getCommentsForTarget, getAllComments, subscribeToAllComments } from './services/commentService';
-import { saveVisitorToFirestore, getVisitorFromFirestore, updateVisitorDownloadCount, updateVisitorProfile } from './services/visitorService';
+import { saveVisitorToFirestore, getVisitorFromFirestore, updateVisitorDownloadCount, updateVisitorProfile, trackOnlineVisitor, subscribeToOnlineVisitors } from './services/visitorService';
+import { LiveStats } from './components/LiveStats';
 
 const logoUrl = '/photos/logo.png';
 
@@ -182,7 +183,10 @@ const App: React.FC = () => {
   const [downloadCount, setDownloadCount] = useState(0);
   const [isDownloading, setIsDownloading] = useState(false);
   const [userLikes, setUserLikes] = useState<Set<string>>(new Set());
+  const [onlineVisitorCount, setOnlineVisitorCount] = useState(0);
+  const [totalCommentCount, setTotalCommentCount] = useState(0);
   const FREE_DOWNLOADS = 2;
+  const onlineCleanupRef = useRef<(() => void) | null>(null);
 
   // ── Firebase Auth Session Persistence ──────────────────────────────────
   const visitorRef = useRef<Visitor | null>(null);
@@ -247,127 +251,102 @@ const App: React.FC = () => {
     return m ? decodeURIComponent(m[1]) : null;
   });
 
+  // ── Real-time Data Subscriptions (LIVE updates across all browsers) ────────
   useEffect(() => {
-    const loadPhotos = async () => {
-      try {
-        const firestorePhotos = await getPhotosFromFirestore();
-        if (firestorePhotos.length > 0) {
-          const mapped = firestorePhotos.map((fp, idx) => ({
-            id: Date.now() + idx,
-            firestoreId: fp.id,
-            title: fp.title,
-            category: fp.category as any,
-            imageUrl: fp.imageUrl,
-            location: fp.location || '',
-            caption: fp.caption || '',
-            type: (fp.type || 'photo') as 'photo' | 'video',
-            cameraModel: fp.cameraModel || '',
-            lens: fp.lens || '',
-            aperture: fp.aperture || '',
-            shutterSpeed: fp.shutterSpeed || '',
-            iso: fp.iso || '',
-            focalLength: fp.focalLength || '',
-            tags: fp.tags || [],
-            animalName: fp.animalName || '',
-            likeCount: fp.likeCount || 0,
-            liked: false,
-          }));
-          setPhotos(prev => {
-            const allPhotos = [...mapped, ...prev];
-            // Deep link: auto-open photo if pending
-            if (pendingPhotoId) {
-              const matchedPhoto = allPhotos.find(p => p.firestoreId === pendingPhotoId);
-              if (matchedPhoto) {
-                setTimeout(() => {
-                  setSelectedPhoto(matchedPhoto);
-                  setPendingPhotoId(null);
-                }, 100);
-              }
-            }
-            return allPhotos;
-          });
-        } else {
-          // Even if no Firestore photos, check sample photos for pending deep link
-          if (pendingPhotoId) {
-            const matchedPhoto = SAMPLE_PHOTOS.find(p => String(p.id) === pendingPhotoId || p.firestoreId === pendingPhotoId);
-            if (matchedPhoto) {
-              setTimeout(() => {
-                setSelectedPhoto(matchedPhoto);
-                setPendingPhotoId(null);
-              }, 100);
-            }
+    let isFirstPhotoSnap = true;
+    let isFirstStorySnap = true;
+
+    // ── Real-time PHOTOS subscription ──────────────────────────────────
+    const unsubPhotos = subscribeToPhotos((firestorePhotos) => {
+      const mapped = firestorePhotos.map((fp, idx) => ({
+        id: Date.now() + idx,
+        firestoreId: fp.id,
+        title: fp.title,
+        category: fp.category as any,
+        imageUrl: fp.imageUrl,
+        location: fp.location || '',
+        caption: fp.caption || '',
+        type: (fp.type || 'photo') as 'photo' | 'video',
+        cameraModel: fp.cameraModel || '',
+        lens: fp.lens || '',
+        aperture: fp.aperture || '',
+        shutterSpeed: fp.shutterSpeed || '',
+        iso: fp.iso || '',
+        focalLength: fp.focalLength || '',
+        tags: fp.tags || [],
+        animalName: fp.animalName || '',
+        likeCount: fp.likeCount || 0,
+        liked: false,
+      }));
+
+      setPhotos(prev => {
+        // Keep sample photos (those without firestoreId)
+        const samples = prev.filter(p => !p.firestoreId);
+        // Build map of existing Firestore photos to preserve local state (liked, id)
+        const existingMap = new Map(prev.filter(p => p.firestoreId).map(p => [p.firestoreId, p]));
+        const updatedFirestore = mapped.map(m => {
+          const existing = existingMap.get(m.firestoreId);
+          if (existing) {
+            return { ...m, liked: existing.liked, id: existing.id };
+          }
+          return m;
+        });
+        const allPhotos = [...updatedFirestore, ...samples];
+
+        // Deep link: auto-open photo if pending (only on first snapshot)
+        if (isFirstPhotoSnap && pendingPhotoId) {
+          const matchedPhoto = allPhotos.find(p => p.firestoreId === pendingPhotoId || String(p.id) === pendingPhotoId);
+          if (matchedPhoto) {
+            setTimeout(() => { setSelectedPhoto(matchedPhoto); setPendingPhotoId(null); }, 100);
           }
         }
-      } catch (err) {
-        console.warn('Firestore load failed:', err);
-        // Check sample photos for pending deep link on error too
-        if (pendingPhotoId) {
-          const matchedPhoto = SAMPLE_PHOTOS.find(p => String(p.id) === pendingPhotoId || p.firestoreId === pendingPhotoId);
-          if (matchedPhoto) {
-            setTimeout(() => {
-              setSelectedPhoto(matchedPhoto);
-              setPendingPhotoId(null);
-            }, 100);
-          }
+        isFirstPhotoSnap = false;
+        return allPhotos;
+      });
+    }, (err) => {
+      console.warn('Photo subscription error, falling back to samples:', err);
+      if (pendingPhotoId) {
+        const matchedPhoto = SAMPLE_PHOTOS.find(p => String(p.id) === pendingPhotoId || p.firestoreId === pendingPhotoId);
+        if (matchedPhoto) {
+          setTimeout(() => { setSelectedPhoto(matchedPhoto); setPendingPhotoId(null); }, 100);
         }
       }
-    };
-    loadPhotos();
+    });
 
-    // Load stories from Firestore
-    const loadStories = async () => {
-      try {
-        const firestoreStories = await getStoriesFromFirestore();
-        if (firestoreStories.length > 0) {
-          const mapped: Story[] = firestoreStories.map((fs, idx) => ({
-            id: Date.now() + idx + 5000,
-            firestoreId: fs.id,
-            title: fs.title,
-            slug: fs.slug,
-            excerpt: fs.excerpt,
-            content: fs.content,
-            coverImageUrl: fs.coverImageUrl,
-            tags: fs.tags || [],
-            createdAt: fs.createdAt?.toDate?.()?.toISOString?.()?.split('T')[0] || new Date().toISOString().split('T')[0],
-            viewCount: fs.viewCount || 0,
-            likeCount: fs.likeCount || 0,
-            liked: false,
-          }));
-          setStories(prev => {
-            const existingTitles = new Set(prev.map(s => s.title.toLowerCase().trim()));
-            const newOnes = mapped.filter(s => !existingTitles.has(s.title.toLowerCase().trim()));
-            const allStories = newOnes.length === 0 ? prev : [...newOnes, ...prev];
-            // Deep link: auto-open story if pending
-            if (pendingStorySlug) {
-              const matchedStory = allStories.find(s => s.slug === pendingStorySlug);
-              if (matchedStory) {
-                setTimeout(() => {
-                  setSelectedStory({ ...matchedStory, viewCount: matchedStory.viewCount + 1 });
-                  setView('story-detail');
-                  setPendingStorySlug(null);
-                }, 100);
-              }
-            }
-            return allStories;
-          });
-        } else {
-          // Check sample stories for pending deep link
-          if (pendingStorySlug) {
-            const matchedStory = SAMPLE_STORIES.find(s => s.slug === pendingStorySlug);
-            if (matchedStory) {
-              setTimeout(() => {
-                setSelectedStory({ ...matchedStory, viewCount: matchedStory.viewCount + 1 });
-                setView('story-detail');
-                setPendingStorySlug(null);
-              }, 100);
-            }
+    // ── Real-time STORIES subscription ─────────────────────────────────
+    const unsubStories = subscribeToStories((firestoreStories) => {
+      const mapped: Story[] = firestoreStories.map((fs, idx) => ({
+        id: Date.now() + idx + 5000,
+        firestoreId: fs.id,
+        title: fs.title,
+        slug: fs.slug,
+        excerpt: fs.excerpt,
+        content: fs.content,
+        coverImageUrl: fs.coverImageUrl,
+        tags: fs.tags || [],
+        createdAt: fs.createdAt?.toDate?.()?.toISOString?.()?.split('T')[0] || new Date().toISOString().split('T')[0],
+        viewCount: fs.viewCount || 0,
+        likeCount: fs.likeCount || 0,
+        liked: false,
+      }));
+
+      setStories(prev => {
+        const samples = prev.filter(s => !s.firestoreId);
+        const existingMap = new Map(prev.filter(s => s.firestoreId).map(s => [s.firestoreId, s]));
+        const updatedFirestore = mapped.map(m => {
+          const existing = existingMap.get(m.firestoreId);
+          if (existing) {
+            return { ...m, liked: existing.liked, id: existing.id };
           }
-        }
-      } catch (err) {
-        console.warn('Firestore stories load failed:', err);
-        // Check sample stories for pending deep link on error too
-        if (pendingStorySlug) {
-          const matchedStory = SAMPLE_STORIES.find(s => s.slug === pendingStorySlug);
+          return m;
+        });
+        const existingTitles = new Set(samples.map(s => s.title.toLowerCase().trim()));
+        const nonDuplicate = updatedFirestore.filter(s => !existingTitles.has(s.title.toLowerCase().trim()));
+        const allStories = [...nonDuplicate, ...samples];
+
+        // Deep link: auto-open story if pending (only on first snapshot)
+        if (isFirstStorySnap && pendingStorySlug) {
+          const matchedStory = allStories.find(s => s.slug === pendingStorySlug);
           if (matchedStory) {
             setTimeout(() => {
               setSelectedStory({ ...matchedStory, viewCount: matchedStory.viewCount + 1 });
@@ -376,40 +355,56 @@ const App: React.FC = () => {
             }, 100);
           }
         }
-      }
-    };
-    loadStories();
-
-
-    // Load videos from Firestore
-    const loadVideos = async () => {
-      try {
-        const firestoreVideos = await getVideosFromFirestore();
-        if (firestoreVideos.length > 0) {
-          const mapped: Video[] = firestoreVideos.map((fv, idx) => ({
-            id: Date.now() + idx + 9000,
-            firestoreId: fv.id,
-            title: fv.title,
-            description: fv.description || '',
-            videoUrl: fv.videoUrl,
-            thumbnailUrl: fv.thumbnailUrl || '',
-            tags: fv.tags || [],
-            location: fv.location || '',
-            duration: fv.duration || '',
-            createdAt: fv.createdAt?.toDate?.()?.toISOString?.()?.split('T')[0] || new Date().toISOString().split('T')[0],
-            viewCount: fv.viewCount || 0,
-            likeCount: fv.likeCount || 0,
-            liked: false,
-          }));
-          setVideos(mapped);
+        isFirstStorySnap = false;
+        return allStories;
+      });
+    }, (err) => {
+      console.warn('Story subscription error:', err);
+      if (pendingStorySlug) {
+        const matchedStory = SAMPLE_STORIES.find(s => s.slug === pendingStorySlug);
+        if (matchedStory) {
+          setTimeout(() => {
+            setSelectedStory({ ...matchedStory, viewCount: matchedStory.viewCount + 1 });
+            setView('story-detail');
+            setPendingStorySlug(null);
+          }, 100);
         }
-      } catch (err) {
-        console.warn('Firestore videos load failed:', err);
       }
-    };
-    loadVideos();
+    });
 
-    // Real-time comment subscription (live updates!)
+    // ── Real-time VIDEOS subscription ──────────────────────────────────
+    const unsubVideos = subscribeToVideos((firestoreVideos) => {
+      const mapped: Video[] = firestoreVideos.map((fv, idx) => ({
+        id: Date.now() + idx + 9000,
+        firestoreId: fv.id,
+        title: fv.title,
+        description: fv.description || '',
+        videoUrl: fv.videoUrl,
+        thumbnailUrl: fv.thumbnailUrl || '',
+        tags: fv.tags || [],
+        location: fv.location || '',
+        duration: fv.duration || '',
+        createdAt: fv.createdAt?.toDate?.()?.toISOString?.()?.split('T')[0] || new Date().toISOString().split('T')[0],
+        viewCount: fv.viewCount || 0,
+        likeCount: fv.likeCount || 0,
+        liked: false,
+      }));
+
+      setVideos(prev => {
+        const existingMap = new Map(prev.filter(v => v.firestoreId).map(v => [v.firestoreId, v]));
+        return mapped.map(m => {
+          const existing = existingMap.get(m.firestoreId);
+          if (existing) {
+            return { ...m, liked: existing.liked, id: existing.id };
+          }
+          return m;
+        });
+      });
+    }, (err) => {
+      console.warn('Video subscription error:', err);
+    });
+
+    // ── Real-time COMMENTS subscription (already live!) ────────────────
     const unsubComments = subscribeToAllComments((allComments) => {
       const photoMap: Record<number, Comment[]> = {};
       const storyMap: Record<number, Comment[]> = {};
@@ -438,10 +433,35 @@ const App: React.FC = () => {
       setPhotoComments(photoMap);
       setStoryComments(storyMap);
       setVideoComments(videoMap);
+      setTotalCommentCount(allComments.length);
     });
 
-    return () => { unsubComments(); };
+    // ── Online Visitor Tracking (real-time presence) ───────────────────
+    let sessionId = sessionStorage.getItem('wa_session_id');
+    if (!sessionId) {
+      sessionId = 'anon_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      sessionStorage.setItem('wa_session_id', sessionId);
+    }
+    const displayName = visitorRef.current?.displayName || 'Guest';
+    const avatarUrl = visitorRef.current?.avatarUrl || '';
+    const cleanupOnline = trackOnlineVisitor(sessionId, displayName, avatarUrl);
+    onlineCleanupRef.current = cleanupOnline;
+
+    // Subscribe to live online visitor count
+    const unsubOnline = subscribeToOnlineVisitors((count) => {
+      setOnlineVisitorCount(count);
+    });
+
+    return () => {
+      unsubPhotos();
+      unsubStories();
+      unsubVideos();
+      unsubComments();
+      unsubOnline();
+      if (onlineCleanupRef.current) onlineCleanupRef.current();
+    };
   }, []);
+
 
   // Apply user likes to photos/stories/videos when userLikes changes
   useEffect(() => {
@@ -642,20 +662,31 @@ const App: React.FC = () => {
     setStories((prev) => prev.filter((s) => s.id !== id));
   }, [stories]);
 
-  const handleUpdateStory = useCallback((updated: Story) => {
-    if (updated.firestoreId) {
-      updateStoryInFirestore(updated.firestoreId, {
-        title: updated.title,
-        slug: updated.slug,
-        excerpt: updated.excerpt,
-        content: updated.content,
-        coverImageUrl: updated.coverImageUrl,
-        tags: updated.tags,
-        viewCount: updated.viewCount,
-        likeCount: updated.likeCount,
+  const handleUpdateStory = useCallback(async (updated: Story) => {
+    // If cover image was changed to a data URL during edit, upload it first
+    let finalCoverUrl = updated.coverImageUrl;
+    if (updated.coverImageUrl && updated.coverImageUrl.startsWith('data:')) {
+      try {
+        finalCoverUrl = await uploadStoryCoverToStorage(updated.coverImageUrl, `cover_${Date.now()}.jpg`);
+      } catch (err) {
+        console.warn('Firebase Storage upload for story cover failed:', err);
+      }
+    }
+    const finalUpdated = { ...updated, coverImageUrl: finalCoverUrl };
+
+    if (finalUpdated.firestoreId) {
+      updateStoryInFirestore(finalUpdated.firestoreId, {
+        title: finalUpdated.title,
+        slug: finalUpdated.slug,
+        excerpt: finalUpdated.excerpt,
+        content: finalUpdated.content,
+        coverImageUrl: finalUpdated.coverImageUrl,
+        tags: finalUpdated.tags,
+        viewCount: finalUpdated.viewCount,
+        likeCount: finalUpdated.likeCount,
       }).catch(err => console.warn('Firestore story update failed:', err));
     }
-    setStories((prev) => prev.map((s) => s.id === updated.id ? updated : s));
+    setStories((prev) => prev.map((s) => s.id === finalUpdated.id ? finalUpdated : s));
   }, []);
 
   // Video handlers
@@ -703,21 +734,40 @@ const App: React.FC = () => {
     setVideos((prev) => prev.filter((v) => v.id !== id));
   }, [videos]);
 
-  const handleUpdateVideo = useCallback((updated: Video) => {
-    if (updated.firestoreId) {
-      updateVideoInFirestore(updated.firestoreId, {
-        title: updated.title,
-        description: updated.description,
-        videoUrl: updated.videoUrl,
-        thumbnailUrl: updated.thumbnailUrl,
-        tags: updated.tags,
-        location: updated.location || '',
-        duration: updated.duration || '',
-        viewCount: updated.viewCount,
-        likeCount: updated.likeCount,
+  const handleUpdateVideo = useCallback(async (updated: Video) => {
+    // If video/thumbnail was changed to a data URL during edit, upload it first
+    let finalVideoUrl = updated.videoUrl;
+    let finalThumbnailUrl = updated.thumbnailUrl;
+    if (updated.videoUrl && updated.videoUrl.startsWith('data:')) {
+      try {
+        finalVideoUrl = await uploadVideoToStorage(updated.videoUrl, `video_${Date.now()}.mp4`);
+      } catch (err) {
+        console.warn('Firebase Storage video upload failed:', err);
+      }
+    }
+    if (updated.thumbnailUrl && updated.thumbnailUrl.startsWith('data:')) {
+      try {
+        finalThumbnailUrl = await uploadVideoThumbnailToStorage(updated.thumbnailUrl, `thumb_${Date.now()}.jpg`);
+      } catch (err) {
+        console.warn('Firebase Storage thumbnail upload failed:', err);
+      }
+    }
+    const finalUpdated = { ...updated, videoUrl: finalVideoUrl, thumbnailUrl: finalThumbnailUrl };
+
+    if (finalUpdated.firestoreId) {
+      updateVideoInFirestore(finalUpdated.firestoreId, {
+        title: finalUpdated.title,
+        description: finalUpdated.description,
+        videoUrl: finalUpdated.videoUrl,
+        thumbnailUrl: finalUpdated.thumbnailUrl,
+        tags: finalUpdated.tags,
+        location: finalUpdated.location || '',
+        duration: finalUpdated.duration || '',
+        viewCount: finalUpdated.viewCount,
+        likeCount: finalUpdated.likeCount,
       }).catch(err => console.warn('Firestore video update failed:', err));
     }
-    setVideos((prev) => prev.map((v) => v.id === updated.id ? updated : v));
+    setVideos((prev) => prev.map((v) => v.id === finalUpdated.id ? finalUpdated : v));
   }, []);
 
   const handleStoryClick = useCallback((story: Story) => {
@@ -1188,6 +1238,14 @@ const App: React.FC = () => {
       />
       <AboutSection />
       <Footer logoUrl={logoUrl} onTermsClick={handleTermsClick} />
+
+      {/* Live Stats Floating Widget */}
+      <LiveStats
+        onlineCount={onlineVisitorCount}
+        totalLikes={photos.reduce((s, p) => s + (p.likeCount || 0), 0) + stories.reduce((s, st) => s + (st.likeCount || 0), 0) + videos.reduce((s, v) => s + (v.likeCount || 0), 0)}
+        totalComments={totalCommentCount}
+        totalViews={stories.reduce((s, st) => s + (st.viewCount || 0), 0) + videos.reduce((s, v) => s + (v.viewCount || 0), 0)}
+      />
 
       {selectedPhoto && (
         <PhotoModal

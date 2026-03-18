@@ -1,5 +1,5 @@
 import { db, storage } from '../firebase';
-import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, serverTimestamp, onSnapshot, Unsubscribe } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 
 export interface FirestorePhoto {
@@ -61,4 +61,26 @@ export async function deletePhotoFromFirestore(docId: string): Promise<void> {
 
 export async function updatePhotoInFirestore(docId: string, data: Partial<FirestorePhoto>): Promise<void> {
   await updateDoc(doc(db, PHOTOS_COLLECTION, docId), data);
+}
+
+/**
+ * Real-time subscription to all photos.
+ * Fires onUpdate whenever any photo document changes (add/edit/delete).
+ * Returns an unsubscribe function.
+ */
+export function subscribeToPhotos(
+  onUpdate: (photos: FirestorePhoto[]) => void,
+  onError?: (error: Error) => void
+): Unsubscribe {
+  const q = query(collection(db, PHOTOS_COLLECTION), orderBy('createdAt', 'desc'));
+  return onSnapshot(q,
+    (snapshot) => {
+      const photos = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as FirestorePhoto));
+      onUpdate(photos);
+    },
+    (error) => {
+      console.error('Photo subscription error:', error);
+      if (onError) onError(error);
+    }
+  );
 }

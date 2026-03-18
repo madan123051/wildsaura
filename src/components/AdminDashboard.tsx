@@ -742,6 +742,7 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
     e.preventDefault();
     onSave({
       id: initial?.id || nextId,
+      firestoreId: initial?.firestoreId,
       title, slug: slug || autoSlug(title), excerpt, content, coverImageUrl,
       tags: tagsStr.split(',').map((t) => t.trim()).filter(Boolean),
       createdAt: initial?.createdAt || new Date().toISOString().split('T')[0],
@@ -927,6 +928,7 @@ const VideoForm: React.FC<VideoFormProps> = ({ initial, onSave, onCancel, nextId
     if (!videoUrl) return;
     onSave({
       id: initial?.id || nextId,
+      firestoreId: initial?.firestoreId,
       title,
       description,
       videoUrl,

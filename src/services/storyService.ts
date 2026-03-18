@@ -1,5 +1,5 @@
 import { db, storage } from '../firebase';
-import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, serverTimestamp, onSnapshot, Unsubscribe } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 
 export interface FirestoreStory {
@@ -53,4 +53,26 @@ export async function deleteStoryFromFirestore(docId: string): Promise<void> {
 
 export async function updateStoryInFirestore(docId: string, data: Partial<FirestoreStory>): Promise<void> {
   await updateDoc(doc(db, STORIES_COLLECTION, docId), data);
+}
+
+/**
+ * Real-time subscription to all stories.
+ * Fires onUpdate whenever any story document changes (add/edit/delete).
+ * Returns an unsubscribe function.
+ */
+export function subscribeToStories(
+  onUpdate: (stories: FirestoreStory[]) => void,
+  onError?: (error: Error) => void
+): Unsubscribe {
+  const q = query(collection(db, STORIES_COLLECTION), orderBy('createdAt', 'desc'));
+  return onSnapshot(q,
+    (snapshot) => {
+      const stories = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as FirestoreStory));
+      onUpdate(stories);
+    },
+    (error) => {
+      console.error('Story subscription error:', error);
+      if (onError) onError(error);
+    }
+  );
 }
