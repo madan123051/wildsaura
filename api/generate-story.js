@@ -123,8 +123,8 @@ Return ONLY valid JSON (no markdown, no code blocks, no extra text):
                 generationConfig: {
                   temperature: 0.8,
                   maxOutputTokens: 3000,
-                  thinkingConfig: { thinkingBudget: 0 },
                 },
+                thinkingConfig: { thinkingBudget: 0 },
               }),
             });
 
