@@ -8,7 +8,9 @@ import {
 import { Photo, Story, Video } from '../types';
 import { analyzePhoto, getAnimalInfo } from '../utils/aiService';
 import { uploadPhotoToStorage, addPhotoToFirestore } from '../services/photoService';
+import { getAISettings } from '../services/aiSettingsService';
 import { AISettingsPanel } from './AISettings';
+import { applyWatermark } from '../utils/watermark';
 
 
 
@@ -235,9 +237,13 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
     reader.onload = async () => {
       const dataUrl = reader.result as string;
       setPreviewDataUrl(dataUrl);
-
-      // Use data URL directly for Vercel deployment (no filesystem access)
-      setImageUrl(dataUrl);
+      // Apply watermark
+      try {
+        const watermarked = await applyWatermark(dataUrl);
+        setImageUrl(watermarked);
+      } catch {
+        setImageUrl(dataUrl);
+      }
       setUploading(false);
     };
     reader.readAsDataURL(file);
@@ -541,20 +547,24 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
       ctx.drawImage(bitmap, 0, 0, w, h);
       const compressedUrl = canvas.toDataURL('image/jpeg', 0.6);
       setPreviewUrl(compressedUrl);
-      setCoverImageUrl(compressedUrl);
+      // Apply watermark
+      let finalUrl = compressedUrl;
+      try {
+        finalUrl = await applyWatermark(compressedUrl);
+      } catch {}
+      setCoverImageUrl(finalUrl);
 
       // Also try uploading to Firebase Storage for persistence
       try {
         const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
         const { storage } = await import('../firebase');
         const storageRef = ref(storage, `story-covers/${Date.now()}_${file.name}`);
-        const response = await fetch(compressedUrl);
+        const response = await fetch(finalUrl);
         const blob = await response.blob();
         await uploadBytes(storageRef, blob);
         const firebaseUrl = await getDownloadURL(storageRef);
         setCoverImageUrl(firebaseUrl);
       } catch {
-        // Firebase upload failed, keep compressed data URL
         console.log('Firebase upload failed, using compressed data URL');
       }
     } catch {
@@ -574,28 +584,46 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
     if (!title && !coverImageUrl) { alert('Please add a title or cover image first'); return; }
     setAiGenerating(true);
     try {
+      const settings = await getAISettings();
+      const photoProvider = settings.photoAnalysisProvider;
+      const photoKey = photoProvider === 'gemini' ? settings.geminiKey : 
+                       photoProvider === 'chatgpt' ? settings.chatgptKey : settings.geminiKey;
+      const storyProvider = settings.storyProvider;
+      const storyKey = storyProvider === 'gemini' ? settings.geminiKey :
+                       storyProvider === 'deepseek' ? settings.deepseekKey :
+                       storyProvider === 'chatgpt' ? settings.chatgptKey : settings.geminiKey;
+
       // Step 1: If cover image exists, analyze it with AI Vision
       let animalName = '';
       let imageAnalysis = '';
-      if (coverImageUrl) {
+      if (coverImageUrl && photoKey) {
         try {
           const analyzeRes = await fetch('/api/analyze', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ imageData: coverImageUrl }),
+            body: JSON.stringify({ imageData: coverImageUrl, provider: photoProvider, apiKey: photoKey }),
           });
           if (analyzeRes.ok) {
             const analysis = await analyzeRes.json();
-            animalName = analysis.animalName || analysis.title || '';
-            imageAnalysis = `Animal: ${animalName}, Tags: ${(analysis.tags || []).join(', ')}, Location: ${analysis.location || 'Unknown'}`;
+            if (analysis.success && analysis.data) {
+              animalName = analysis.data.animalName || analysis.data.title || '';
+              imageAnalysis = `Animal: ${animalName}, Tags: ${(analysis.data.tags || []).join(', ')}, Location: ${analysis.data.location || 'Unknown'}`;
+              // Auto-fill tags if empty
+              if (!tagsStr && analysis.data.tags?.length) {
+                setTagsStr(analysis.data.tags.join(', '));
+              }
+            }
           }
-        } catch {}
+        } catch (err) {
+          console.warn('Image analysis failed:', err);
+        }
       }
 
       // Step 2: Fetch Wikipedia info if animal detected
       let wikiInfo = '';
-      if (animalName) {
+      const searchAnimal = animalName || title;
+      if (searchAnimal) {
         try {
-          const wikiRes = await fetch(`/api/wikipedia?animal=${encodeURIComponent(animalName)}`);
+          const wikiRes = await fetch(`/api/wikipedia?animal=${encodeURIComponent(searchAnimal)}`);
           if (wikiRes.ok) {
             const wiki = await wikiRes.json();
             wikiInfo = wiki.summary || wiki.extract || '';
@@ -604,6 +632,12 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
       }
 
       // Step 3: Generate story with AI using image analysis + Wikipedia
+      if (!storyKey) {
+        alert('No API key configured for story generation. Please set up API keys in AI Settings.');
+        setAiGenerating(false);
+        return;
+      }
+
       const storyRes = await fetch('/api/generate-story', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -611,6 +645,9 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
           animalName: animalName,
           location: imageAnalysis,
           caption: wikiInfo ? `Wikipedia: ${wikiInfo.substring(0, 500)}` : '',
+          wikiInfo: wikiInfo,
+          provider: storyProvider,
+          apiKey: storyKey,
         }),
       });
 
@@ -622,11 +659,12 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
         if (story.tags?.length) setTagsStr(story.tags.join(', '));
         if (!slug && story.title) setSlug(autoSlug(story.title));
       } else {
-        alert('AI generation failed. Please fill in manually.');
+        const errData = await storyRes.json().catch(() => ({}));
+        alert(`AI generation failed: ${errData.error || 'Unknown error'}. Please try again.`);
       }
     } catch (err) {
       console.error('AI fill error:', err);
-      alert('AI generation failed. Please check your connection.');
+      alert('AI generation failed. Please check your API keys in AI Settings.');
     }
     setAiGenerating(false);
   }, [title, coverImageUrl, excerpt, content, tagsStr, slug]);
@@ -783,14 +821,18 @@ const VideoForm: React.FC<VideoFormProps> = ({ initial, onSave, onCancel, nextId
       ctx.drawImage(bitmap, 0, 0, w, h);
       const compressedUrl = canvas.toDataURL('image/jpeg', 0.6);
       setThumbPreview(compressedUrl);
-      setThumbnailUrl(compressedUrl);
+      let finalThumbUrl = compressedUrl;
+      try {
+        finalThumbUrl = await applyWatermark(compressedUrl);
+      } catch {}
+      setThumbnailUrl(finalThumbUrl);
 
       // Also try uploading to Firebase Storage for persistence
       try {
         const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
         const { storage } = await import('../firebase');
         const storageRef = ref(storage, `video-thumbnails/${Date.now()}_${file.name}`);
-        const response = await fetch(compressedUrl);
+        const response = await fetch(finalThumbUrl);
         const blob = await response.blob();
         await uploadBytes(storageRef, blob);
         const firebaseUrl = await getDownloadURL(storageRef);

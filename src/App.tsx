@@ -175,6 +175,7 @@ const App: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [photoComments, setPhotoComments] = useState<Record<number, Comment[]>>({});
   const [storyComments, setStoryComments] = useState<Record<number, Comment[]>>({});
+  const [videoComments, setVideoComments] = useState<Record<number, Comment[]>>({});
   const [downloadCount, setDownloadCount] = useState(0);
   const [isDownloading, setIsDownloading] = useState(false);
   const FREE_DOWNLOADS = 2;
@@ -359,6 +360,7 @@ const App: React.FC = () => {
         const allComments = await getAllComments();
         const photoMap: Record<number, Comment[]> = {};
         const storyMap: Record<number, Comment[]> = {};
+        const videoMap: Record<number, Comment[]> = {};
         allComments.forEach((c: any) => {
           const comment: Comment = {
             id: Date.now() + Math.random(),
@@ -371,6 +373,9 @@ const App: React.FC = () => {
           if (c.targetType === 'photo') {
             if (!photoMap[c.targetId]) photoMap[c.targetId] = [];
             photoMap[c.targetId].push(comment);
+          } else if (c.targetType === 'video') {
+            if (!videoMap[c.targetId]) videoMap[c.targetId] = [];
+            videoMap[c.targetId].push(comment);
           } else {
             if (!storyMap[c.targetId]) storyMap[c.targetId] = [];
             storyMap[c.targetId].push(comment);
@@ -378,6 +383,7 @@ const App: React.FC = () => {
         });
         setPhotoComments(photoMap);
         setStoryComments(storyMap);
+        setVideoComments(videoMap);
       } catch (err) {
         console.warn('Firestore comments load failed:', err);
       }
@@ -758,6 +764,42 @@ const App: React.FC = () => {
     }).catch(err => console.warn('Comment save failed:', err));
   }, [visitor]);
 
+  const handleAddVideoComment = useCallback((videoId: number, content: string) => {
+    if (!visitor) return;
+    const newComment: Comment = {
+      id: Date.now(),
+      displayName: visitor.displayName,
+      avatarColor: visitor.avatarColor,
+      content,
+      createdAt: new Date().toISOString().split('T')[0],
+    };
+    setVideoComments((prev) => ({
+      ...prev,
+      [videoId]: [...(prev[videoId] || []), newComment],
+    }));
+    // Save to Firestore
+    addCommentToFirestore({
+      targetType: 'video',
+      targetId: videoId,
+      displayName: visitor.displayName,
+      avatarColor: visitor.avatarColor || '',
+      content,
+    }).catch(err => console.warn('Video comment save failed:', err));
+  }, [visitor]);
+
+  const handleVideoLike = useCallback((id: number) => {
+    setVideos((prev) => {
+      const video = prev.find(v => v.id === id);
+      if (video && video.firestoreId) {
+        const newLikeCount = video.liked ? video.likeCount - 1 : video.likeCount + 1;
+        updateVideoInFirestore(video.firestoreId, { likeCount: newLikeCount }).catch(err => console.warn('Video like update failed:', err));
+      }
+      return prev.map((v) =>
+        v.id === id ? { ...v, liked: !v.liked, likeCount: v.liked ? v.likeCount - 1 : v.likeCount + 1 } : v
+      );
+    });
+  }, []);
+
   const handleDownload = useCallback(async (photo: Photo) => {
     if (!visitor) { setShowVisitorLogin(true); return; }
     setIsDownloading(true);
@@ -1019,7 +1061,14 @@ const App: React.FC = () => {
         onLoginRequired={() => setShowVisitorLogin(true)}
       />
       <StoriesSection stories={stories} onStoryClick={handleStoryClick} />
-      <VideoSection videos={videos} />
+      <VideoSection 
+        videos={videos} 
+        visitor={visitor}
+        videoComments={videoComments}
+        onAddVideoComment={handleAddVideoComment}
+        onVideoLike={handleVideoLike}
+        onVisitorLoginClick={() => setShowVisitorLogin(true)}
+      />
       <AboutSection />
       <Footer logoUrl={logoUrl} onTermsClick={handleTermsClick} />
 

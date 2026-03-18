@@ -9,7 +9,7 @@ export default async function handler(req, res) {
   try {
     const { imageData, provider = 'gemini', apiKey } = req.body;
     if (!imageData) return res.status(400).json({ success: false, error: 'No image data provided' });
-    if (!apiKey) return res.status(400).json({ success: false, error: 'No API key provided' });
+    if (!apiKey) return res.status(400).json({ success: false, error: 'No API key provided. Please configure your API key in AI Settings.' });
 
     const prompt = `Analyze this wildlife/nature photograph and return a JSON response with these fields:
 {
@@ -59,9 +59,10 @@ Return ONLY the JSON object, no markdown, no code blocks, no explanation.`;
 
     } else {
       // ── Gemini Vision (default) ──
-      // Try multiple model versions
-      const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+      // Fixed model order: use stable models first, avoid rate-limited experimental ones
+      const models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
       let success = false;
+      let lastError = '';
 
       // Prepare image parts
       let imageParts;
@@ -113,21 +114,32 @@ Return ONLY the JSON object, no markdown, no code blocks, no explanation.`;
               success = true;
               break;
             }
+          } else {
+            lastError = `${model} error ${response.status}`;
+            console.warn(`Gemini ${model} failed: ${response.status}`);
           }
         } catch (modelErr) {
+          lastError = modelErr.message;
           console.warn(`Gemini ${model} failed:`, modelErr.message);
         }
       }
 
       if (!success) {
-        return res.status(500).json({ success: false, error: 'All Gemini models failed for image analysis' });
+        return res.status(500).json({ 
+          success: false, 
+          error: `AI analysis failed. ${lastError}. Please try again or switch to ChatGPT in AI Settings.` 
+        });
       }
     }
 
     // Parse the JSON response
     let analysis;
     try {
-      const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
+      // Clean up the response — remove markdown code blocks if present
+      let cleanText = analysisText.trim();
+      cleanText = cleanText.replace(/^```json?\s*/i, '').replace(/\s*```$/i, '');
+      
+      const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         analysis = JSON.parse(jsonMatch[0]);
       } else {
@@ -135,7 +147,7 @@ Return ONLY the JSON object, no markdown, no code blocks, no explanation.`;
       }
     } catch (parseErr) {
       console.error('JSON parse error:', parseErr.message, 'Raw:', analysisText.substring(0, 200));
-      return res.status(500).json({ success: false, error: 'Failed to parse AI response' });
+      return res.status(500).json({ success: false, error: 'Failed to parse AI response. Please try again.' });
     }
 
     // Validate and normalize
