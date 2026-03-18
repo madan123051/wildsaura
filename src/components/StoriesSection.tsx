@@ -7,7 +7,7 @@ interface StoriesSectionProps {
   onStoryClick: (story: Story) => void;
 }
 
-const INITIAL_COUNT = 4;
+const INITIAL_COUNT = 3;
 const estimateReadTime = (content: string): number => Math.max(1, Math.ceil(content.split(/\s+/).length / 200));
 
 export const StoriesSection: React.FC<StoriesSectionProps> = ({ stories, onStoryClick }) => {
