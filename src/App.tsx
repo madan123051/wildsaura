@@ -13,6 +13,7 @@ import { SearchBar } from './components/SearchBar';
 import { AIChatbot } from './components/AIChatbot';
 import { VisitorLogin } from './components/VisitorLogin';
 import { StoriesSection } from './components/StoriesSection';
+import { TermsConditions } from './components/TermsConditions';
 import { StoryDetail } from './components/StoryDetail';
 import { downloadPhoto } from './utils/downloadPhoto';
 import { getPhotosFromFirestore, deletePhotoFromFirestore, updatePhotoInFirestore } from './services/photoService';
@@ -141,13 +142,14 @@ const FILTER_TABS: FilterTab[] = [
 ];
 
 // ── App ─────────────────────────────────────────────────────────────────────
-type AppView = 'home' | 'admin-login' | 'admin-dashboard' | 'story-detail';
+type AppView = 'home' | 'admin-login' | 'admin-dashboard' | 'story-detail' | 'terms';
 
 const App: React.FC = () => {
   const [view, setView] = useState<AppView>(() => {
     if (typeof window !== 'undefined') {
       const path = window.location.pathname;
       if (path.startsWith('/story/')) return 'story-detail';
+      if (path === '/terms') return 'terms';
       if (localStorage.getItem('wa_admin_session')) return 'admin-dashboard';
     }
     return 'home';
@@ -365,6 +367,8 @@ const App: React.FC = () => {
         if (matchedPhoto) {
           setSelectedPhoto(matchedPhoto);
         }
+      } else if (path === '/terms') {
+        setView('terms');
       } else if (path.startsWith('/story/')) {
         const slug = decodeURIComponent(path.replace('/story/', ''));
         const matchedStory = stories.find(s => s.slug === slug);
@@ -743,6 +747,12 @@ const App: React.FC = () => {
     }
   }, []);
 
+  const handleTermsClick = useCallback(() => {
+    setView('terms');
+    window.history.pushState({}, '', '/terms');
+    window.scrollTo(0, 0);
+  }, []);
+
   const handleStoriesNavClick = useCallback(() => {
     if (view !== 'home') setView('home');
     setTimeout(() => {
@@ -800,6 +810,42 @@ const App: React.FC = () => {
     );
   }
 
+  // ── Terms & Conditions View ──
+  if (view === 'terms') {
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--wa-dark)' }}>
+        <Header
+          onScrollToGallery={scrollToGallery}
+          logoUrl={logoUrl}
+          onAdminClick={handleAdminClick}
+          isAdmin={isAdmin}
+          onSearchClick={() => setShowSearch(true)}
+          visitor={visitor}
+          onVisitorLoginClick={() => setShowVisitorLogin(true)}
+          onVisitorLogout={handleVisitorLogout}
+          onVisitorUpdate={handleVisitorUpdate}
+          onStoriesClick={handleStoriesNavClick}
+        />
+        <TermsConditions onBack={() => { setView('home'); window.history.pushState({}, '', '/'); window.scrollTo(0, 0); }} />
+        <Footer logoUrl={logoUrl} onTermsClick={handleTermsClick} />
+        <AIChatbot photos={photos} onPhotoClick={openPhoto} />
+        <SearchBar
+          isOpen={showSearch}
+          onClose={() => { setShowSearch(false); setSearchQuery(''); }}
+          query={searchQuery}
+          onQueryChange={setSearchQuery}
+          photos={photos}
+          onPhotoClick={openPhoto}
+        />
+        <VisitorLogin
+          isOpen={showVisitorLogin}
+          onClose={() => setShowVisitorLogin(false)}
+          onLogin={handleVisitorLogin}
+        />
+      </div>
+    );
+  }
+
   // ── Story Detail View ──
   if (view === 'story-detail' && selectedStory) {
     return (
@@ -825,7 +871,7 @@ const App: React.FC = () => {
           onAddComment={(content) => handleAddStoryComment(selectedStory.id, content)}
           onVisitorLoginClick={() => setShowVisitorLogin(true)}
         />
-        <Footer logoUrl={logoUrl} />
+        <Footer logoUrl={logoUrl} onTermsClick={handleTermsClick} />
         <AIChatbot photos={photos} onPhotoClick={openPhoto} />
         <SearchBar
           isOpen={showSearch}
@@ -876,7 +922,7 @@ const App: React.FC = () => {
       />
       <StoriesSection stories={stories} onStoryClick={handleStoryClick} />
       <AboutSection />
-      <Footer logoUrl={logoUrl} />
+      <Footer logoUrl={logoUrl} onTermsClick={handleTermsClick} />
 
       {selectedPhoto && (
         <PhotoModal
