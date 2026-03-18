@@ -1,10 +1,10 @@
-import { collection, addDoc, getDocs, query, orderBy, onSnapshot, Unsubscribe } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, orderBy, onSnapshot, Unsubscribe, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
 export interface FirestoreComment {
   id?: string;
   targetType: 'photo' | 'story' | 'video';
-  targetId: number;
+  targetId: string; // firestoreId of the photo/story/video
   displayName: string;
   avatarColor: string;
   avatarUrl?: string;
@@ -26,7 +26,16 @@ export async function addCommentToFirestore(comment: Omit<FirestoreComment, 'id'
   }
 }
 
-export async function getCommentsForTarget(targetType: string, targetId: number): Promise<FirestoreComment[]> {
+export async function deleteCommentFromFirestore(commentId: string): Promise<void> {
+  try {
+    await deleteDoc(doc(db, 'comments', commentId));
+  } catch (error) {
+    console.error('Error deleting comment:', error);
+    throw error;
+  }
+}
+
+export async function getCommentsForTarget(targetType: string, targetId: string): Promise<FirestoreComment[]> {
   try {
     const q = query(collection(db, 'comments'), orderBy('createdAt', 'asc'));
     const snapshot = await getDocs(q);

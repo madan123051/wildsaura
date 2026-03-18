@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
-import { Play, Eye, Heart, ChevronDown, MapPin, MessageCircle, Share2, Send } from 'lucide-react';
+import { Play, Eye, Heart, ChevronDown, MapPin, MessageCircle, Share2, Send, Trash2 } from 'lucide-react';
 import { Video, Comment, Visitor } from '../types';
 
 interface VideoSectionProps {
   videos: Video[];
   visitor: Visitor | null;
-  videoComments: Record<number, Comment[]>;
-  onAddVideoComment: (videoId: number, content: string) => void;
+  videoComments: Record<string, Comment[]>;
+  onAddVideoComment: (firestoreId: string, content: string) => void;
   onVideoLike: (videoId: number) => void;
   onVisitorLoginClick: () => void;
+  isAdmin?: boolean;
+  onDeleteComment?: (firestoreId: string) => void;
 }
 
 const INITIAL_COUNT = 3;
@@ -45,6 +47,8 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
   onAddVideoComment,
   onVideoLike,
   onVisitorLoginClick,
+  isAdmin,
+  onDeleteComment,
 }) => {
   const [showAll, setShowAll] = useState(false);
   const [playingId, setPlayingId] = useState<number | null>(null);
@@ -70,11 +74,12 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
   };
 
   /* ── submit comment ─────────────────────────────────────── */
-  const handleSubmitComment = (videoId: number) => {
-    const text = (commentInputs[videoId] || '').trim();
+  const handleSubmitComment = (video: Video) => {
+    const fId = video.firestoreId || '';
+    const text = (commentInputs[video.id] || '').trim();
     if (!text) return;
-    onAddVideoComment(videoId, text);
-    setCommentInputs((p) => ({ ...p, [videoId]: '' }));
+    onAddVideoComment(fId, text);
+    setCommentInputs((p) => ({ ...p, [video.id]: '' }));
   };
 
   return (
@@ -114,7 +119,7 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
           gap: '1.5rem',
         }}>
           {displayVideos.map((video) => {
-            const comments = videoComments[video.id] || [];
+            const comments = videoComments[video.firestoreId || ''] || [];
             const isExpanded = expandedComments[video.id];
             const visibleComments = isExpanded ? comments : comments.slice(-2);
             const hasHiddenComments = comments.length > 2 && !isExpanded;
@@ -326,7 +331,7 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
                   {visibleComments.length > 0 && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '0.65rem' }}>
                       {visibleComments.map((c) => (
-                        <div key={c.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+                        <div key={c.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', position: 'relative' }}>
                           {/* Avatar */}
                           {c.avatarUrl ? (
                             <img src={c.avatarUrl} alt={c.displayName} style={{
@@ -353,6 +358,20 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
                               {timeAgo(c.createdAt)}
                             </div>
                           </div>
+                          {isAdmin && c.firestoreId && onDeleteComment && (
+                            <button
+                              onClick={() => onDeleteComment(c.firestoreId!)}
+                              title="Delete comment"
+                              style={{
+                                background: 'rgba(255,60,60,0.15)', border: '1px solid rgba(255,60,60,0.3)',
+                                borderRadius: '4px', cursor: 'pointer', padding: '0.15rem',
+                                color: 'rgba(255,100,100,0.8)', display: 'flex', alignItems: 'center',
+                                transition: 'all 0.2s', flexShrink: 0,
+                              }}
+                            >
+                              <Trash2 size={11} />
+                            </button>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -387,14 +406,14 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
                           placeholder="Add a comment…"
                           value={commentInputs[video.id] || ''}
                           onChange={(e) => setCommentInputs((p) => ({ ...p, [video.id]: e.target.value }))}
-                          onKeyDown={(e) => { if (e.key === 'Enter') handleSubmitComment(video.id); }}
+                          onKeyDown={(e) => { if (e.key === 'Enter') handleSubmitComment(video); }}
                           style={{
                             flex: 1, background: 'none', border: 'none', outline: 'none',
                             padding: '0.45rem 0.75rem', fontSize: '0.75rem', color: 'var(--wa-text)',
                           }}
                         />
                         <button
-                          onClick={() => handleSubmitComment(video.id)}
+                          onClick={() => handleSubmitComment(video)}
                           disabled={!(commentInputs[video.id] || '').trim()}
                           style={{
                             background: 'none', border: 'none', cursor: 'pointer',

@@ -23,7 +23,7 @@ import { addUserLike, removeUserLike, getUserLikes } from './services/userLikesS
 import { getPhotosFromFirestore, deletePhotoFromFirestore, updatePhotoInFirestore, subscribeToPhotos } from './services/photoService';
 import { getStoriesFromFirestore, addStoryToFirestore, deleteStoryFromFirestore, updateStoryInFirestore, uploadStoryCoverToStorage, subscribeToStories } from './services/storyService';
 import { getVideosFromFirestore, addVideoToFirestore, deleteVideoFromFirestore, updateVideoInFirestore, uploadVideoThumbnailToStorage, uploadVideoToStorage, subscribeToVideos } from './services/videoService';
-import { addCommentToFirestore, getCommentsForTarget, getAllComments, subscribeToAllComments } from './services/commentService';
+import { addCommentToFirestore, deleteCommentFromFirestore, getCommentsForTarget, getAllComments, subscribeToAllComments } from './services/commentService';
 import { saveVisitorToFirestore, getVisitorFromFirestore, updateVisitorDownloadCount, updateVisitorProfile, trackOnlineVisitor, subscribeToOnlineVisitors } from './services/visitorService';
 import { LiveStats } from './components/LiveStats';
 
@@ -177,14 +177,15 @@ const App: React.FC = () => {
   const [showSearch, setShowSearch] = useState(false);
   const [showVisitorLogin, setShowVisitorLogin] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [photoComments, setPhotoComments] = useState<Record<number, Comment[]>>({});
-  const [storyComments, setStoryComments] = useState<Record<number, Comment[]>>({});
-  const [videoComments, setVideoComments] = useState<Record<number, Comment[]>>({});
+  const [photoComments, setPhotoComments] = useState<Record<string, Comment[]>>({});
+  const [storyComments, setStoryComments] = useState<Record<string, Comment[]>>({});
+  const [videoComments, setVideoComments] = useState<Record<string, Comment[]>>({});
   const [downloadCount, setDownloadCount] = useState(0);
   const [isDownloading, setIsDownloading] = useState(false);
   const [userLikes, setUserLikes] = useState<Set<string>>(new Set());
   const [onlineVisitorCount, setOnlineVisitorCount] = useState(0);
   const [totalCommentCount, setTotalCommentCount] = useState(0);
+  const [allFirestoreComments, setAllFirestoreComments] = useState<any[]>([]);
   const FREE_DOWNLOADS = 2;
   const onlineCleanupRef = useRef<(() => void) | null>(null);
 
@@ -406,9 +407,9 @@ const App: React.FC = () => {
 
     // ── Real-time COMMENTS subscription (already live!) ────────────────
     const unsubComments = subscribeToAllComments((allComments) => {
-      const photoMap: Record<number, Comment[]> = {};
-      const storyMap: Record<number, Comment[]> = {};
-      const videoMap: Record<number, Comment[]> = {};
+      const photoMap: Record<string, Comment[]> = {};
+      const storyMap: Record<string, Comment[]> = {};
+      const videoMap: Record<string, Comment[]> = {};
       allComments.forEach((c: any) => {
         const comment: Comment = {
           id: Date.now() + Math.random(),
@@ -419,21 +420,34 @@ const App: React.FC = () => {
           content: c.content,
           createdAt: c.createdAt?.toDate?.()?.toISOString?.()?.split('T')[0] || new Date().toISOString().split('T')[0],
         };
+        // Use targetId (firestoreId string) as the map key
+        const key = String(c.targetId);
         if (c.targetType === 'photo') {
-          if (!photoMap[c.targetId]) photoMap[c.targetId] = [];
-          photoMap[c.targetId].push(comment);
+          if (!photoMap[key]) photoMap[key] = [];
+          photoMap[key].push(comment);
         } else if (c.targetType === 'video') {
-          if (!videoMap[c.targetId]) videoMap[c.targetId] = [];
-          videoMap[c.targetId].push(comment);
+          if (!videoMap[key]) videoMap[key] = [];
+          videoMap[key].push(comment);
         } else {
-          if (!storyMap[c.targetId]) storyMap[c.targetId] = [];
-          storyMap[c.targetId].push(comment);
+          if (!storyMap[key]) storyMap[key] = [];
+          storyMap[key].push(comment);
         }
       });
       setPhotoComments(photoMap);
       setStoryComments(storyMap);
       setVideoComments(videoMap);
       setTotalCommentCount(allComments.length);
+      // Save raw comments for admin panel
+      setAllFirestoreComments(allComments.map((c: any) => ({
+        id: c.id,
+        targetType: c.targetType,
+        targetId: c.targetId,
+        displayName: c.displayName,
+        avatarColor: c.avatarColor || '',
+        avatarUrl: c.avatarUrl || '',
+        content: c.content,
+        createdAt: c.createdAt?.toDate?.()?.toISOString?.() || new Date().toISOString(),
+      })));
     });
 
     // ── Online Visitor Tracking (real-time presence) ───────────────────
@@ -463,12 +477,12 @@ const App: React.FC = () => {
   }, []);
 
 
-  // Apply user likes to photos/stories/videos when userLikes changes
+  // Apply user likes to photos/stories/videos when userLikes changes (keyed by firestoreId)
   useEffect(() => {
     if (userLikes.size > 0) {
-      setPhotos(prev => prev.map(p => ({ ...p, liked: userLikes.has(`photo_${p.id}`) })));
-      setStories(prev => prev.map(s => ({ ...s, liked: userLikes.has(`story_${s.id}`) })));
-      setVideos(prev => prev.map(v => ({ ...v, liked: userLikes.has(`video_${v.id}`) })));
+      setPhotos(prev => prev.map(p => ({ ...p, liked: userLikes.has(`photo_${p.firestoreId || p.id}`) })));
+      setStories(prev => prev.map(s => ({ ...s, liked: userLikes.has(`story_${s.firestoreId || s.id}`) })));
+      setVideos(prev => prev.map(v => ({ ...v, liked: userLikes.has(`video_${v.firestoreId || v.id}`) })));
     }
   }, [userLikes]);
 
@@ -519,15 +533,16 @@ const App: React.FC = () => {
       if (photo.firestoreId) {
         updatePhotoInFirestore(photo.firestoreId, { likeCount: newLikeCount }).catch(err => console.warn('Like update failed:', err));
       }
-      // Save per-user like to Firestore
+      // Save per-user like to Firestore (keyed by firestoreId)
+      const likeKey = photo?.firestoreId || String(id);
       if (visitor?.email) {
-        if (newLiked) addUserLike(visitor.email, 'photo', id).catch(console.warn);
-        else removeUserLike(visitor.email, 'photo', id).catch(console.warn);
+        if (newLiked) addUserLike(visitor.email, 'photo', likeKey).catch(console.warn);
+        else removeUserLike(visitor.email, 'photo', likeKey).catch(console.warn);
       }
       setUserLikes(prev => {
         const next = new Set(prev);
-        if (newLiked) next.add(`photo_${id}`);
-        else next.delete(`photo_${id}`);
+        if (newLiked) next.add(`photo_${likeKey}`);
+        else next.delete(`photo_${likeKey}`);
         return next;
       });
       return prev.map((p) =>
@@ -792,13 +807,14 @@ const App: React.FC = () => {
     }
     // Save per-user like to Firestore
     if (visitor?.email) {
-      if (updated.liked) addUserLike(visitor.email, 'story', selectedStory.id).catch(console.warn);
-      else removeUserLike(visitor.email, 'story', selectedStory.id).catch(console.warn);
+      const sLikeKey = selectedStory.firestoreId || String(selectedStory.id);
+      if (updated.liked) addUserLike(visitor.email, 'story', sLikeKey).catch(console.warn);
+      else removeUserLike(visitor.email, 'story', sLikeKey).catch(console.warn);
     }
     setUserLikes(prev => {
       const next = new Set(prev);
-      if (updated.liked) next.add(`story_${selectedStory.id}`);
-      else next.delete(`story_${selectedStory.id}`);
+      if (updated.liked) next.add(`story_${sLikeKey}`);
+      else next.delete(`story_${sLikeKey}`);
       return next;
     });
   }, [selectedStory, visitor]);
@@ -866,7 +882,7 @@ const App: React.FC = () => {
   }, []);
 
   // Comment handlers
-  const handleAddPhotoComment = useCallback((photoId: number, content: string) => {
+  const handleAddPhotoComment = useCallback((firestoreId: string, content: string) => {
     if (!visitor) return;
     const newComment: Comment = {
       id: Date.now(),
@@ -878,12 +894,11 @@ const App: React.FC = () => {
     };
     setPhotoComments((prev) => ({
       ...prev,
-      [photoId]: [...(prev[photoId] || []), newComment],
+      [firestoreId]: [...(prev[firestoreId] || []), newComment],
     }));
-    // Save to Firestore (with avatarUrl for Google login users)
     addCommentToFirestore({
       targetType: 'photo',
-      targetId: photoId,
+      targetId: firestoreId,
       displayName: visitor.displayName,
       avatarColor: visitor.avatarColor || '',
       avatarUrl: visitor.avatarUrl || '',
@@ -891,7 +906,7 @@ const App: React.FC = () => {
     }).catch(err => console.warn('Comment save failed:', err));
   }, [visitor]);
 
-  const handleAddStoryComment = useCallback((storyId: number, content: string) => {
+  const handleAddStoryComment = useCallback((firestoreId: string, content: string) => {
     if (!visitor) return;
     const newComment: Comment = {
       id: Date.now(),
@@ -903,12 +918,11 @@ const App: React.FC = () => {
     };
     setStoryComments((prev) => ({
       ...prev,
-      [storyId]: [...(prev[storyId] || []), newComment],
+      [firestoreId]: [...(prev[firestoreId] || []), newComment],
     }));
-    // Save to Firestore (with avatarUrl for Google login users)
     addCommentToFirestore({
       targetType: 'story',
-      targetId: storyId,
+      targetId: firestoreId,
       displayName: visitor.displayName,
       avatarColor: visitor.avatarColor || '',
       avatarUrl: visitor.avatarUrl || '',
@@ -916,7 +930,7 @@ const App: React.FC = () => {
     }).catch(err => console.warn('Comment save failed:', err));
   }, [visitor]);
 
-  const handleAddVideoComment = useCallback((videoId: number, content: string) => {
+  const handleAddVideoComment = useCallback((firestoreId: string, content: string) => {
     if (!visitor) return;
     const newComment: Comment = {
       id: Date.now(),
@@ -928,18 +942,23 @@ const App: React.FC = () => {
     };
     setVideoComments((prev) => ({
       ...prev,
-      [videoId]: [...(prev[videoId] || []), newComment],
+      [firestoreId]: [...(prev[firestoreId] || []), newComment],
     }));
-    // Save to Firestore (with avatarUrl for Google login users)
     addCommentToFirestore({
       targetType: 'video',
-      targetId: videoId,
+      targetId: firestoreId,
       displayName: visitor.displayName,
       avatarColor: visitor.avatarColor || '',
       avatarUrl: visitor.avatarUrl || '',
       content,
     }).catch(err => console.warn('Video comment save failed:', err));
   }, [visitor]);
+
+  const handleDeleteComment = useCallback((commentFirestoreId: string) => {
+    if (!confirm('Delete this comment?')) return;
+    deleteCommentFromFirestore(commentFirestoreId).catch(err => console.warn('Delete comment failed:', err));
+    // Real-time subscription will auto-update the UI
+  }, []);
 
   const handleVideoLike = useCallback((id: number) => {
     setVideos((prev) => {
@@ -952,13 +971,14 @@ const App: React.FC = () => {
       }
       // Save per-user like to Firestore
       if (visitor?.email) {
-        if (newLiked) addUserLike(visitor.email, 'video', id).catch(console.warn);
-        else removeUserLike(visitor.email, 'video', id).catch(console.warn);
+        const vLikeKey = video?.firestoreId || String(id);
+        if (newLiked) addUserLike(visitor.email, 'video', vLikeKey).catch(console.warn);
+        else removeUserLike(visitor.email, 'video', vLikeKey).catch(console.warn);
       }
       setUserLikes(prev => {
         const next = new Set(prev);
-        if (newLiked) next.add(`video_${id}`);
-        else next.delete(`video_${id}`);
+        if (newLiked) next.add(`video_${vLikeKey}`);
+        else next.delete(`video_${vLikeKey}`);
         return next;
       });
       return prev.map((v) =>
@@ -1111,6 +1131,8 @@ const App: React.FC = () => {
         onUpdateStory={handleUpdateStory}
         videos={videos}
         onAddVideo={handleAddVideo}
+        allComments={allFirestoreComments}
+        onDeleteComment={handleDeleteComment}
         onDeleteVideo={handleDeleteVideo}
         onUpdateVideo={handleUpdateVideo}
       />
@@ -1174,9 +1196,11 @@ const App: React.FC = () => {
           onBack={handleStoryBack}
           onLike={handleStoryLike}
           visitor={visitor}
-          comments={storyComments[selectedStory.id] || []}
-          onAddComment={(content) => handleAddStoryComment(selectedStory.id, content)}
+          comments={storyComments[selectedStory.firestoreId || ''] || []}
+          onAddComment={(content) => handleAddStoryComment(selectedStory.firestoreId || '', content)}
           onVisitorLoginClick={() => setShowVisitorLogin(true)}
+          isAdmin={isAdmin}
+          onDeleteComment={handleDeleteComment}
         />
         <Footer logoUrl={logoUrl} onTermsClick={handleTermsClick} />
         <AIChatbot photos={photos} onPhotoClick={openPhoto} />
@@ -1235,6 +1259,8 @@ const App: React.FC = () => {
         onAddVideoComment={handleAddVideoComment}
         onVideoLike={handleVideoLike}
         onVisitorLoginClick={() => setShowVisitorLogin(true)}
+        isAdmin={isAdmin}
+        onDeleteComment={handleDeleteComment}
       />
       <AboutSection />
       <Footer logoUrl={logoUrl} onTermsClick={handleTermsClick} />
@@ -1258,8 +1284,9 @@ const App: React.FC = () => {
           isGeneratingStory={false}
           isAdmin={isAdmin}
           visitor={visitor}
-          comments={photoComments[selectedPhoto.id] || []}
-          onAddComment={(content) => handleAddPhotoComment(selectedPhoto.id, content)}
+          comments={photoComments[selectedPhoto.firestoreId || ''] || []}
+          onAddComment={(content) => handleAddPhotoComment(selectedPhoto.firestoreId || '', content)}
+          onDeleteComment={handleDeleteComment}
           onVisitorLoginClick={() => setShowVisitorLogin(true)}
           freeDownloadsLeft={Math.max(0, FREE_DOWNLOADS - downloadCount)}
           isDownloading={isDownloading}

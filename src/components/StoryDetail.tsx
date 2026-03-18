@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Heart, Clock, Eye, User, Share2 } from 'lucide-react';
+import { ArrowLeft, Heart, Clock, Eye, User, Share2, Trash2 } from 'lucide-react';
 import { Story, Visitor, Comment } from '../types';
 
 interface StoryDetailProps {
@@ -10,12 +10,14 @@ interface StoryDetailProps {
   comments: Comment[];
   onAddComment: (content: string) => void;
   onVisitorLoginClick: () => void;
+  isAdmin?: boolean;
+  onDeleteComment?: (firestoreId: string) => void;
 }
 
 const estimateReadTime = (content: string): number => Math.max(1, Math.ceil(content.split(/\s+/).length / 200));
 
 export const StoryDetail: React.FC<StoryDetailProps> = ({
-  story, onBack, onLike, visitor, comments, onAddComment, onVisitorLoginClick,
+  story, onBack, onLike, visitor, comments, onAddComment, onVisitorLoginClick, isAdmin, onDeleteComment,
 }) => {
   const [commentText, setCommentText] = useState('');
   const [shareToast, setShareToast] = useState(false);
@@ -184,7 +186,7 @@ export const StoryDetail: React.FC<StoryDetailProps> = ({
                   <div key={c.id} style={{
                     display: 'flex', gap: '0.75rem', padding: '0.75rem',
                     borderRadius: '10px', background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid var(--wa-border)',
+                    border: '1px solid var(--wa-border)', position: 'relative',
                   }}>
                     {c.avatarUrl ? (
                       <img src={c.avatarUrl} alt={c.displayName} style={{
@@ -200,13 +202,28 @@ export const StoryDetail: React.FC<StoryDetailProps> = ({
                         {c.displayName.charAt(0).toUpperCase()}
                       </div>
                     )}
-                    <div>
+                    <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--wa-text)' }}>{c.displayName}</span>
                         <span style={{ fontSize: '0.65rem', color: 'var(--wa-text-muted)' }}>{c.createdAt}</span>
                       </div>
                       <p style={{ fontSize: '0.85rem', color: 'var(--wa-text)', opacity: 0.8, marginTop: '0.25rem', lineHeight: 1.5 }}>{c.content}</p>
                     </div>
+                    {isAdmin && c.firestoreId && onDeleteComment && (
+                      <button
+                        onClick={() => onDeleteComment(c.firestoreId!)}
+                        title="Delete comment"
+                        style={{
+                          position: 'absolute', top: '0.5rem', right: '0.5rem',
+                          background: 'rgba(255,60,60,0.15)', border: '1px solid rgba(255,60,60,0.3)',
+                          borderRadius: '4px', cursor: 'pointer', padding: '0.25rem',
+                          color: 'rgba(255,100,100,0.8)', display: 'flex', alignItems: 'center',
+                          transition: 'all 0.2s',
+                        }}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>

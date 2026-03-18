@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Image, Plus, Pencil, Trash2, LogOut, Eye, EyeOff,
   MapPin, Heart, BarChart3, TrendingUp, X, Save, Search, BookOpen,
   Upload, Sparkles, Film, Camera, FileImage, Loader2, Info,
-  Settings, Cpu
+  Settings, Cpu, MessageCircle
 } from 'lucide-react';
 import { Photo, Story, Video } from '../types';
 import { analyzePhoto, getAnimalInfo } from '../utils/aiService';
@@ -16,7 +16,7 @@ import { readExifFromFile } from '../utils/exifReader';
 
 
 
-type AdminView = 'dashboard' | 'photos' | 'add' | 'stories' | 'add-story' | 'videos' | 'add-video' | 'ai-settings';
+type AdminView = 'dashboard' | 'photos' | 'add' | 'stories' | 'add-story' | 'videos' | 'add-video' | 'comments' | 'ai-settings';
 
 interface AdminDashboardProps {
   logoUrl?: string;
@@ -34,6 +34,8 @@ interface AdminDashboardProps {
   onAddVideo: (video: Video) => void;
   onDeleteVideo: (id: number) => void;
   onUpdateVideo: (video: Video) => void;
+  allComments?: any[];
+  onDeleteComment?: (commentId: string) => void;
 }
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
@@ -1037,6 +1039,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   logoUrl, photos, onAddPhoto, onUpdatePhoto, onDeletePhoto, onLogout, onViewSite,
   stories, onAddStory, onDeleteStory, onUpdateStory,
   videos, onAddVideo, onDeleteVideo, onUpdateVideo,
+  allComments = [], onDeleteComment,
 }) => {
   const [view, setView] = useState<AdminView>('dashboard');
   const [editingPhoto, setEditingPhoto] = useState<Photo | null>(null);
@@ -1086,6 +1089,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     if (view === 'add-story') return 'Add New Story';
     if (view === 'videos') return editingVideo ? 'Edit Video' : 'Manage Videos';
     if (view === 'add-video') return 'Add New Video';
+    if (view === 'comments') return 'Manage Comments';
     if (view === 'ai-settings') return 'AI Configuration';
     return '';
   };
@@ -1141,6 +1145,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </button>
           <button style={sidebarItemStyle(view === 'add-video')} onClick={() => { setView('add-video'); setEditingVideo(null); }}>
             <Plus size={18} /> Add Video
+          </button>
+
+          <div style={{ borderTop: '1px solid rgba(201,168,76,0.08)', margin: '0.5rem 0', paddingTop: '0.5rem' }}>
+            <p style={{ fontSize: '0.6rem', color: 'rgba(235,230,220,0.25)', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0 1rem', marginBottom: '0.25rem' }}>Social</p>
+          </div>
+          <button style={sidebarItemStyle(view === 'comments')} onClick={() => { setView('comments'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); }}>
+            <MessageCircle size={18} /> Comments
+            {allComments.length > 0 && (
+              <span style={{
+                marginLeft: 'auto', fontSize: '0.65rem', padding: '0.1rem 0.4rem',
+                borderRadius: '10px', background: 'rgba(201,168,76,0.2)', color: 'var(--wa-gold)',
+              }}>{allComments.length}</span>
+            )}
           </button>
 
           <div style={{ borderTop: '1px solid rgba(201,168,76,0.08)', margin: '0.5rem 0', paddingTop: '0.5rem' }}>
@@ -1405,6 +1422,118 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
           )}
 
+
+          {/* Comments Management View */}
+          {view === 'comments' && (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 200 }}>
+                  <Search size={16} style={{ color: 'var(--wa-text-muted)' }} />
+                  <input
+                    type="text"
+                    placeholder="Search comments..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="wa-input"
+                    style={{ flex: 1 }}
+                  />
+                </div>
+                <span style={{ fontSize: '0.8rem', color: 'var(--wa-text-muted)' }}>
+                  {allComments.length} total comments
+                </span>
+              </div>
+
+              {allComments.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--wa-text-muted)' }}>
+                  <MessageCircle size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
+                  <p>No comments yet</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {allComments
+                    .filter((c: any) =>
+                      c.displayName?.toLowerCase().includes(search.toLowerCase()) ||
+                      c.content?.toLowerCase().includes(search.toLowerCase())
+                    )
+                    .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                    .map((c: any) => {
+                      const targetItem = c.targetType === 'photo'
+                        ? photos.find(p => p.firestoreId === c.targetId)
+                        : c.targetType === 'story'
+                        ? stories.find(s => s.firestoreId === c.targetId)
+                        : videos.find(v => v.firestoreId === c.targetId);
+                      const targetName = targetItem?.title || `Unknown ${c.targetType}`;
+                      const typeIcon = c.targetType === 'photo' ? '📷' : c.targetType === 'story' ? '📖' : '🎬';
+                      const typeColor = c.targetType === 'photo' ? 'rgba(59,130,246,0.2)' : c.targetType === 'story' ? 'rgba(168,85,247,0.2)' : 'rgba(239,68,68,0.2)';
+
+                      return (
+                        <div key={c.id} style={{
+                          padding: '1rem', borderRadius: '10px',
+                          background: 'rgba(255,255,255,0.03)',
+                          border: '1px solid var(--wa-border)',
+                          display: 'flex', gap: '0.75rem', alignItems: 'flex-start',
+                        }}>
+                          {/* Avatar */}
+                          {c.avatarUrl ? (
+                            <img src={c.avatarUrl} alt={c.displayName} style={{
+                              width: 36, height: 36, borderRadius: '50%', flexShrink: 0, objectFit: 'cover',
+                            }} referrerPolicy="no-referrer" />
+                          ) : (
+                            <div style={{
+                              width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              background: c.avatarColor || 'var(--wa-gold)',
+                              fontSize: '0.8rem', fontWeight: 700, color: '#000',
+                            }}>
+                              {(c.displayName || '?')[0].toUpperCase()}
+                            </div>
+                          )}
+
+                          {/* Content */}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.3rem' }}>
+                              <span style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--wa-text)' }}>{c.displayName}</span>
+                              <span style={{
+                                fontSize: '0.6rem', padding: '0.1rem 0.4rem', borderRadius: '4px',
+                                background: typeColor, color: 'var(--wa-text-muted)',
+                              }}>
+                                {typeIcon} {c.targetType}
+                              </span>
+                              <span style={{ fontSize: '0.65rem', color: 'var(--wa-text-muted)' }}>
+                                on "{targetName}"
+                              </span>
+                            </div>
+                            <p style={{ fontSize: '0.85rem', color: 'var(--wa-text)', opacity: 0.85, lineHeight: 1.5, wordBreak: 'break-word' }}>
+                              {c.content}
+                            </p>
+                            <span style={{ fontSize: '0.65rem', color: 'var(--wa-text-muted)', marginTop: '0.3rem', display: 'block' }}>
+                              {new Date(c.createdAt).toLocaleString()}
+                            </span>
+                          </div>
+
+                          {/* Delete button */}
+                          {onDeleteComment && (
+                            <button
+                              onClick={() => onDeleteComment(c.id)}
+                              title="Delete comment"
+                              style={{
+                                background: 'rgba(255,60,60,0.1)', border: '1px solid rgba(255,60,60,0.25)',
+                                borderRadius: '6px', cursor: 'pointer', padding: '0.35rem',
+                                color: 'rgba(255,100,100,0.7)', display: 'flex', alignItems: 'center',
+                                transition: 'all 0.2s', flexShrink: 0,
+                              }}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })
+                  }
+                </div>
+              )}
+            </div>
+          )}
           {/* AI Settings View */}
           {view === 'ai-settings' && <AISettingsPanel />}
         </div>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Heart, Share2, Download, MapPin, User, Tag, Camera, Maximize2, Timer, Zap, Eye, Lock, ImageOff, BookOpen } from 'lucide-react';
+import { X, Heart, Share2, Download, MapPin, User, Tag, Camera, Maximize2, Timer, Zap, Eye, Lock, ImageOff, BookOpen, Trash2 } from 'lucide-react';
 import { Photo, Comment, Visitor } from '../types';
 
 interface PhotoModalProps {
@@ -15,12 +15,13 @@ interface PhotoModalProps {
   comments: Comment[];
   onAddComment: (content: string) => void;
   onVisitorLoginClick: () => void;
+  onDeleteComment?: (firestoreId: string) => void;
   freeDownloadsLeft: number;
   isDownloading: boolean;
 }
 
 export const PhotoModal: React.FC<PhotoModalProps> = ({
-  photo, onClose, onLike, onShare, onDownload, onGenerateStory, isGeneratingStory, isAdmin, visitor, comments, onAddComment, onVisitorLoginClick, freeDownloadsLeft, isDownloading,
+  photo, onClose, onLike, onShare, onDownload, onGenerateStory, isGeneratingStory, isAdmin, visitor, comments, onAddComment, onVisitorLoginClick, onDeleteComment, freeDownloadsLeft, isDownloading,
 }) => {
   const [activeTab, setActiveTab] = useState<'info' | 'exif' | 'comments'>('info');
   const [commentText, setCommentText] = useState('');
@@ -195,7 +196,7 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
                   </p>
                 )}
                 {comments.map((c) => (
-                  <div key={c.id} style={{ display: 'flex', gap: '0.75rem', padding: '0.75rem', borderRadius: '0.5rem', background: 'var(--wa-dark-alt)' }}>
+                  <div key={c.id} style={{ display: 'flex', gap: '0.75rem', padding: '0.75rem', borderRadius: '0.5rem', background: 'var(--wa-dark-alt)', position: 'relative' }}>
                     {c.avatarUrl ? (
                       <img src={c.avatarUrl} alt={c.displayName} style={{
                         width: 28, height: 28, borderRadius: '50%', flexShrink: 0, objectFit: 'cover',
@@ -210,10 +211,25 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
                         {c.displayName.charAt(0).toUpperCase()}
                       </div>
                     )}
-                    <div>
+                    <div style={{ flex: 1 }}>
                       <p style={{ fontSize: '0.75rem', fontWeight: 600, opacity: 0.7 }}>{c.displayName}</p>
                       <p className="text-wa-mid" style={{ fontSize: '0.875rem', marginTop: '0.2rem' }}>{c.content}</p>
                     </div>
+                    {isAdmin && c.firestoreId && onDeleteComment && (
+                      <button
+                        onClick={() => onDeleteComment(c.firestoreId!)}
+                        title="Delete comment"
+                        style={{
+                          position: 'absolute', top: '0.5rem', right: '0.5rem',
+                          background: 'rgba(255,60,60,0.15)', border: '1px solid rgba(255,60,60,0.3)',
+                          borderRadius: '4px', cursor: 'pointer', padding: '0.2rem',
+                          color: 'rgba(255,100,100,0.8)', display: 'flex', alignItems: 'center',
+                          transition: 'all 0.2s',
+                        }}
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
