@@ -59,8 +59,8 @@ Return ONLY the JSON object, no markdown, no code blocks, no explanation.`;
 
     } else {
       // ── Gemini Vision (default) ──
-      // Use gemini-1.5-flash first — most stable and highest free-tier rate limits
-      const models = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro'];
+      // Use gemini-2.5-flash first — latest model with best free-tier rate limits
+      const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
       let success = false;
       let lastError = '';
 

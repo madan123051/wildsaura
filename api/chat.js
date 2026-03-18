@@ -52,43 +52,63 @@ Rules:
 
     let content = '';
 
+    // Helper: wait for given ms
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
     if (provider === 'gemini') {
-      // ── Gemini ──
-      const models = ['gemini-2.0-flash', 'gemini-1.5-flash'];
+      // ── Gemini — with retry for 429 rate limits ──
+      const models = ['gemini-2.5-flash', 'gemini-2.0-flash'];
       let success = false;
+      let lastError = '';
 
       for (const model of models) {
-        try {
-          const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${resolvedKey}`;
-          const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{
-                parts: [{ text: `${systemPrompt}\n\nUser message: ${message}` }],
-              }],
-              generationConfig: {
-                temperature: 0.7,
-                maxOutputTokens: 800,
-              },
-            }),
-          });
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${resolvedKey}`;
+            const response = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{
+                  parts: [{ text: `${systemPrompt}\n\nUser message: ${message}` }],
+                }],
+                generationConfig: {
+                  temperature: 0.7,
+                  maxOutputTokens: 800,
+                },
+              }),
+            });
 
-          if (response.ok) {
-            const data = await response.json();
-            content = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-            if (content) {
-              success = true;
+            if (response.ok) {
+              const data = await response.json();
+              content = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+              if (content) {
+                success = true;
+                break;
+              }
+            } else if (response.status === 429) {
+              // Rate limited — wait and retry
+              const waitTime = (attempt + 1) * 3000; // 3s, 6s, 9s
+              console.warn(`Gemini ${model} rate limited (429). Waiting ${waitTime / 1000}s before retry ${attempt + 1}/3...`);
+              lastError = `Rate limited (429)`;
+              await sleep(waitTime);
+              continue;
+            } else {
+              lastError = `${model} error ${response.status}`;
+              console.warn(`Gemini ${model} failed for chat: ${response.status}`);
               break;
             }
+          } catch (modelErr) {
+            lastError = modelErr.message;
+            console.warn(`Gemini ${model} failed for chat:`, modelErr.message);
+            break;
           }
-        } catch (modelErr) {
-          console.warn(`Gemini ${model} failed for chat:`, modelErr.message);
         }
+        if (success) break;
       }
 
       if (!success) {
-        return res.status(500).json({ error: 'Gemini chat failed. Please try again.' });
+        return res.status(500).json({ error: `Gemini chat failed after retries. ${lastError}. Please wait a moment and try again.` });
       }
 
     } else if (provider === 'chatgpt') {

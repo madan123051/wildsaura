@@ -107,7 +107,7 @@ Return ONLY valid JSON (no markdown, no code blocks, no extra text):
 
     } else {
       // ── Gemini (default) — with retry for 429 rate limits ──
-      const models = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro'];
+      const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
       let success = false;
       let lastError = '';
 
