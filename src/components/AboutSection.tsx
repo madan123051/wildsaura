@@ -34,23 +34,29 @@ export const AboutSection: React.FC = () => {
               background: 'linear-gradient(to bottom, #c9a84c, transparent)',
             }} />
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+            {/* Profile Photo */}
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
               <div style={{
-                width: 48,
-                height: 48,
+                width: 140,
+                height: 140,
                 borderRadius: '50%',
-                background: 'linear-gradient(135deg, rgba(201,168,76,0.2), rgba(201,168,76,0.05))',
-                border: '1px solid rgba(201,168,76,0.3)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                margin: '0 auto 1rem',
+                overflow: 'hidden',
+                border: '3px solid rgba(201,168,76,0.5)',
+                boxShadow: '0 0 20px rgba(201,168,76,0.15)',
               }}>
-                <Camera size={22} color="#c9a84c" />
+                <img
+                  src="/madan-about.png"
+                  alt="Madan - Wildlife & Nature Photographer"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                  }}
+                />
               </div>
-              <div>
-                <p className="section-subtitle" style={{ marginBottom: 0 }}>Behind the Lens</p>
-                <h3 className="font-playfair" style={{ fontSize: '1.75rem', fontWeight: 700, margin: 0 }}>Madan</h3>
-              </div>
+              <p className="section-subtitle" style={{ marginBottom: 0 }}>Behind the Lens</p>
+              <h3 className="font-playfair" style={{ fontSize: '1.75rem', fontWeight: 700, margin: 0 }}>Madan</h3>
             </div>
 
             <p className="text-wa-mid" style={{ fontSize: '0.9rem', lineHeight: 1.8, marginBottom: '1.25rem' }}>
