@@ -598,6 +598,7 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(initial?.coverImageUrl || null);
   const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiStatus, setAiStatus] = useState('');
   const [photographer, setPhotographer] = useState(initial?.photographer || '');
 
   const autoSlug = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -659,8 +660,9 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
   }, []);
 
   const handleAiFill = useCallback(async () => {
-    if (!title && !coverImageUrl) { alert('Please add a title or cover image first'); return; }
+    if (!title && !previewUrl && !coverImageUrl) { alert('Please add a title or cover image first'); return; }
     setAiGenerating(true);
+    setAiStatus('🔍 Starting AI analysis...');
     try {
       const settings = await getAISettings();
       const photoProvider = settings.photoAnalysisProvider;
@@ -671,37 +673,50 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
                        storyProvider === 'deepseek' ? settings.deepseekKey :
                        storyProvider === 'chatgpt' ? settings.chatgptKey : settings.geminiKey;
 
-      // Step 1: If cover image exists, analyze it with AI Vision
+      // Step 1: Analyze cover image with AI Vision (use previewUrl data URL, not firebase URL)
       let animalName = '';
       let imageAnalysis = '';
-      if (coverImageUrl && photoKey) {
+      let detectedLocation = '';
+      const imageForAI = previewUrl || coverImageUrl;
+      if (imageForAI && photoKey) {
+        setAiStatus('📸 Analyzing photo with AI Vision...');
         try {
           const analyzeRes = await fetch('/api/analyze', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ imageData: coverImageUrl, provider: photoProvider, apiKey: photoKey }),
+            body: JSON.stringify({ imageData: imageForAI, provider: photoProvider, apiKey: photoKey }),
           });
           if (analyzeRes.ok) {
             const analysis = await analyzeRes.json();
             if (analysis.success && analysis.data) {
               animalName = analysis.data.animalName || analysis.data.title || '';
-              imageAnalysis = `Animal: ${animalName}, Tags: ${(analysis.data.tags || []).join(', ')}, Location: ${analysis.data.location || 'Unknown'}`;
+              detectedLocation = analysis.data.location || '';
+              imageAnalysis = `Animal: ${animalName}, Tags: ${(analysis.data.tags || []).join(', ')}, Location: ${detectedLocation}`;
               // Auto-fill tags if empty
               if (!tagsStr && analysis.data.tags?.length) {
                 setTagsStr(analysis.data.tags.join(', '));
               }
+              // Auto-fill title if empty
+              if (!title && animalName) {
+                const storyTitle = `The ${animalName} — A Wildlife Story`;
+                setTitle(storyTitle);
+                setSlug(autoSlug(storyTitle));
+              }
+              setAiStatus(`🐾 Detected: ${animalName || 'Unknown subject'}`);
             }
           }
         } catch (err) {
           console.warn('Image analysis failed:', err);
+          setAiStatus('⚠️ Photo analysis failed, trying with title...');
         }
       }
 
-      // Step 2: Fetch Wikipedia info if animal detected
+      // Step 2: Fetch Wikipedia info
       let wikiInfo = '';
       const searchAnimal = animalName || title;
       if (searchAnimal) {
+        setAiStatus(`📚 Looking up "${searchAnimal}" on Wikipedia...`);
         try {
-          const wikiRes = await fetch(`/api/wikipedia?animal=${encodeURIComponent(searchAnimal)}`);
+          const wikiRes = await fetch(\`/api/wikipedia?animal=\${encodeURIComponent(searchAnimal)}\`);
           if (wikiRes.ok) {
             const wiki = await wikiRes.json();
             wikiInfo = wiki.summary || wiki.extract || '';
@@ -709,20 +724,22 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
         } catch {}
       }
 
-      // Step 3: Generate story with AI using image analysis + Wikipedia
+      // Step 3: Generate story with AI + Wikipedia
       if (!storyKey) {
         alert('No API key configured for story generation. Please set up API keys in AI Settings.');
         setAiGenerating(false);
+        setAiStatus('');
         return;
       }
 
+      setAiStatus('✍️ AI is writing the story...');
       const storyRes = await fetch('/api/generate-story', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           photoTitle: title || animalName || 'Wildlife Photo',
           animalName: animalName,
-          location: imageAnalysis,
-          caption: wikiInfo ? `Wikipedia: ${wikiInfo.substring(0, 500)}` : '',
+          location: detectedLocation || imageAnalysis,
+          caption: wikiInfo ? \`Wikipedia: \${wikiInfo.substring(0, 500)}\` : '',
           wikiInfo: wikiInfo,
           provider: storyProvider,
           apiKey: storyKey,
@@ -731,21 +748,23 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
 
       if (storyRes.ok) {
         const story = await storyRes.json();
-        if (story.title && !title) setTitle(story.title);
+        if (story.title) { setTitle(story.title); setSlug(autoSlug(story.title)); }
         if (story.excerpt) setExcerpt(story.excerpt);
         if (story.content) setContent(story.content);
         if (story.tags?.length) setTagsStr(story.tags.join(', '));
-        if (!slug && story.title) setSlug(autoSlug(story.title));
+        if (animalName && !photographer) setPhotographer(animalName + ' Photography');
+        setAiStatus('✅ Story generated! Review and edit as needed.');
       } else {
         const errData = await storyRes.json().catch(() => ({}));
-        alert(`AI generation failed: ${errData.error || 'Unknown error'}. Please try again.`);
+        setAiStatus(\`❌ AI generation failed: \${errData.error || 'Unknown error'}\`);
       }
     } catch (err) {
       console.error('AI fill error:', err);
-      alert('AI generation failed. Please check your API keys in AI Settings.');
+      setAiStatus('❌ AI generation failed. Check API keys in AI Settings.');
     }
+    setTimeout(() => setAiStatus(''), 10000);
     setAiGenerating(false);
-  }, [title, coverImageUrl, excerpt, content, tagsStr, slug]);
+  }, [title, previewUrl, coverImageUrl, tagsStr, slug, photographer]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -808,9 +827,19 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
           {aiGenerating ? (
             <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> AI is writing...</>
           ) : (
-            <><Sparkles size={18} /> ✨ AI Auto-Fill Excerpt, Content & Tags</>
+            <><Sparkles size={18} /> ✨ Upload Photo → AI Recognizes → Auto-Write Story</>
           )}
         </button>
+        {aiStatus && (
+          <div style={{
+            marginTop: '0.5rem', padding: '0.5rem 0.75rem',
+            background: aiStatus.includes('✅') ? 'rgba(76,201,76,0.1)' : aiStatus.includes('❌') ? 'rgba(201,76,76,0.1)' : 'rgba(201,168,76,0.1)',
+            border: `1px solid ${aiStatus.includes('✅') ? 'rgba(76,201,76,0.3)' : aiStatus.includes('❌') ? 'rgba(201,76,76,0.3)' : 'rgba(201,168,76,0.2)'}`,
+            borderRadius: '8px', fontSize: '0.8rem', color: 'var(--wa-light)', textAlign: 'center',
+          }}>
+            {aiStatus}
+          </div>
+        )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
