@@ -226,10 +226,12 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
   const [animalName, setAnimalName] = useState(initial?.animalName || '');
   const [wikiSummary, setWikiSummary] = useState(initial?.wikiSummary || '');
   const [aiStatus, setAiStatus] = useState('');
+  const [exifStatus, setExifStatus] = useState('');
 
   const handleFileSelected = useCallback(async (file: File) => {
     setUploading(true);
     setUploadedFileName(file.name);
+    setExifStatus('');
 
     const isVideo = file.type.startsWith('video/');
     setMediaType(isVideo ? 'video' : 'photo');
@@ -237,15 +239,23 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
     // Extract EXIF data from JPEG photos (auto-fill camera fields)
     if (!isVideo) {
       try {
+        setExifStatus('📷 Reading EXIF data...');
         const exif = await readExifFromFile(file);
-        if (exif.cameraModel) setCameraModel(exif.cameraModel);
-        if (exif.lens) setLens(exif.lens);
-        if (exif.aperture) setAperture(exif.aperture);
-        if (exif.shutterSpeed) setShutterSpeed(exif.shutterSpeed);
-        if (exif.iso) setIso(exif.iso);
-        if (exif.focalLength) setFocalLength(exif.focalLength);
+        const fields = [exif.cameraModel, exif.lens, exif.aperture, exif.shutterSpeed, exif.iso, exif.focalLength].filter(Boolean);
+        if (fields.length > 0) {
+          if (exif.cameraModel) setCameraModel(exif.cameraModel);
+          if (exif.lens) setLens(exif.lens);
+          if (exif.aperture) setAperture(exif.aperture);
+          if (exif.shutterSpeed) setShutterSpeed(exif.shutterSpeed);
+          if (exif.iso) setIso(exif.iso);
+          if (exif.focalLength) setFocalLength(exif.focalLength);
+          setExifStatus(`✅ EXIF: ${exif.cameraModel || 'Camera'} — ${fields.length} fields auto-filled`);
+        } else {
+          setExifStatus('⚠️ No EXIF data found (only JPEG from cameras have EXIF)');
+        }
         console.log('📷 EXIF data extracted:', exif);
       } catch (err) {
+        setExifStatus('❌ EXIF read failed');
         console.warn('EXIF extraction failed:', err);
       }
     }
@@ -253,7 +263,39 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
     // Read as data URL for preview
     const reader = new FileReader();
     reader.onload = async () => {
-      const dataUrl = reader.result as string;
+      let dataUrl = reader.result as string;
+
+      // Auto-compress large photos (max 2048px) to reduce upload size + improve AI speed
+      if (!isVideo && file.size > 500 * 1024) { // >500KB
+        try {
+          const img = new Image();
+          await new Promise<void>((resolve, reject) => {
+            img.onload = () => resolve();
+            img.onerror = reject;
+            img.src = dataUrl;
+          });
+          const maxDim = 2048;
+          if (img.width > maxDim || img.height > maxDim) {
+            const scale = Math.min(maxDim / img.width, maxDim / img.height);
+            const w = Math.round(img.width * scale);
+            const h = Math.round(img.height * scale);
+            const canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(img, 0, 0, w, h);
+              const compressed = canvas.toDataURL('image/jpeg', 0.85);
+              const origKB = Math.round(dataUrl.length * 0.75 / 1024);
+              const compKB = Math.round(compressed.length * 0.75 / 1024);
+              console.log(`📸 Compressed: ${img.width}x${img.height} (${origKB}KB) → ${w}x${h} (${compKB}KB)`);
+              dataUrl = compressed;
+            }
+          }
+        } catch (compErr) {
+          console.warn('Auto-compression failed, using original:', compErr);
+        }
+      }
+
       setPreviewDataUrl(dataUrl);
       // Apply watermark
       try {
@@ -505,6 +547,7 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
 
         <div style={{ gridColumn: '1 / -1', borderTop: '1px solid rgba(201,168,76,0.1)', paddingTop: '1rem', marginTop: '0.5rem' }}>
           <span className="font-cinzel" style={{ fontSize: '0.7rem', color: 'var(--wa-gold)', letterSpacing: '0.1em' }}>📷 Camera & EXIF Data (auto-filled from photo)</span>
+          {exifStatus && <span style={{ fontSize: '0.7rem', marginLeft: '0.5rem', color: exifStatus.startsWith('✅') ? '#4ade80' : exifStatus.startsWith('⚠') ? '#fbbf24' : '#f87171' }}>{exifStatus}</span>}
         </div>
         <div><label style={labelStyle}>Camera Model</label><input value={cameraModel} onChange={(e) => setCameraModel(e.target.value)} placeholder="Auto-detected from JPEG" style={inputStyle} /></div>
         <div><label style={labelStyle}>Lens</label><input value={lens} onChange={(e) => setLens(e.target.value)} placeholder="RF 100-500mm" style={inputStyle} /></div>

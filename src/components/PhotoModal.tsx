@@ -196,14 +196,20 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
                 )}
                 {comments.map((c) => (
                   <div key={c.id} style={{ display: 'flex', gap: '0.75rem', padding: '0.75rem', borderRadius: '0.5rem', background: 'var(--wa-dark-alt)' }}>
-                    <div style={{
-                      width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      background: c.avatarColor || 'linear-gradient(135deg, #c9a84c, #f5d98b)',
-                      fontSize: '0.65rem', fontWeight: 700, color: '#000',
-                    }}>
-                      {c.displayName.charAt(0).toUpperCase()}
-                    </div>
+                    {c.avatarUrl ? (
+                      <img src={c.avatarUrl} alt={c.displayName} style={{
+                        width: 28, height: 28, borderRadius: '50%', flexShrink: 0, objectFit: 'cover',
+                      }} referrerPolicy="no-referrer" />
+                    ) : (
+                      <div style={{
+                        width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: c.avatarColor || 'linear-gradient(135deg, #c9a84c, #f5d98b)',
+                        fontSize: '0.65rem', fontWeight: 700, color: '#000',
+                      }}>
+                        {c.displayName.charAt(0).toUpperCase()}
+                      </div>
+                    )}
                     <div>
                       <p style={{ fontSize: '0.75rem', fontWeight: 600, opacity: 0.7 }}>{c.displayName}</p>
                       <p className="text-wa-mid" style={{ fontSize: '0.875rem', marginTop: '0.2rem' }}>{c.content}</p>
@@ -215,13 +221,19 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
               {visitor ? (
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem' }}>
-                    <div style={{
-                      width: 20, height: 20, borderRadius: '50%', background: visitor.avatarColor,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '0.6rem', fontWeight: 700, color: '#000',
-                    }}>
-                      {visitor.displayName.charAt(0).toUpperCase()}
-                    </div>
+                    {visitor.avatarUrl ? (
+                      <img src={visitor.avatarUrl} alt={visitor.displayName} style={{
+                        width: 20, height: 20, borderRadius: '50%', objectFit: 'cover',
+                      }} referrerPolicy="no-referrer" />
+                    ) : (
+                      <div style={{
+                        width: 20, height: 20, borderRadius: '50%', background: visitor.avatarColor,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '0.6rem', fontWeight: 700, color: '#000',
+                      }}>
+                        {visitor.displayName.charAt(0).toUpperCase()}
+                      </div>
+                    )}
                     <span style={{ fontSize: '0.7rem', color: 'var(--wa-text-muted)' }}>
                       {visitor.displayName}
                     </span>
