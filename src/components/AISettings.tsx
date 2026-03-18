@@ -374,9 +374,8 @@ export const AISettingsPanel: React.FC = () => {
           body: JSON.stringify({
             contents: [{ parts: [{ text: 'Say "connected" in one word.' }] }],
             generationConfig: {
-              maxOutputTokens: 10,
+              maxOutputTokens: 100,
             },
-            thinkingConfig: { thinkingBudget: 0 },
           }),
         });
         success = response.ok;

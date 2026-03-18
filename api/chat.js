@@ -74,9 +74,8 @@ Rules:
                 }],
                 generationConfig: {
                   temperature: 0.7,
-                  maxOutputTokens: 800,
-                },
-                thinkingConfig: { thinkingBudget: 0 },
+                  maxOutputTokens: 8192,
+                  },
               }),
             });
 

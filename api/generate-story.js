@@ -122,9 +122,8 @@ Return ONLY valid JSON (no markdown, no code blocks, no extra text):
                 contents: [{ parts: [{ text: prompt }] }],
                 generationConfig: {
                   temperature: 0.8,
-                  maxOutputTokens: 3000,
-                },
-                thinkingConfig: { thinkingBudget: 0 },
+                  maxOutputTokens: 8192,
+                  },
               }),
             });
 
