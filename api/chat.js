@@ -56,27 +56,32 @@ Rules:
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
     if (provider === 'gemini') {
-      // ── Gemini — with retry for 429 rate limits ──
-      const models = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+      // ── Gemini — with model fallback and retry for 429 rate limits ──
+      // NOTE: gemini-2.0-flash and gemini-1.5-* are deprecated/removed by Google (March 2026).
+      const models = ['gemini-2.5-flash', 'gemini-2.5-flash-lite'];
       let success = false;
       let lastError = '';
 
       for (const model of models) {
+        // Build request body — disable thinking to avoid 400 errors
+        const requestBody = {
+          contents: [{
+            parts: [{ text: `${systemPrompt}\n\nUser message: ${message}` }],
+          }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 800,
+            thinkingConfig: { thinkingBudget: 0 },
+          },
+        };
+
         for (let attempt = 0; attempt < 3; attempt++) {
           try {
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${resolvedKey}`;
             const response = await fetch(url, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: [{
-                  parts: [{ text: `${systemPrompt}\n\nUser message: ${message}` }],
-                }],
-                generationConfig: {
-                  temperature: 0.7,
-                  maxOutputTokens: 800,
-                },
-              }),
+              body: JSON.stringify(requestBody),
             });
 
             if (response.ok) {
@@ -87,15 +92,15 @@ Rules:
                 break;
               }
             } else if (response.status === 429) {
-              // Rate limited — wait and retry
-              const waitTime = (attempt + 1) * 3000; // 3s, 6s, 9s
+              const waitTime = (attempt + 1) * 3000;
               console.warn(`Gemini ${model} rate limited (429). Waiting ${waitTime / 1000}s before retry ${attempt + 1}/3...`);
               lastError = `Rate limited (429)`;
               await sleep(waitTime);
               continue;
             } else {
-              lastError = `${model} error ${response.status}`;
-              console.warn(`Gemini ${model} failed for chat: ${response.status}`);
+              const errText = await response.text();
+              lastError = `${model} error ${response.status}: ${errText.substring(0, 200)}`;
+              console.warn(`Gemini ${model} failed for chat: ${response.status}`, errText.substring(0, 200));
               break;
             }
           } catch (modelErr) {

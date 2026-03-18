@@ -106,25 +106,34 @@ Return ONLY valid JSON (no markdown, no code blocks, no extra text):
       storyText = data.choices?.[0]?.message?.content || '';
 
     } else {
-      // ── Gemini (default) — with retry for 429 rate limits ──
-      const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+      // ── Gemini (default) — with model fallback and retry for 429 rate limits ──
+      // NOTE: gemini-2.0-flash and gemini-1.5-* are deprecated/removed by Google (March 2026).
+      // Only use gemini-2.5-* models.
+      const models = ['gemini-2.5-flash', 'gemini-2.5-flash-lite'];
       let success = false;
       let lastError = '';
 
       for (const model of models) {
+        // Build request body — disable thinking for 2.5 models to avoid
+        // 400 errors (thinking ON requires maxOutputTokens > thinkingBudget)
+        const requestBody = {
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.8,
+            maxOutputTokens: 3000,
+            // Disable thinking: our app only needs JSON responses,
+            // and small maxOutputTokens conflicts with thinking budget.
+            thinkingConfig: { thinkingBudget: 0 },
+          },
+        };
+
         for (let attempt = 0; attempt < 3; attempt++) {
           try {
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
             const response = await fetch(url, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: {
-                  temperature: 0.8,
-                  maxOutputTokens: 3000,
-                },
-              }),
+              body: JSON.stringify(requestBody),
             });
 
             if (response.ok) {
@@ -146,7 +155,9 @@ Return ONLY valid JSON (no markdown, no code blocks, no extra text):
               console.warn(`Gemini ${model}: 403 Forbidden — skipping`);
               break;
             } else {
-              lastError = `${model} error ${response.status}`;
+              const errText = await response.text();
+              lastError = `${model} error ${response.status}: ${errText.substring(0, 200)}`;
+              console.warn(`Gemini ${model} failed: ${response.status}`, errText.substring(0, 200));
               break;
             }
           } catch (modelErr) {
