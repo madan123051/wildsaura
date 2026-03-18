@@ -59,8 +59,9 @@ Return ONLY the JSON object, no markdown, no code blocks, no explanation.`;
 
     } else {
       // ── Gemini Vision (default) ──
-      // Use gemini-2.5-flash first — latest model with best free-tier rate limits
-      const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+      // NOTE: gemini-2.0-flash and gemini-1.5-* are deprecated/removed by Google (March 2026).
+      // Only use gemini-2.5-* models.
+      const models = ['gemini-2.5-flash', 'gemini-2.5-flash-lite'];
       let success = false;
       let lastError = '';
 
@@ -91,6 +92,24 @@ Return ONLY the JSON object, no markdown, no code blocks, no explanation.`;
       const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
       for (const model of models) {
+        // Build request body — disable thinking for all 2.5 models to avoid
+        // 400 errors (thinking ON requires maxOutputTokens > thinkingBudget)
+        const requestBody = {
+          contents: [{
+            parts: [
+              { text: prompt },
+              imageParts,
+            ],
+          }],
+          generationConfig: {
+            temperature: 0.3,
+            maxOutputTokens: 2048,
+            // Disable thinking: our app only needs short JSON responses,
+            // and small maxOutputTokens conflicts with thinking budget.
+            thinkingConfig: { thinkingBudget: 0 },
+          },
+        };
+
         // Try each model with up to 3 retries for rate limit (429) errors
         for (let attempt = 0; attempt < 3; attempt++) {
           try {
@@ -98,18 +117,7 @@ Return ONLY the JSON object, no markdown, no code blocks, no explanation.`;
             const response = await fetch(url, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: [{
-                  parts: [
-                    { text: prompt },
-                    imageParts,
-                  ],
-                }],
-                generationConfig: {
-                  temperature: 0.3,
-                  maxOutputTokens: 2048,
-                },
-              }),
+              body: JSON.stringify(requestBody),
             });
 
             if (response.ok) {
@@ -132,8 +140,9 @@ Return ONLY the JSON object, no markdown, no code blocks, no explanation.`;
               console.warn(`Gemini ${model}: 403 Forbidden — skipping`);
               break; // skip to next model
             } else {
-              lastError = `${model} error ${response.status}`;
-              console.warn(`Gemini ${model} failed: ${response.status}`);
+              const errText = await response.text();
+              lastError = `${model} error ${response.status}: ${errText.substring(0, 200)}`;
+              console.warn(`Gemini ${model} failed: ${response.status}`, errText.substring(0, 200));
               break; // skip to next model for other errors
             }
           } catch (modelErr) {
