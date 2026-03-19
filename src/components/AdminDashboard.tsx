@@ -11,7 +11,7 @@ import { uploadPhotoToStorage, addPhotoToFirestore, updatePhotoInFirestore } fro
 import { getAISettings } from '../services/aiSettingsService';
 import { AISettingsPanel } from './AISettings';
 import { getSiteSettings, saveSiteSettings, uploadHeroImage, uploadDefaultThumbnail, uploadCategoryImage, SiteSettings } from '../services/siteSettingsService';
-import { applyWatermark } from '../utils/watermark';
+import { applyWatermark, bakeWatermarkOnFile } from '../utils/watermark';
 import { compressImageForAI, compressForUpload } from '../utils/imageCompressor';
 import { readExifFromFile } from '../utils/exifReader';
 import { subscribeToContactMessages, deleteContactMessage, ContactMessage } from '../services/contactService';
@@ -396,12 +396,22 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
         try {
           setUploadProgress(0);
           // Always use File/Blob for resumable upload (never uploadString — it hangs on large files)
-          const fileToUpload: File | Blob = compressedFile ??
+          let fileToUpload: File | Blob = compressedFile ??
             await fetch(imageUrl).then(r => r.blob()); // Convert data URL → Blob as fallback
-          const uploadName = compressedFile
+          
+          // Bake ©WILDSAURA watermark into image BEFORE uploading
+          // This ensures even direct Firebase Storage URL access shows the watermark
+          try {
+            console.log('🔒 Baking watermark into image before upload...');
+            fileToUpload = await bakeWatermarkOnFile(fileToUpload);
+          } catch (wmErr) {
+            console.warn('🔒 Watermark bake failed, uploading without:', wmErr);
+          }
+          
+          const uploadName = (fileToUpload instanceof File && fileToUpload.name.endsWith('.webp'))
             ? (uploadedFileName || 'photo').replace(/\.[^.]+$/, '') + '.webp'
             : (uploadedFileName || 'photo.jpg');
-          console.log(`📤 Uploading ${compressedFile ? 'compressed WebP' : 'original (compression failed)'}: ${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB`);
+          console.log(`📤 Uploading ${compressedFile ? 'compressed WebP + watermark' : 'original + watermark'}: ${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB`);
           finalImageUrl = await uploadPhotoToStorage(fileToUpload, uploadName, (p) => setUploadProgress(p));
         } catch (err: any) {
           console.error('Firebase Storage upload failed:', err);

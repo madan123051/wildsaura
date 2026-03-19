@@ -61,8 +61,16 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
         }}
       >
         {/* Image */}
-        <div style={{ position: 'relative' }}>
-          <img src={photo.imageUrl} alt={photo.title} style={{ width: '100%', objectFit: 'cover', borderRadius: '1rem 1rem 0 0', maxHeight: '55vh' }} />
+        <div style={{ position: 'relative' }} onContextMenu={(e) => e.preventDefault()}>
+          <img
+            src={photo.imageUrl}
+            alt={photo.title}
+            style={{ width: '100%', objectFit: 'cover', borderRadius: '1rem 1rem 0 0', maxHeight: '55vh', userSelect: 'none', WebkitUserDrag: 'none' } as React.CSSProperties}
+            draggable={false}
+            onDragStart={(e) => e.preventDefault()}
+          />
+          {/* Transparent overlay to block right-click save */}
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 }} />
           {/* Watermark badge */}
           <span
             className="font-cinzel"

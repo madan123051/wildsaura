@@ -32,13 +32,20 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, on
       }}
     >
       {/* Image */}
-      <div style={{ aspectRatio: '1/1', position: 'relative', overflow: 'hidden' }}>
+      <div
+        style={{ aspectRatio: '1/1', position: 'relative', overflow: 'hidden' }}
+        onContextMenu={(e) => e.preventDefault()}
+      >
         <img
           src={photo.imageUrl}
           alt={photo.title}
-          style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.7s' }}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.7s', userSelect: 'none', WebkitUserDrag: 'none' } as React.CSSProperties}
           loading="lazy"
+          draggable={false}
+          onDragStart={(e) => e.preventDefault()}
         />
+        {/* Transparent overlay to block right-click save */}
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 }} />
         {/* Watermark badge */}
         <span
           className="font-cinzel"
