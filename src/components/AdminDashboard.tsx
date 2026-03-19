@@ -229,8 +229,8 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
   const [tagsInput, setTagsInput] = useState(initial?.tags?.join(', ') || '');
   const [animalName, setAnimalName] = useState(initial?.animalName || '');
   const [photographer, setPhotographer] = useState(initial?.photographer || '');
-  const [latitude, setLatitude] = useState<number | undefined>(initial?.latitude);
-  const [longitude, setLongitude] = useState<number | undefined>(initial?.longitude);
+  const [latitudeStr, setLatitudeStr] = useState<string>(initial?.latitude !== undefined ? String(initial.latitude) : '');
+  const [longitudeStr, setLongitudeStr] = useState<string>(initial?.longitude !== undefined ? String(initial.longitude) : '');
   const [wikiSummary, setWikiSummary] = useState(initial?.wikiSummary || '');
   const [aiStatus, setAiStatus] = useState('');
   const [exifStatus, setExifStatus] = useState('');
