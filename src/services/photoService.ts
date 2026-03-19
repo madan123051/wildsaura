@@ -19,6 +19,8 @@ export interface FirestorePhoto {
   focalLength?: string;
   likeCount: number;
   type: string;
+  photographer?: string;
+  published?: boolean;
   createdAt?: any;
 }
 

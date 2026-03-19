@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { Photo, Story, Video } from '../types';
 import { analyzePhoto, getAnimalInfo } from '../utils/aiService';
-import { uploadPhotoToStorage, addPhotoToFirestore } from '../services/photoService';
+import { uploadPhotoToStorage, addPhotoToFirestore, updatePhotoInFirestore } from '../services/photoService';
 import { getAISettings } from '../services/aiSettingsService';
 import { AISettingsPanel } from './AISettings';
 import { getSiteSettings, saveSiteSettings, uploadHeroImage, uploadDefaultThumbnail, uploadCategoryImage, SiteSettings } from '../services/siteSettingsService';
@@ -401,14 +401,27 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
       
       // Save metadata to Firestore
       try {
-        const docId = await addPhotoToFirestore({
-          title, caption: caption || '', category, imageUrl: finalImageUrl,
-          location: location || '', tags: finalTags, animalName,
-          cameraModel, lens, aperture, shutterSpeed, iso, focalLength,
-          likeCount: initial?.likeCount || 0,
-          type: mediaType === 'video' ? 'video' : 'photo',
-        });
-        firestoreId = docId;
+        if (initial?.firestoreId) {
+          await updatePhotoInFirestore(initial.firestoreId, {
+            title, caption: caption || '', category, imageUrl: finalImageUrl,
+            location: location || '', tags: finalTags, animalName,
+            cameraModel, lens, aperture, shutterSpeed, iso, focalLength,
+            likeCount: initial?.likeCount || 0,
+            type: mediaType === 'video' ? 'video' : 'photo',
+            photographer: photographer || '',
+          });
+          firestoreId = initial.firestoreId;
+        } else {
+          const docId = await addPhotoToFirestore({
+            title, caption: caption || '', category, imageUrl: finalImageUrl,
+            location: location || '', tags: finalTags, animalName,
+            cameraModel, lens, aperture, shutterSpeed, iso, focalLength,
+            likeCount: initial?.likeCount || 0,
+            type: mediaType === 'video' ? 'video' : 'photo',
+            photographer: photographer || '',
+          });
+          firestoreId = docId;
+        }
       } catch (err) {
         console.warn('Firestore save failed:', err);
       }
