@@ -12,7 +12,7 @@ import { getAISettings } from '../services/aiSettingsService';
 import { AISettingsPanel } from './AISettings';
 import { getSiteSettings, saveSiteSettings, uploadHeroImage, uploadDefaultThumbnail, uploadCategoryImage, SiteSettings } from '../services/siteSettingsService';
 import { applyWatermark } from '../utils/watermark';
-import { compressImageForAI } from '../utils/imageCompressor';
+import { compressImageForAI, compressForUpload } from '../utils/imageCompressor';
 import { readExifFromFile } from '../utils/exifReader';
 import { subscribeToContactMessages, deleteContactMessage, ContactMessage } from '../services/contactService';
 
@@ -234,6 +234,8 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
   const [wikiSummary, setWikiSummary] = useState(initial?.wikiSummary || '');
   const [aiStatus, setAiStatus] = useState('');
   const [exifStatus, setExifStatus] = useState('');
+  const [compressedFile, setCompressedFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const handleFileSelected = useCallback(async (file: File) => {
     setUploading(true);
@@ -272,34 +274,22 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
     reader.onload = async () => {
       let dataUrl = reader.result as string;
 
-      // Auto-compress large photos (max 2048px) to reduce upload size + improve AI speed
-      if (!isVideo && file.size > 500 * 1024) { // >500KB
+      // Client-side compression: WebP format, 90% quality, max 3840px (4K)
+      // Runs in background — aapko pata bhi nahi chalega, sab background mein hoga!
+      if (!isVideo) {
         try {
-          const img = new Image();
-          await new Promise<void>((resolve, reject) => {
-            img.onload = () => resolve();
-            img.onerror = reject;
-            img.src = dataUrl;
+          const webpFile = await compressForUpload(file);
+          setCompressedFile(webpFile);
+          // Convert compressed WebP to data URL for preview & watermark
+          dataUrl = await new Promise<string>((res, rej) => {
+            const r2 = new FileReader();
+            r2.onload = () => res(r2.result as string);
+            r2.onerror = rej;
+            r2.readAsDataURL(webpFile);
           });
-          const maxDim = 2048;
-          if (img.width > maxDim || img.height > maxDim) {
-            const scale = Math.min(maxDim / img.width, maxDim / img.height);
-            const w = Math.round(img.width * scale);
-            const h = Math.round(img.height * scale);
-            const canvas = document.createElement('canvas');
-            canvas.width = w; canvas.height = h;
-            const ctx = canvas.getContext('2d');
-            if (ctx) {
-              ctx.drawImage(img, 0, 0, w, h);
-              const compressed = canvas.toDataURL('image/jpeg', 0.85);
-              const origKB = Math.round(dataUrl.length * 0.75 / 1024);
-              const compKB = Math.round(compressed.length * 0.75 / 1024);
-              console.log(`📸 Compressed: ${img.width}x${img.height} (${origKB}KB) → ${w}x${h} (${compKB}KB)`);
-              dataUrl = compressed;
-            }
-          }
         } catch (compErr) {
-          console.warn('Auto-compression failed, using original:', compErr);
+          console.warn('Client-side compression failed, using original:', compErr);
+          setCompressedFile(null);
         }
       }
 
@@ -404,7 +394,13 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
       // Upload to Firebase Storage if it's a data URL
       if (imageUrl.startsWith('data:')) {
         try {
-          finalImageUrl = await uploadPhotoToStorage(imageUrl, uploadedFileName || 'photo.jpg');
+          setUploadProgress(0);
+          // Use compressed WebP File for upload (with progress), or fall back to data URL
+          const fileToUpload: File | string = compressedFile ?? imageUrl;
+          const uploadName = compressedFile
+            ? (uploadedFileName || 'photo').replace(/\.[^.]+$/, '') + '.webp'
+            : (uploadedFileName || 'photo.jpg');
+          finalImageUrl = await uploadPhotoToStorage(fileToUpload, uploadName, (p) => setUploadProgress(p));
         } catch (err) {
           console.warn('Firebase Storage upload failed, using data URL:', err);
         }
@@ -617,7 +613,7 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
         <button type="submit" className="btn-gold" disabled={saving} style={{
           padding: '0.6rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem',
           opacity: saving ? 0.5 : 1, pointerEvents: saving ? 'none' : 'auto',
-        }}><Save size={16} /> {saving ? 'Saving...' : initial ? 'Update Photo' : 'Add Photo'}</button>
+        }}><Save size={16} /> {saving ? (uploadProgress > 0 && uploadProgress < 100 ? `Uploading ${uploadProgress}%` : 'Saving...') : initial ? 'Update Photo' : 'Add Photo'}</button>
       </div>
     </form>
   );

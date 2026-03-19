@@ -1,6 +1,6 @@
 import { db, storage } from '../firebase';
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, serverTimestamp, onSnapshot, Unsubscribe } from 'firebase/firestore';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytesResumable, uploadString, getDownloadURL } from 'firebase/storage';
 
 export interface FirestorePhoto {
   id?: string;
@@ -28,10 +28,56 @@ export interface FirestorePhoto {
 
 const PHOTOS_COLLECTION = 'photos';
 
-export async function uploadPhotoToStorage(dataUrl: string, filename: string): Promise<string> {
+/**
+ * Upload a photo to Firebase Storage.
+ * Accepts either a File/Blob (preferred — supports progress tracking)
+ * or a data URL string (legacy fallback).
+ * @param input    File/Blob from compressForUpload, or data URL string
+ * @param filename Destination filename in storage
+ * @param onProgress Optional callback: receives 0–100 integer during upload
+ */
+export async function uploadPhotoToStorage(
+  input: File | Blob | string,
+  filename: string,
+  onProgress?: (progress: number) => void
+): Promise<string> {
   const storageRef = ref(storage, `photos/${Date.now()}_${filename}`);
-  await uploadString(storageRef, dataUrl, 'data_url');
-  return await getDownloadURL(storageRef);
+
+  // Legacy path: data URL string (no progress available)
+  if (typeof input === 'string') {
+    await uploadString(storageRef, input, 'data_url');
+    if (onProgress) onProgress(100);
+    return await getDownloadURL(storageRef);
+  }
+
+  // Preferred path: File/Blob with resumable upload + progress tracking
+  return new Promise<string>((resolve, reject) => {
+    const uploadTask = uploadBytesResumable(storageRef, input, {
+      contentType: input.type || 'image/webp',
+    });
+
+    uploadTask.on(
+      'state_changed',
+      (snapshot) => {
+        const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+        // Upload is 40–100% of the total progress (0–40% was compression)
+        if (onProgress) onProgress(40 + Math.round(pct * 0.6));
+      },
+      (error) => {
+        console.error('Firebase Storage upload error:', error);
+        reject(error);
+      },
+      async () => {
+        try {
+          const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+          if (onProgress) onProgress(100);
+          resolve(downloadUrl);
+        } catch (err) {
+          reject(err);
+        }
+      }
+    );
+  });
 }
 
 export async function addPhotoToFirestore(photo: Omit<FirestorePhoto, 'id'>): Promise<string> {
