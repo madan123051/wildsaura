@@ -1971,29 +1971,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           </span>
                         </div>
                         <div style={{ display: 'flex', gap: '0.4rem', flexShrink: 0 }}>
-                          <a href={`mailto:${msg.email}`} title="Reply" style={{
-                            width: 32, height: 32, borderRadius: '6px',
+                          <button onClick={(e) => { e.stopPropagation(); window.open(`mailto:${msg.email}`, '_blank'); }} title="Reply" style={{
+                            width: 36, height: 36, borderRadius: '6px',
                             background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.2)',
                             color: '#60a5fa', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            textDecoration: 'none',
-                          }}><Mail size={14} /></a>
+                          }}><Mail size={14} /></button>
                           {msgDeleteConfirm === msg.id ? (
                             <div style={{ display: 'flex', gap: '0.25rem' }}>
-                              <button onClick={async () => { if (msg.id) { await deleteContactMessage(msg.id); setMsgDeleteConfirm(null); } }} style={{
-                                padding: '0 0.6rem', height: 32, borderRadius: '6px',
+                              <button onClick={async (e) => { e.stopPropagation(); if (msg.id) { try { await deleteContactMessage(msg.id); setMsgDeleteConfirm(null); } catch (err) { console.error('Delete failed:', err); alert('Delete failed. Check Firestore rules.'); setMsgDeleteConfirm(null); } } }} style={{
+                                padding: '0 0.6rem', height: 36, borderRadius: '6px',
                                 background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)',
-                                color: '#f87171', cursor: 'pointer', fontSize: '0.7rem',
+                                color: '#f87171', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600,
                               }}>Delete</button>
-                              <button onClick={() => setMsgDeleteConfirm(null)} style={{
-                                width: 32, height: 32, borderRadius: '6px',
+                              <button onClick={(e) => { e.stopPropagation(); setMsgDeleteConfirm(null); }} style={{
+                                width: 36, height: 36, borderRadius: '6px',
                                 background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
                                 color: 'rgba(235,230,220,0.5)', cursor: 'pointer',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                               }}><X size={14} /></button>
                             </div>
                           ) : (
-                            <button onClick={() => setMsgDeleteConfirm(msg.id || null)} style={{
-                              width: 32, height: 32, borderRadius: '6px',
+                            <button onClick={(e) => { e.stopPropagation(); setMsgDeleteConfirm(msg.id || null); }} style={{
+                              width: 36, height: 36, borderRadius: '6px',
                               background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.15)',
                               color: 'rgba(239,68,68,0.5)', cursor: 'pointer',
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
