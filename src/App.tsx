@@ -28,6 +28,7 @@ import { saveVisitorToFirestore, getVisitorFromFirestore, updateVisitorDownloadC
 import { LiveStats } from './components/LiveStats';
 import { PhotoMap } from './components/PhotoMap';
 import { onSiteSettingsChange, SiteSettings } from './services/siteSettingsService';
+import { NotificationPanel, AppNotification } from './components/NotificationPanel';
 
 const logoUrl = '/photos/logo.png';
 
@@ -190,8 +191,58 @@ const App: React.FC = () => {
   const [allFirestoreComments, setAllFirestoreComments] = useState<any[]>([]);
   const [siteSettings, setSiteSettings] = useState<SiteSettings>({ heroImages: [] });
   const [showMap, setShowMap] = useState(false);
+  const [notifications, setNotifications] = useState<AppNotification[]>(() => {
+    try { const s = localStorage.getItem('wa_notifications'); return s ? JSON.parse(s) : []; } catch { return []; }
+  });
+  const [showNotifPanel, setShowNotifPanel] = useState(false);
   const FREE_DOWNLOADS = 2;
   const onlineCleanupRef = useRef<(() => void) | null>(null);
+
+  // ── Notification Helpers ──────────────────────────────────────────────────
+  const saveNotifications = useCallback((notifs: AppNotification[]) => {
+    setNotifications(notifs);
+    try { localStorage.setItem('wa_notifications', JSON.stringify(notifs)); } catch {}
+  }, []);
+
+  const addNotification = useCallback((notif: Omit<AppNotification, 'id' | 'timestamp' | 'read'>) => {
+    const newNotif: AppNotification = { ...notif, id: `n_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, timestamp: Date.now(), read: false };
+    setNotifications(prev => {
+      const updated = [newNotif, ...prev].slice(0, 50); // Keep max 50
+      try { localStorage.setItem('wa_notifications', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+  }, []);
+
+  const handleMarkRead = useCallback((id: string) => {
+    setNotifications(prev => {
+      const updated = prev.map(n => n.id === id ? { ...n, read: true } : n);
+      try { localStorage.setItem('wa_notifications', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+  }, []);
+
+  const handleMarkAllRead = useCallback(() => {
+    setNotifications(prev => {
+      const updated = prev.map(n => ({ ...n, read: true }));
+      try { localStorage.setItem('wa_notifications', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+  }, []);
+
+  const handleDeleteNotif = useCallback((id: string) => {
+    setNotifications(prev => {
+      const updated = prev.filter(n => n.id !== id);
+      try { localStorage.setItem('wa_notifications', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+  }, []);
+
+  const handleClearAllNotifs = useCallback(() => {
+    setNotifications([]);
+    try { localStorage.setItem('wa_notifications', JSON.stringify([])); } catch {}
+  }, []);
+
+  const unreadNotifCount = notifications.filter(n => !n.read).length;
 
   // ── Firebase Auth Session Persistence ──────────────────────────────────
   const visitorRef = useRef<Visitor | null>(null);
@@ -851,6 +902,17 @@ const App: React.FC = () => {
     }
     setVisitor(merged);
     setShowVisitorLogin(false);
+    // Welcome notification for first-time visitors
+    const welcomeKey = `wa_welcomed_${userKey || merged.displayName}`;
+    if (!localStorage.getItem(welcomeKey)) {
+      localStorage.setItem(welcomeKey, '1');
+      addNotification({
+        title: `Namaste 🙏 ${merged.displayName}!`,
+        message: `Welcome to WildSaura! 🌿\nExplore our wildlife gallery, share your love for nature, and discover the wild beauty of India.\n\nEnjoy ${FREE_DOWNLOADS} free high-quality downloads! 📸`,
+        type: 'welcome',
+        icon: '🙏',
+      });
+    }
     // Save/update profile in Firestore (merge: true preserves existing fields)
     if (userKey) {
       saveVisitorToFirestore({
@@ -1168,7 +1230,8 @@ const App: React.FC = () => {
           onVisitorLogout={handleVisitorLogout}
           onVisitorUpdate={handleVisitorUpdate}
           onStoriesClick={handleStoriesNavClick}
-          onNotificationClick={() => {}}
+          notificationCount={unreadNotifCount}
+          onNotificationClick={() => setShowNotifPanel(p => !p)}
         />
         <TermsConditions onBack={() => { setView('home'); window.history.pushState({}, '', '/'); window.scrollTo(0, 0); }} />
         <Footer logoUrl={logoUrl} onTermsClick={handleTermsClick} />
@@ -1205,7 +1268,8 @@ const App: React.FC = () => {
           onVisitorLogout={handleVisitorLogout}
           onVisitorUpdate={handleVisitorUpdate}
           onStoriesClick={handleStoriesNavClick}
-          onNotificationClick={() => {}}
+          notificationCount={unreadNotifCount}
+          onNotificationClick={() => setShowNotifPanel(p => !p)}
         />
         <StoryDetail
           story={selectedStory}
@@ -1258,7 +1322,8 @@ const App: React.FC = () => {
         onVisitorLogout={handleVisitorLogout}
         onVisitorUpdate={handleVisitorUpdate}
         onStoriesClick={handleStoriesNavClick}
-          onNotificationClick={() => {}}
+          notificationCount={unreadNotifCount}
+          onNotificationClick={() => setShowNotifPanel(p => !p)}
       />
       <Hero onExplore={scrollToGallery} logoUrl={logoUrl} heroImages={siteSettings.heroImages} />
       <CategorySection categories={dynamicCategories} onCategoryClick={handleCategoryClick} />
@@ -1341,6 +1406,16 @@ const App: React.FC = () => {
         isOpen={showVisitorLogin}
         onClose={() => setShowVisitorLogin(false)}
         onLogin={handleVisitorLogin}
+      />
+
+      <NotificationPanel
+        isOpen={showNotifPanel}
+        onClose={() => setShowNotifPanel(false)}
+        notifications={notifications}
+        onMarkRead={handleMarkRead}
+        onMarkAllRead={handleMarkAllRead}
+        onDelete={handleDeleteNotif}
+        onClearAll={handleClearAllNotifs}
       />
     </div>
   );
