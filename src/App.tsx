@@ -278,6 +278,8 @@ const App: React.FC = () => {
         focalLength: fp.focalLength || '',
         tags: fp.tags || [],
         animalName: fp.animalName || '',
+        photographer: fp.photographer || '',
+        published: fp.published !== false,
         likeCount: fp.likeCount || 0,
         liked: false,
       }));
