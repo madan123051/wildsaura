@@ -1,7 +1,7 @@
 /**
  * Download a photo with optional watermark and 1MB size limit.
  * IMPORTANT: If applyWatermark is true, we NEVER skip the watermark.
- * The old fallback (direct link download) bypassed the watermark — now fixed.
+ * Uses /api/proxy-image to bypass CORS issues with Firebase Storage.
  */
 
 function drawWatermark(ctx: CanvasRenderingContext2D, width: number, height: number): void {
@@ -34,8 +34,11 @@ function drawWatermark(ctx: CanvasRenderingContext2D, width: number, height: num
   ctx.restore();
 }
 
+/**
+ * Load image — uses proxy for Firebase URLs to avoid CORS canvas tainting
+ */
 async function loadImage(imageUrl: string): Promise<HTMLImageElement> {
-  // For data URLs, load directly without CORS
+  // For data URLs, load directly
   if (imageUrl.startsWith('data:')) {
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -45,9 +48,17 @@ async function loadImage(imageUrl: string): Promise<HTMLImageElement> {
     });
   }
 
-  // For external URLs, try fetch+blob approach (avoids CORS canvas tainting)
+  // For external URLs, use proxy to avoid CORS
+  let fetchUrl = imageUrl;
+  if (
+    imageUrl.includes('firebasestorage.googleapis.com') ||
+    imageUrl.includes('firebasestorage.app')
+  ) {
+    fetchUrl = `/api/proxy-image?url=${encodeURIComponent(imageUrl)}`;
+  }
+
   try {
-    const response = await fetch(imageUrl, { mode: 'cors' });
+    const response = await fetch(fetchUrl);
     if (!response.ok) throw new Error('Fetch failed');
     const blob = await response.blob();
     const blobUrl = URL.createObjectURL(blob);
@@ -64,7 +75,7 @@ async function loadImage(imageUrl: string): Promise<HTMLImageElement> {
       img.src = blobUrl;
     });
   } catch {
-    // Fallback: try with crossOrigin
+    // Last resort fallback with crossOrigin
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.crossOrigin = 'anonymous';
@@ -82,7 +93,7 @@ export async function downloadPhoto(
 ): Promise<void> {
   try {
     const img = await loadImage(imageUrl);
-    
+
     const canvas = document.createElement('canvas');
     let w = img.naturalWidth || img.width;
     let h = img.naturalHeight || img.height;
@@ -111,7 +122,7 @@ export async function downloadPhoto(
     // Export as JPEG, adjusting quality to stay under 1MB
     return new Promise((resolve, reject) => {
       let quality = 0.82;
-      
+
       const tryExport = () => {
         canvas.toBlob(
           (b) => {
@@ -147,15 +158,17 @@ export async function downloadPhoto(
 
     // FIXED: If watermark is required, do NOT allow non-watermarked download
     if (applyWatermark) {
-      alert('⚠️ Download failed — watermark could not be applied. Please try again or contact support.');
+      alert(
+        '⚠️ Download failed — watermark could not be applied. Please try again or contact support.',
+      );
       throw err;
     }
 
     // Only allow direct download if watermark is NOT required (first 2 free downloads)
     const a = document.createElement('a');
     a.href = imageUrl;
-    a.download = `${title.replace(/[^a-zA-Z0-9_-]/g, '_')}_wildsaura.jpg`;
-    a.target = '_blank';
+    const safeName = title.replace(/[^a-zA-Z0-9_-]/g, '_');
+    a.download = `${safeName}_wildsaura.jpg`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
