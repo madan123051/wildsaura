@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Image, Plus, Pencil, Trash2, LogOut, Eye, EyeOff,
   MapPin, Heart, BarChart3, TrendingUp, X, Save, Search, BookOpen,
   Upload, Sparkles, Film, Camera, FileImage, Loader2, Info,
-  Settings, Cpu, MessageCircle, Globe
+  Settings, Cpu, MessageCircle, Globe, Mail
 } from 'lucide-react';
 import { Photo, Story, Video } from '../types';
 import { analyzePhoto, getAnimalInfo } from '../utils/aiService';
@@ -14,10 +14,11 @@ import { getSiteSettings, saveSiteSettings, uploadHeroImage, uploadDefaultThumbn
 import { applyWatermark } from '../utils/watermark';
 import { compressImageForAI } from '../utils/imageCompressor';
 import { readExifFromFile } from '../utils/exifReader';
+import { subscribeToContactMessages, deleteContactMessage, ContactMessage } from '../services/contactService';
 
 
 
-type AdminView = 'dashboard' | 'photos' | 'add' | 'stories' | 'add-story' | 'videos' | 'add-video' | 'comments' | 'ai-settings' | 'site-settings';
+type AdminView = 'dashboard' | 'photos' | 'add' | 'stories' | 'add-story' | 'videos' | 'add-video' | 'comments' | 'messages' | 'ai-settings' | 'site-settings';
 
 interface AdminDashboardProps {
   logoUrl?: string;
@@ -1427,6 +1428,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   const [storyDeleteConfirm, setStoryDeleteConfirm] = useState<number | null>(null);
   const [videoDeleteConfirm, setVideoDeleteConfirm] = useState<number | null>(null);
+  const [contactMessages, setContactMessages] = React.useState<ContactMessage[]>([]);
+  const [msgDeleteConfirm, setMsgDeleteConfirm] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const unsub = subscribeToContactMessages((msgs) => setContactMessages(msgs));
+    return () => unsub();
+  }, []);
 
   const totalLikes = photos.reduce((sum, p) => sum + p.likeCount, 0);
   const nextPhotoId = Math.max(0, ...photos.map((p) => p.id)) + 1;
@@ -1470,6 +1478,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     if (view === 'comments') return 'Manage Comments';
     if (view === 'ai-settings') return 'AI Configuration';
     if (view === 'site-settings') return 'Site Settings';
+    if (view === 'messages') return 'Contact Messages';
     return '';
   };
 
@@ -1536,6 +1545,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 marginLeft: 'auto', fontSize: '0.65rem', padding: '0.1rem 0.4rem',
                 borderRadius: '10px', background: 'rgba(201,168,76,0.2)', color: 'var(--wa-gold)',
               }}>{allComments.length}</span>
+            )}
+          </button>
+          <button style={sidebarItemStyle(view === 'messages')} onClick={() => { setView('messages'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); }}>
+            <Mail size={18} /> Messages
+            {contactMessages.length > 0 && (
+              <span style={{
+                marginLeft: 'auto', fontSize: '0.65rem', padding: '0.1rem 0.4rem',
+                borderRadius: '10px', background: 'rgba(201,168,76,0.2)', color: 'var(--wa-gold)',
+              }}>{contactMessages.length}</span>
             )}
           </button>
 
@@ -1912,6 +1930,79 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       );
                     })
                   }
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Contact Messages View */}
+          {view === 'messages' && (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+                <span style={{ fontSize: '0.85rem', color: 'rgba(235,230,220,0.5)' }}>
+                  {contactMessages.length} message{contactMessages.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+
+              {contactMessages.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '3rem', color: 'rgba(235,230,220,0.3)' }}>
+                  <Mail size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
+                  <p>No messages yet.</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {contactMessages.map((msg) => (
+                    <div key={msg.id} style={{
+                      padding: '1.25rem', borderRadius: '12px',
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid rgba(201,168,76,0.1)',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+                            <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--wa-light)' }}>{msg.name}</span>
+                            <a href={`mailto:${msg.email}`} style={{ fontSize: '0.75rem', color: 'var(--wa-gold)', textDecoration: 'none' }}>{msg.email}</a>
+                          </div>
+                          <p style={{ fontSize: '0.85rem', color: 'rgba(235,230,220,0.7)', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                            {msg.message}
+                          </p>
+                          <span style={{ fontSize: '0.65rem', color: 'rgba(235,230,220,0.3)', marginTop: '0.5rem', display: 'block' }}>
+                            {msg.createdAt?.toDate ? new Date(msg.createdAt.toDate()).toLocaleString() : 'Just now'}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.4rem', flexShrink: 0 }}>
+                          <a href={`mailto:${msg.email}`} title="Reply" style={{
+                            width: 32, height: 32, borderRadius: '6px',
+                            background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.2)',
+                            color: '#60a5fa', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            textDecoration: 'none',
+                          }}><Mail size={14} /></a>
+                          {msgDeleteConfirm === msg.id ? (
+                            <div style={{ display: 'flex', gap: '0.25rem' }}>
+                              <button onClick={async () => { if (msg.id) { await deleteContactMessage(msg.id); setMsgDeleteConfirm(null); } }} style={{
+                                padding: '0 0.6rem', height: 32, borderRadius: '6px',
+                                background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)',
+                                color: '#f87171', cursor: 'pointer', fontSize: '0.7rem',
+                              }}>Delete</button>
+                              <button onClick={() => setMsgDeleteConfirm(null)} style={{
+                                width: 32, height: 32, borderRadius: '6px',
+                                background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                                color: 'rgba(235,230,220,0.5)', cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              }}><X size={14} /></button>
+                            </div>
+                          ) : (
+                            <button onClick={() => setMsgDeleteConfirm(msg.id || null)} style={{
+                              width: 32, height: 32, borderRadius: '6px',
+                              background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.15)',
+                              color: 'rgba(239,68,68,0.5)', cursor: 'pointer',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}><Trash2 size={14} /></button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

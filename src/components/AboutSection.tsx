@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { saveContactMessage } from '../services/contactService';
 import { Camera, Mountain, Heart, Globe } from 'lucide-react';
 
 export const AboutSection: React.FC = () => {
@@ -197,16 +198,24 @@ const ContactForm: React.FC = () => {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.email || !form.message) return;
     setSending(true);
-    setTimeout(() => {
-      setSending(false);
+    try {
+      await saveContactMessage({
+        name: form.name,
+        email: form.email,
+        message: form.message,
+      });
       setSent(true);
       setForm({ name: '', email: '', message: '' });
       setTimeout(() => setSent(false), 3000);
-    }, 1000);
+    } catch (err) {
+      console.error('Failed to save message:', err);
+      alert('Failed to send message. Please try again.');
+    }
+    setSending(false);
   };
 
   return (
