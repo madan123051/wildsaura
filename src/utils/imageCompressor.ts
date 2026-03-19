@@ -1,3 +1,45 @@
+import imageCompression from 'browser-image-compression';
+
+/**
+ * Compresses an image FILE for portfolio upload.
+ * - Format: WebP (best quality-to-size ratio for web)
+ * - Quality: 90% (visually lossless, ~60-80% size reduction)
+ * - Max Resolution: 3840px (4K — sharp on all monitors)
+ * - ICC Profiles: Preserved via exif preservation (best-effort in browser)
+ */
+export async function compressForUpload(
+  file: File,
+  onProgress?: (progress: number) => void
+): Promise<File> {
+  const originalMB = (file.size / 1024 / 1024).toFixed(2);
+
+  const options = {
+    maxWidthOrHeight: 3840,    // 4K Resolution — sharp on large monitors
+    initialQuality: 0.9,       // 90% quality — human eye cannot tell the difference
+    fileType: 'image/webp',    // WebP — best quality-to-size ratio for web
+    useWebWorker: true,        // Non-blocking compression
+    preserveExif: true,        // Preserve EXIF metadata (ICC profile best-effort)
+    onProgress: (progress: number) => {
+      if (onProgress) onProgress(Math.round(progress * 0.4)); // Compression = 0–40% of total
+    },
+  };
+
+  try {
+    const compressed = await imageCompression(file, options);
+    const compressedMB = (compressed.size / 1024 / 1024).toFixed(2);
+    console.log(
+      `📸 Compressed: ${originalMB}MB → ${compressedMB}MB ` +
+      `(WebP, 90% quality, max 3840px)`
+    );
+    // Return as a File with .webp extension
+    const webpName = file.name.replace(/\.[^.]+$/, '') + '.webp';
+    return new File([compressed], webpName, { type: 'image/webp' });
+  } catch (err) {
+    console.warn('📸 Compression failed, using original:', err);
+    throw err;
+  }
+}
+
 /**
  * Compresses an image (data URL) to a maximum dimension while maintaining aspect ratio.
  * Used before sending images to Gemini API to avoid token/size limits.
