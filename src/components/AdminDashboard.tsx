@@ -412,8 +412,8 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
             likeCount: initial?.likeCount || 0,
             type: mediaType === 'video' ? 'video' : 'photo',
             photographer: photographer || '',
-            ...(latitude != null ? { latitude } : {}),
-            ...(longitude != null ? { longitude } : {}),
+            ...(latitude != null && !isNaN(latitude) ? { latitude } : {}),
+            ...(longitude != null && !isNaN(longitude) ? { longitude } : {}),
           });
           firestoreId = initial.firestoreId;
         } else {
@@ -424,8 +424,8 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
             likeCount: initial?.likeCount || 0,
             type: mediaType === 'video' ? 'video' : 'photo',
             photographer: photographer || '',
-            ...(latitude != null ? { latitude } : {}),
-            ...(longitude != null ? { longitude } : {}),
+            ...(latitude != null && !isNaN(latitude) ? { latitude } : {}),
+            ...(longitude != null && !isNaN(longitude) ? { longitude } : {}),
           });
           firestoreId = docId;
         }
@@ -445,8 +445,8 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
       cameraModel, lens, aperture, shutterSpeed, iso, focalLength,
       tags: finalTags, animalName, wikiSummary,
       photographer,
-      latitude,
-      longitude,
+      latitude: latitude != null && !isNaN(latitude) ? latitude : undefined,
+      longitude: longitude != null && !isNaN(longitude) ? longitude : undefined,
       likeCount: initial?.likeCount || 0, liked: initial?.liked || false,
       published: initial?.published !== false,
     });
