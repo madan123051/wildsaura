@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Heart, Share2, Download, MapPin, User, Tag, Camera, Maximize2, Timer, Zap, Eye, Lock, ImageOff, BookOpen, Trash2 } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { X, Heart, Share2, Download, MapPin, User, Tag, Camera, Maximize2, Timer, Zap, Eye, Lock, ImageOff, BookOpen, Trash2, ChevronLeft, ChevronRight, Copy, ExternalLink } from 'lucide-react';
 import { Photo, Comment, Visitor } from '../types';
 
 interface PhotoModalProps {
@@ -18,15 +18,124 @@ interface PhotoModalProps {
   onDeleteComment?: (firestoreId: string) => void;
   freeDownloadsLeft: number;
   isDownloading: boolean;
+  photos?: Photo[];
+  onNavigate?: (photo: Photo) => void;
 }
 
 export const PhotoModal: React.FC<PhotoModalProps> = ({
-  photo, onClose, onLike, onShare, onDownload, onGenerateStory, isGeneratingStory, isAdmin, visitor, comments, onAddComment, onVisitorLoginClick, onDeleteComment, freeDownloadsLeft, isDownloading,
+  photo, onClose, onLike, onShare, onDownload, onGenerateStory, isGeneratingStory, isAdmin, visitor, comments, onAddComment, onVisitorLoginClick, onDeleteComment, freeDownloadsLeft, isDownloading, photos, onNavigate,
 }) => {
   const [activeTab, setActiveTab] = useState<'info' | 'exif' | 'comments'>('info');
   const [commentText, setCommentText] = useState('');
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const shareMenuRef = useRef<HTMLDivElement>(null);
+  const shareButtonRef = useRef<HTMLButtonElement>(null);
+  const touchStartX = useRef<number | null>(null);
 
   const hasExif = photo.cameraModel || photo.lens || photo.aperture || photo.shutterSpeed || photo.iso || photo.focalLength;
+
+  // Slideshow navigation
+  const currentIndex = photos ? photos.findIndex(p => p.id === photo.id) : -1;
+  const hasPrev = photos && currentIndex > 0;
+  const hasNext = photos && currentIndex >= 0 && currentIndex < photos.length - 1;
+
+  const goToPrev = useCallback(() => {
+    if (hasPrev && onNavigate && photos) {
+      onNavigate(photos[currentIndex - 1]);
+    }
+  }, [hasPrev, onNavigate, photos, currentIndex]);
+
+  const goToNext = useCallback(() => {
+    if (hasNext && onNavigate && photos) {
+      onNavigate(photos[currentIndex + 1]);
+    }
+  }, [hasNext, onNavigate, photos, currentIndex]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') { e.preventDefault(); goToPrev(); }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); goToNext(); }
+      else if (e.key === 'Escape') { onClose(); }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [goToPrev, goToNext, onClose]);
+
+  // Close share menu on outside click
+  useEffect(() => {
+    if (!showShareMenu) return;
+    const handleClick = (e: MouseEvent) => {
+      if (
+        shareMenuRef.current && !shareMenuRef.current.contains(e.target as Node) &&
+        shareButtonRef.current && !shareButtonRef.current.contains(e.target as Node)
+      ) {
+        setShowShareMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showShareMenu]);
+
+  // Touch/swipe handling
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const diff = touchStartX.current - e.changedTouches[0].clientX;
+    if (Math.abs(diff) >= 50) {
+      if (diff > 0) goToNext(); // swipe left → next
+      else goToPrev(); // swipe right → prev
+    }
+    touchStartX.current = null;
+  };
+
+  // Share helpers
+  const shareUrl = `${window.location.origin}/photo/${encodeURIComponent(photo.firestoreId || String(photo.id))}`;
+  const shareText = `Check out "${photo.title}" on WildSaura Photography! 🐯📸`;
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // fallback
+      const ta = document.createElement('textarea');
+      ta.value = shareUrl;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const shareOptions = [
+    {
+      label: 'WhatsApp',
+      icon: '📱',
+      onClick: () => window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText + '\n' + shareUrl)}`, '_blank'),
+    },
+    {
+      label: 'Twitter / X',
+      icon: '𝕏',
+      onClick: () => window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank'),
+    },
+    {
+      label: 'Facebook',
+      icon: '📘',
+      onClick: () => window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank'),
+    },
+    {
+      label: copied ? 'Copied!' : 'Copy Link',
+      icon: '🔗',
+      onClick: handleCopyLink,
+    },
+  ];
 
   const tabs = [
     { id: 'info' as const, label: 'Details' },
@@ -46,6 +155,27 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
     action();
   };
 
+  // Nav arrow button style
+  const navArrowStyle = (side: 'left' | 'right'): React.CSSProperties => ({
+    position: 'absolute',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    [side]: '0.75rem',
+    zIndex: 3,
+    width: 40,
+    height: 40,
+    borderRadius: '50%',
+    background: 'rgba(0,0,0,0.55)',
+    border: '1px solid rgba(201,168,76,0.35)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    color: '#d4a853',
+    transition: 'background 0.2s, border-color 0.2s',
+    backdropFilter: 'blur(4px)',
+  });
+
   return (
     <div
       className="modal-backdrop"
@@ -60,8 +190,13 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
           boxShadow: '0 0 80px rgba(0,0,0,0.8)',
         }}
       >
-        {/* Image */}
-        <div style={{ position: 'relative' }} onContextMenu={(e) => e.preventDefault()}>
+        {/* Image with navigation */}
+        <div
+          style={{ position: 'relative' }}
+          onContextMenu={(e) => e.preventDefault()}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
           <img
             src={photo.imageUrl}
             alt={photo.title}
@@ -102,7 +237,39 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
               {photo.category}
             </span>
           </div>
+
+          {/* Prev arrow */}
+          {hasPrev && (
+            <button
+              onClick={goToPrev}
+              aria-label="Previous photo"
+              style={navArrowStyle('left')}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,0,0,0.75)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(201,168,76,0.6)'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,0,0,0.55)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(201,168,76,0.35)'; }}
+            >
+              <ChevronLeft size={22} />
+            </button>
+          )}
+          {/* Next arrow */}
+          {hasNext && (
+            <button
+              onClick={goToNext}
+              aria-label="Next photo"
+              style={navArrowStyle('right')}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,0,0,0.75)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(201,168,76,0.6)'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,0,0,0.55)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(201,168,76,0.35)'; }}
+            >
+              <ChevronRight size={22} />
+            </button>
+          )}
         </div>
+
+        {/* Photo counter */}
+        {photos && photos.length > 1 && currentIndex >= 0 && (
+          <div style={{ textAlign: 'center', padding: '0.5rem 0 0', fontSize: '0.75rem', color: 'var(--wa-text-muted)', letterSpacing: '0.05em' }}>
+            {currentIndex + 1} / {photos.length}
+          </div>
+        )}
 
         <div style={{ padding: '1.5rem' }}>
           {/* Header */}
@@ -128,9 +295,70 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
               <Heart size={18} fill={photo.liked ? 'currentColor' : 'none'} />
               <span style={{ fontSize: '0.875rem' }}>{photo.likeCount}</span>
             </button>
-            <button onClick={gated(onShare)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--wa-text-muted)', transition: 'color 0.2s' }}>
-              <Share2 size={18} />
-            </button>
+
+            {/* Share button with popup */}
+            <div style={{ position: 'relative' }}>
+              <button
+                ref={shareButtonRef}
+                onClick={() => setShowShareMenu(prev => !prev)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: showShareMenu ? 'var(--wa-gold)' : 'var(--wa-text-muted)', transition: 'color 0.2s', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+              >
+                <Share2 size={18} />
+                <span style={{ fontSize: '0.75rem' }}>Share</span>
+              </button>
+
+              {showShareMenu && (
+                <div
+                  ref={shareMenuRef}
+                  style={{
+                    position: 'absolute',
+                    bottom: '100%',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    marginBottom: '0.5rem',
+                    background: 'rgba(20,20,20,0.95)',
+                    border: '1px solid rgba(201,168,76,0.3)',
+                    borderRadius: '0.75rem',
+                    padding: '0.5rem',
+                    minWidth: '170px',
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+                    zIndex: 10,
+                    animation: 'shareMenuFadeIn 0.15s ease-out',
+                    backdropFilter: 'blur(12px)',
+                  }}
+                >
+                  <style>{`@keyframes shareMenuFadeIn { from { opacity: 0; transform: translateX(-50%) translateY(4px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }`}</style>
+                  {shareOptions.map((opt, i) => (
+                    <button
+                      key={i}
+                      onClick={() => { opt.onClick(); if (opt.label !== 'Copied!' && opt.label !== 'Copy Link') setShowShareMenu(false); }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.6rem',
+                        width: '100%',
+                        padding: '0.55rem 0.75rem',
+                        background: 'transparent',
+                        border: 'none',
+                        borderRadius: '0.5rem',
+                        cursor: 'pointer',
+                        color: opt.label === 'Copied!' ? '#4ade80' : '#e0e0e0',
+                        fontSize: '0.8rem',
+                        textAlign: 'left',
+                        transition: 'background 0.15s',
+                        whiteSpace: 'nowrap',
+                      }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(201,168,76,0.12)'; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
+                    >
+                      <span style={{ fontSize: '1rem', width: '1.25rem', textAlign: 'center' }}>{opt.icon}</span>
+                      <span>{opt.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <button
               onClick={gated(onDownload)}
               disabled={isDownloading}

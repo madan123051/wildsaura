@@ -1381,6 +1381,8 @@ const App: React.FC = () => {
           onVisitorLoginClick={() => setShowVisitorLogin(true)}
           freeDownloadsLeft={Math.max(0, FREE_DOWNLOADS - downloadCount)}
           isDownloading={isDownloading}
+          photos={photos.filter(p => p.published !== false)}
+          onNavigate={(photo) => openPhoto(photo)}
         />
       )}
 
