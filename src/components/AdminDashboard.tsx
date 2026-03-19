@@ -3,20 +3,21 @@ import {
   LayoutDashboard, Image, Plus, Pencil, Trash2, LogOut, Eye, EyeOff,
   MapPin, Heart, BarChart3, TrendingUp, X, Save, Search, BookOpen,
   Upload, Sparkles, Film, Camera, FileImage, Loader2, Info,
-  Settings, Cpu, MessageCircle
+  Settings, Cpu, MessageCircle, Globe
 } from 'lucide-react';
 import { Photo, Story, Video } from '../types';
 import { analyzePhoto, getAnimalInfo } from '../utils/aiService';
 import { uploadPhotoToStorage, addPhotoToFirestore } from '../services/photoService';
 import { getAISettings } from '../services/aiSettingsService';
 import { AISettingsPanel } from './AISettings';
+import { getSiteSettings, saveSiteSettings, uploadHeroImage, uploadDefaultThumbnail, SiteSettings } from '../services/siteSettingsService';
 import { applyWatermark } from '../utils/watermark';
 import { compressImageForAI } from '../utils/imageCompressor';
 import { readExifFromFile } from '../utils/exifReader';
 
 
 
-type AdminView = 'dashboard' | 'photos' | 'add' | 'stories' | 'add-story' | 'videos' | 'add-video' | 'comments' | 'ai-settings';
+type AdminView = 'dashboard' | 'photos' | 'add' | 'stories' | 'add-story' | 'videos' | 'add-video' | 'comments' | 'ai-settings' | 'site-settings';
 
 interface AdminDashboardProps {
   logoUrl?: string;
@@ -1081,6 +1082,234 @@ const VideoForm: React.FC<VideoFormProps> = ({ initial, onSave, onCancel, nextId
   );
 };
 
+// ── Site Settings Form ────────────────────────────────────────────────────
+const SiteSettingsForm = () => {
+  const [heroImages, setHeroImages] = React.useState<string[]>(['', '', '', '']);
+  const [defaultThumbnail, setDefaultThumbnail] = React.useState('');
+  const [saving, setSaving] = React.useState(false);
+  const [loading, setLoading] = React.useState(true);
+  const [uploadingSlot, setUploadingSlot] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    getSiteSettings().then(settings => {
+      if (settings.heroImages && settings.heroImages.length > 0) {
+        const padded = [...settings.heroImages];
+        while (padded.length < 4) padded.push('');
+        setHeroImages(padded.slice(0, 4));
+      }
+      if (settings.defaultThumbnail) setDefaultThumbnail(settings.defaultThumbnail);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, []);
+
+  const handleHeroImageUpload = async (index: number, file: File) => {
+    setUploadingSlot(index);
+    try {
+      const url = await uploadHeroImage(file, index);
+      setHeroImages(prev => {
+        const updated = [...prev];
+        updated[index] = url;
+        return updated;
+      });
+    } catch (err) {
+      console.warn('Hero image upload failed:', err);
+      alert('Upload failed. Please try again.');
+    }
+    setUploadingSlot(null);
+  };
+
+  const handleThumbnailUpload = async (file: File) => {
+    setUploadingSlot(99);
+    try {
+      const url = await uploadDefaultThumbnail(file);
+      setDefaultThumbnail(url);
+    } catch (err) {
+      console.warn('Thumbnail upload failed:', err);
+      alert('Upload failed. Please try again.');
+    }
+    setUploadingSlot(null);
+  };
+
+  const handleRemoveHero = (index: number) => {
+    setHeroImages(prev => {
+      const updated = [...prev];
+      updated[index] = '';
+      return updated;
+    });
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await saveSiteSettings({
+        heroImages: heroImages.filter(url => url.length > 0),
+        defaultThumbnail: defaultThumbnail || undefined,
+      });
+      alert('✅ Site settings saved successfully!');
+    } catch (err) {
+      console.warn('Save settings failed:', err);
+      alert('❌ Failed to save settings.');
+    }
+    setSaving(false);
+  };
+
+  if (loading) return <div style={{ padding: '2rem', textAlign: 'center', color: 'rgba(235,230,220,0.5)' }}>Loading settings...</div>;
+
+  return (
+    <div style={{ padding: '1.5rem' }}>
+      <h2 style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--wa-gold)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <Globe size={22} /> Site Settings
+      </h2>
+
+      {/* Hero Images Section */}
+      <div style={{ marginBottom: '2rem' }}>
+        <h3 style={{ fontSize: '1rem', color: 'var(--wa-light)', marginBottom: '0.75rem', fontWeight: 600 }}>
+          🖼️ Hero Slider Images (up to 4)
+        </h3>
+        <p style={{ fontSize: '0.75rem', color: 'rgba(235,230,220,0.4)', marginBottom: '1rem' }}>
+          Upload images for the homepage hero section. These will auto-rotate every 5 seconds.
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+          {heroImages.map((url, idx) => (
+            <div key={idx} style={{
+              border: '2px dashed rgba(201,168,76,0.2)',
+              borderRadius: '12px',
+              overflow: 'hidden',
+              background: 'rgba(0,0,0,0.3)',
+              position: 'relative',
+              aspectRatio: '16/9',
+            }}>
+              {url ? (
+                <>
+                  <img src={url} alt={`Hero ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <button
+                    onClick={() => handleRemoveHero(idx)}
+                    style={{
+                      position: 'absolute', top: 6, right: 6,
+                      background: 'rgba(239,68,68,0.9)', border: 'none', borderRadius: '50%',
+                      width: 28, height: 28, cursor: 'pointer', color: '#fff',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '0.8rem', fontWeight: 700,
+                    }}
+                  >✕</button>
+                  <div style={{
+                    position: 'absolute', bottom: 0, left: 0, right: 0,
+                    background: 'linear-gradient(transparent, rgba(0,0,0,0.8))',
+                    padding: '0.5rem', fontSize: '0.7rem', color: 'var(--wa-gold)',
+                    textAlign: 'center',
+                  }}>
+                    Slide {idx + 1}
+                  </div>
+                </>
+              ) : (
+                <label style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  width: '100%', height: '100%', cursor: 'pointer',
+                  color: 'rgba(235,230,220,0.3)', fontSize: '0.75rem',
+                  minHeight: '120px',
+                }}>
+                  {uploadingSlot === idx ? (
+                    <Loader2 size={24} style={{ animation: 'spin 1s linear infinite' }} />
+                  ) : (
+                    <>
+                      <Upload size={24} style={{ marginBottom: '0.3rem' }} />
+                      <span>Slide {idx + 1}</span>
+                      <span style={{ fontSize: '0.65rem', opacity: 0.6 }}>Click to upload</span>
+                    </>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleHeroImageUpload(idx, file);
+                    }}
+                  />
+                </label>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Default Thumbnail Section */}
+      <div style={{ marginBottom: '2rem' }}>
+        <h3 style={{ fontSize: '1rem', color: 'var(--wa-light)', marginBottom: '0.75rem', fontWeight: 600 }}>
+          📸 Default Thumbnail
+        </h3>
+        <p style={{ fontSize: '0.75rem', color: 'rgba(235,230,220,0.4)', marginBottom: '1rem' }}>
+          Default thumbnail used when no custom thumbnail is set for a post.
+        </p>
+        <div style={{
+          border: '2px dashed rgba(201,168,76,0.2)',
+          borderRadius: '12px', overflow: 'hidden',
+          background: 'rgba(0,0,0,0.3)', position: 'relative',
+          width: '200px', aspectRatio: '1',
+        }}>
+          {defaultThumbnail ? (
+            <>
+              <img src={defaultThumbnail} alt="Default Thumbnail" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <button
+                onClick={() => setDefaultThumbnail('')}
+                style={{
+                  position: 'absolute', top: 6, right: 6,
+                  background: 'rgba(239,68,68,0.9)', border: 'none', borderRadius: '50%',
+                  width: 28, height: 28, cursor: 'pointer', color: '#fff',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '0.8rem', fontWeight: 700,
+                }}
+              >✕</button>
+            </>
+          ) : (
+            <label style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              width: '100%', height: '100%', cursor: 'pointer',
+              color: 'rgba(235,230,220,0.3)', fontSize: '0.75rem',
+              minHeight: '120px',
+            }}>
+              {uploadingSlot === 99 ? (
+                <Loader2 size={24} style={{ animation: 'spin 1s linear infinite' }} />
+              ) : (
+                <>
+                  <FileImage size={24} style={{ marginBottom: '0.3rem' }} />
+                  <span>Upload Thumbnail</span>
+                </>
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleThumbnailUpload(file);
+                }}
+              />
+            </label>
+          )}
+        </div>
+      </div>
+
+      {/* Save Button */}
+      <button
+        onClick={handleSave}
+        disabled={saving}
+        style={{
+          padding: '0.75rem 2rem',
+          background: saving ? 'rgba(201,168,76,0.3)' : 'linear-gradient(135deg, #c9a84c, #b8943f)',
+          border: 'none', borderRadius: '10px',
+          color: saving ? 'rgba(255,255,255,0.5)' : '#000',
+          fontWeight: 700, fontSize: '0.9rem', cursor: saving ? 'not-allowed' : 'pointer',
+          display: 'flex', alignItems: 'center', gap: '0.5rem',
+          transition: 'all 0.3s',
+        }}
+      >
+        {saving ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Saving...</> : <><Save size={16} /> Save Settings</>}
+      </button>
+    </div>
+  );
+};
+
 // ── Main Dashboard ───────────────────────────────────────────────────────────
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   logoUrl, photos, onAddPhoto, onUpdatePhoto, onDeletePhoto, onLogout, onViewSite,
@@ -1138,6 +1367,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     if (view === 'add-video') return 'Add New Video';
     if (view === 'comments') return 'Manage Comments';
     if (view === 'ai-settings') return 'AI Configuration';
+    if (view === 'site-settings') return 'Site Settings';
     return '';
   };
 
@@ -1212,6 +1442,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
           <button style={sidebarItemStyle(view === 'ai-settings')} onClick={() => { setView('ai-settings'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); }}>
             <Cpu size={18} /> AI Settings
+          </button>
+          <button style={sidebarItemStyle(view === 'site-settings')} onClick={() => { setView('site-settings'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); }}>
+            <Globe size={18} /> Site Settings
           </button>
         </nav>
 
@@ -1583,6 +1816,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           )}
           {/* AI Settings View */}
           {view === 'ai-settings' && <AISettingsPanel />}
+          {view === 'site-settings' && <SiteSettingsForm />}
         </div>
       </main>
     </div>

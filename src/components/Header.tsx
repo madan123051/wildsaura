@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, Shield, Search, LogOut } from 'lucide-react';
+import { Menu, X, Shield, Search, LogOut, Bell } from 'lucide-react';
 import { Visitor } from '../types';
 
 const ANIMAL_AVATARS = [
@@ -22,11 +22,14 @@ interface HeaderProps {
   onVisitorLogout: () => void;
   onStoriesClick?: () => void;
   onVisitorUpdate?: (v: Visitor) => void;
+  notificationCount?: number;
+  onNotificationClick?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   onScrollToGallery, logoUrl, onAdminClick, isAdmin,
   onSearchClick, visitor, onVisitorLoginClick, onVisitorLogout, onStoriesClick, onVisitorUpdate,
+  notificationCount = 0, onNotificationClick,
 }) => {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -92,6 +95,34 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Right: Search icon + Hamburger menu */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          {/* Notification Bell */}
+          {onNotificationClick && (
+            <button
+              onClick={onNotificationClick}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'rgba(235,230,220,0.6)', padding: '0.4rem',
+                transition: 'color 0.3s', position: 'relative',
+              }}
+              onMouseOver={(e) => e.currentTarget.style.color = 'var(--wa-gold)'}
+              onMouseOut={(e) => e.currentTarget.style.color = 'rgba(235,230,220,0.6)'}
+            >
+              <Bell size={22} />
+              {notificationCount > 0 && (
+                <span style={{
+                  position: 'absolute', top: 0, right: 0,
+                  background: '#ef4444', color: '#fff',
+                  fontSize: '0.55rem', fontWeight: 700,
+                  width: 16, height: 16, borderRadius: '50%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  border: '2px solid rgba(0,0,0,0.8)',
+                }}>
+                  {notificationCount > 9 ? '9+' : notificationCount}
+                </span>
+              )}
+            </button>
+          )}
+
           {onSearchClick && (
             <button
               onClick={onSearchClick}

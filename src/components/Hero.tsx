@@ -1,20 +1,43 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
 
 interface HeroProps {
   onExplore: () => void;
   logoUrl?: string;
+  heroImages?: string[];
 }
 
-export const Hero: React.FC<HeroProps> = ({ onExplore, logoUrl }) => {
+const DEFAULT_HERO = '/photos/tiger-hero.jpg';
+
+export const Hero: React.FC<HeroProps> = ({ onExplore, logoUrl, heroImages }) => {
+  const images = heroImages && heroImages.length > 0 ? heroImages : [DEFAULT_HERO];
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [fade, setFade] = useState(true);
+
+  useEffect(() => {
+    if (images.length <= 1) return;
+    const interval = setInterval(() => {
+      setFade(false);
+      setTimeout(() => {
+        setCurrentIndex(prev => (prev + 1) % images.length);
+        setFade(true);
+      }, 600);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [images.length]);
+
   return (
     <section id="top" style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
-      {/* Background Image */}
+      {/* Background Image with fade transition */}
       <div style={{ position: 'absolute', inset: 0 }}>
         <img
-          src="/photos/tiger-hero.jpg"
+          src={images[currentIndex]}
           alt="Wildlife photography"
-          style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
+          style={{
+            width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center',
+            transition: 'opacity 0.6s ease-in-out',
+            opacity: fade ? 1 : 0,
+          }}
         />
         {/* Cinematic overlays */}
         <div className="cinematic-overlay-left" style={{ position: 'absolute', inset: 0 }} />
@@ -22,10 +45,30 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, logoUrl }) => {
         <div className="cinematic-vignette" style={{ position: 'absolute', inset: 0 }} />
       </div>
 
+      {/* Slide indicators */}
+      {images.length > 1 && (
+        <div style={{
+          position: 'absolute', bottom: '5rem', left: '50%', transform: 'translateX(-50%)',
+          display: 'flex', gap: '0.5rem', zIndex: 5,
+        }}>
+          {images.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => { setFade(false); setTimeout(() => { setCurrentIndex(idx); setFade(true); }, 300); }}
+              style={{
+                width: idx === currentIndex ? 24 : 8, height: 8,
+                borderRadius: 4, border: 'none', cursor: 'pointer',
+                background: idx === currentIndex ? 'var(--wa-gold)' : 'rgba(255,255,255,0.4)',
+                transition: 'all 0.3s',
+              }}
+            />
+          ))}
+        </div>
+      )}
+
       {/* Content */}
       <div className="wa-container" style={{ position: 'relative', paddingTop: '6rem', paddingBottom: '4rem' }}>
         <div style={{ maxWidth: '600px' }}>
-
           <h1 className="font-playfair animate-fade-in-up anim-delay-200" style={{ fontSize: 'clamp(2.5rem, 8vw, 5rem)', fontWeight: 700, lineHeight: 1.1, marginBottom: '1.5rem' }}>
             <span style={{ display: 'block', fontStyle: 'italic', fontWeight: 400, fontSize: '0.65em', opacity: 0.9 }}>
               Explore the

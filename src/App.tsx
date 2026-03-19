@@ -26,6 +26,7 @@ import { getVideosFromFirestore, addVideoToFirestore, deleteVideoFromFirestore, 
 import { addCommentToFirestore, deleteCommentFromFirestore, getCommentsForTarget, getAllComments, subscribeToAllComments } from './services/commentService';
 import { saveVisitorToFirestore, getVisitorFromFirestore, updateVisitorDownloadCount, updateVisitorProfile, trackOnlineVisitor, subscribeToOnlineVisitors } from './services/visitorService';
 import { LiveStats } from './components/LiveStats';
+import { onSiteSettingsChange, SiteSettings } from './services/siteSettingsService';
 
 const logoUrl = '/photos/logo.png';
 
@@ -186,6 +187,7 @@ const App: React.FC = () => {
   const [onlineVisitorCount, setOnlineVisitorCount] = useState(0);
   const [totalCommentCount, setTotalCommentCount] = useState(0);
   const [allFirestoreComments, setAllFirestoreComments] = useState<any[]>([]);
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>({ heroImages: [] });
   const FREE_DOWNLOADS = 2;
   const onlineCleanupRef = useRef<(() => void) | null>(null);
 
@@ -466,12 +468,18 @@ const App: React.FC = () => {
       setOnlineVisitorCount(count);
     });
 
+    // Subscribe to site settings (hero images etc.)
+    const unsubSettings = onSiteSettingsChange((settings) => {
+      setSiteSettings(settings);
+    });
+
     return () => {
       unsubPhotos();
       unsubStories();
       unsubVideos();
       unsubComments();
       unsubOnline();
+      unsubSettings();
       if (onlineCleanupRef.current) onlineCleanupRef.current();
     };
   }, []);
@@ -1154,6 +1162,7 @@ const App: React.FC = () => {
           onVisitorLogout={handleVisitorLogout}
           onVisitorUpdate={handleVisitorUpdate}
           onStoriesClick={handleStoriesNavClick}
+          onNotificationClick={() => {}}
         />
         <TermsConditions onBack={() => { setView('home'); window.history.pushState({}, '', '/'); window.scrollTo(0, 0); }} />
         <Footer logoUrl={logoUrl} onTermsClick={handleTermsClick} />
@@ -1190,6 +1199,7 @@ const App: React.FC = () => {
           onVisitorLogout={handleVisitorLogout}
           onVisitorUpdate={handleVisitorUpdate}
           onStoriesClick={handleStoriesNavClick}
+          onNotificationClick={() => {}}
         />
         <StoryDetail
           story={selectedStory}
@@ -1235,8 +1245,9 @@ const App: React.FC = () => {
         onVisitorLogout={handleVisitorLogout}
         onVisitorUpdate={handleVisitorUpdate}
         onStoriesClick={handleStoriesNavClick}
+          onNotificationClick={() => {}}
       />
-      <Hero onExplore={scrollToGallery} logoUrl={logoUrl} />
+      <Hero onExplore={scrollToGallery} logoUrl={logoUrl} heroImages={siteSettings.heroImages} />
       <CategorySection categories={CATEGORIES} onCategoryClick={handleCategoryClick} />
       <Gallery
         photos={photos}
