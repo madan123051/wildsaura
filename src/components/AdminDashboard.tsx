@@ -229,6 +229,8 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
   const [tagsInput, setTagsInput] = useState(initial?.tags?.join(', ') || '');
   const [animalName, setAnimalName] = useState(initial?.animalName || '');
   const [photographer, setPhotographer] = useState(initial?.photographer || '');
+  const [latitude, setLatitude] = useState<number | undefined>(initial?.latitude);
+  const [longitude, setLongitude] = useState<number | undefined>(initial?.longitude);
   const [wikiSummary, setWikiSummary] = useState(initial?.wikiSummary || '');
   const [aiStatus, setAiStatus] = useState('');
   const [exifStatus, setExifStatus] = useState('');
@@ -410,6 +412,8 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
             likeCount: initial?.likeCount || 0,
             type: mediaType === 'video' ? 'video' : 'photo',
             photographer: photographer || '',
+            ...(latitude != null ? { latitude } : {}),
+            ...(longitude != null ? { longitude } : {}),
           });
           firestoreId = initial.firestoreId;
         } else {
@@ -420,6 +424,8 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
             likeCount: initial?.likeCount || 0,
             type: mediaType === 'video' ? 'video' : 'photo',
             photographer: photographer || '',
+            ...(latitude != null ? { latitude } : {}),
+            ...(longitude != null ? { longitude } : {}),
           });
           firestoreId = docId;
         }
@@ -439,6 +445,8 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
       cameraModel, lens, aperture, shutterSpeed, iso, focalLength,
       tags: finalTags, animalName, wikiSummary,
       photographer,
+      latitude,
+      longitude,
       likeCount: initial?.likeCount || 0, liked: initial?.liked || false,
       published: initial?.published !== false,
     });
@@ -523,6 +531,18 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
         <div style={{ marginBottom: '0.75rem' }}>
           <label style={labelStyle}>📸 Photographer Name</label>
           <input value={photographer} onChange={(e) => setPhotographer(e.target.value)} placeholder="e.g. Madan Shrestha" style={inputStyle} />
+        </div>
+        <div style={{ gridColumn: '1 / -1' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+            <div>
+              <label style={labelStyle}>📍 Latitude</label>
+              <input type="number" step="any" value={latitude ?? ''} onChange={(e) => setLatitude(e.target.value ? parseFloat(e.target.value) : undefined)} placeholder="e.g. 27.7172" style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>📍 Longitude</label>
+              <input type="number" step="any" value={longitude ?? ''} onChange={(e) => setLongitude(e.target.value ? parseFloat(e.target.value) : undefined)} placeholder="e.g. 85.3240" style={inputStyle} />
+            </div>
+          </div>
         </div>
         <div style={{ gridColumn: '1 / -1' }}>
           <label style={labelStyle}>Caption</label>

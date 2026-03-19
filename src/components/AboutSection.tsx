@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
 import { saveContactMessage } from '../services/contactService';
-import { Camera, Mountain, Heart, Globe } from 'lucide-react';
+import { Camera, Mountain, Heart, Globe, MapPin } from 'lucide-react';
 
-export const AboutSection: React.FC = () => {
+interface AboutSectionProps {
+  onMapClick?: () => void;
+}
+
+export const AboutSection: React.FC<AboutSectionProps> = ({ onMapClick }) => {
   return (
     <section id="about" className="bg-wa-dark-alt" style={{ padding: '5rem 0 6rem' }}>
       <div className="wa-container">
@@ -169,6 +173,43 @@ export const AboutSection: React.FC = () => {
                 — Madan
               </p>
             </div>
+
+            {/* Photo Map Button */}
+            {onMapClick && (
+              <div
+                onClick={onMapClick}
+                style={{
+                  borderRadius: '1rem',
+                  padding: '1.25rem 2.5rem',
+                  background: 'linear-gradient(135deg, rgba(201,168,76,0.08), var(--wa-dark-card))',
+                  border: '1px solid rgba(201,168,76,0.2)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '1rem',
+                  transition: 'all 0.3s',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(201,168,76,0.5)'; e.currentTarget.style.background = 'linear-gradient(135deg, rgba(201,168,76,0.15), var(--wa-dark-card))'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(201,168,76,0.2)'; e.currentTarget.style.background = 'linear-gradient(135deg, rgba(201,168,76,0.08), var(--wa-dark-card))'; }}
+              >
+                <div style={{
+                  width: 48, height: 48, borderRadius: '50%',
+                  background: 'rgba(201,168,76,0.15)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0,
+                }}>
+                  <MapPin size={22} color="#c9a84c" />
+                </div>
+                <div>
+                  <h4 className="font-cinzel" style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--wa-gold)', letterSpacing: '0.08em', margin: '0 0 0.2rem' }}>
+                    📍 PHOTO MAP
+                  </h4>
+                  <p style={{ fontSize: '0.75rem', color: 'rgba(235,230,220,0.5)', margin: 0 }}>
+                    Explore where each photo was taken around the world
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Contact Form */}
             <div

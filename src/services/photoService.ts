@@ -20,6 +20,8 @@ export interface FirestorePhoto {
   likeCount: number;
   type: string;
   photographer?: string;
+  latitude?: number;
+  longitude?: number;
   published?: boolean;
   createdAt?: any;
 }

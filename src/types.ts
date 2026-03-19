@@ -20,6 +20,8 @@ export interface Photo {
   liked: boolean;
   published?: boolean;
   photographer?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface Category {

@@ -26,6 +26,7 @@ import { getVideosFromFirestore, addVideoToFirestore, deleteVideoFromFirestore, 
 import { addCommentToFirestore, deleteCommentFromFirestore, getCommentsForTarget, getAllComments, subscribeToAllComments } from './services/commentService';
 import { saveVisitorToFirestore, getVisitorFromFirestore, updateVisitorDownloadCount, updateVisitorProfile, trackOnlineVisitor, subscribeToOnlineVisitors } from './services/visitorService';
 import { LiveStats } from './components/LiveStats';
+import { PhotoMap } from './components/PhotoMap';
 import { onSiteSettingsChange, SiteSettings } from './services/siteSettingsService';
 
 const logoUrl = '/photos/logo.png';
@@ -188,6 +189,7 @@ const App: React.FC = () => {
   const [totalCommentCount, setTotalCommentCount] = useState(0);
   const [allFirestoreComments, setAllFirestoreComments] = useState<any[]>([]);
   const [siteSettings, setSiteSettings] = useState<SiteSettings>({ heroImages: [] });
+  const [showMap, setShowMap] = useState(false);
   const FREE_DOWNLOADS = 2;
   const onlineCleanupRef = useRef<(() => void) | null>(null);
 
@@ -279,6 +281,8 @@ const App: React.FC = () => {
         tags: fp.tags || [],
         animalName: fp.animalName || '',
         photographer: fp.photographer || '',
+        latitude: fp.latitude || undefined,
+        longitude: fp.longitude || undefined,
         published: fp.published !== false,
         likeCount: fp.likeCount || 0,
         liked: false,
@@ -1282,7 +1286,7 @@ const App: React.FC = () => {
         isAdmin={isAdmin}
         onDeleteComment={handleDeleteComment}
       />
-      <AboutSection />
+      <AboutSection onMapClick={() => setShowMap(true)} />
       <Footer logoUrl={logoUrl} onTermsClick={handleTermsClick} />
 
       {/* Live Stats Floating Widget - Admin Only */}
@@ -1314,6 +1318,13 @@ const App: React.FC = () => {
           isDownloading={isDownloading}
         />
       )}
+
+      <PhotoMap
+        photos={photos}
+        isOpen={showMap}
+        onClose={() => setShowMap(false)}
+        onPhotoClick={(photo) => { setShowMap(false); openPhoto(photo); }}
+      />
 
       <AIChatbot photos={photos} onPhotoClick={openPhoto} />
 
