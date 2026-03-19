@@ -40,9 +40,13 @@ export function onSiteSettingsChange(callback: (settings: SiteSettings) => void)
 export async function saveSiteSettings(settings: Partial<SiteSettings>): Promise<void> {
   const docRef = doc(db, SETTINGS_COLLECTION, SETTINGS_DOC);
   const current = await getSiteSettings();
+  // Filter out undefined values that Firestore rejects
+  const cleaned = Object.fromEntries(
+    Object.entries(settings).filter(([_, v]) => v !== undefined)
+  );
   await setDoc(docRef, {
     ...current,
-    ...settings,
+    ...cleaned,
     updatedAt: new Date().toISOString(),
   }, { merge: true });
 }

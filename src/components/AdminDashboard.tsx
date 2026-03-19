@@ -1170,7 +1170,7 @@ const SiteSettingsForm = () => {
     try {
       await saveSiteSettings({
         heroImages: heroImages.filter(url => url.length > 0),
-        defaultThumbnail: defaultThumbnail || undefined,
+        defaultThumbnail: defaultThumbnail || '',
         categoryImages,
       });
       alert('✅ Site settings saved successfully!');
