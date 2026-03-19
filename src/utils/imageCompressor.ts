@@ -4,6 +4,7 @@ import imageCompression from 'browser-image-compression';
  * Compresses an image FILE for portfolio upload.
  * - Format: WebP (best quality-to-size ratio for web)
  * - Quality: 90% (visually lossless, ~60-80% size reduction)
+ * - Max File Size: 4MB (guaranteed output size)
  * - Max Resolution: 3840px (4K — sharp on all monitors)
  * - ICC Profiles: Preserved via exif preservation (best-effort in browser)
  */
@@ -12,11 +13,13 @@ export async function compressForUpload(
   onProgress?: (progress: number) => void
 ): Promise<File> {
   const originalMB = (file.size / 1024 / 1024).toFixed(2);
+  console.log(`📸 Starting compression: ${file.name} (${originalMB}MB)`);
 
   const options = {
+    maxSizeMB: 4,              // Guarantee output is under 4MB
     maxWidthOrHeight: 3840,    // 4K Resolution — sharp on large monitors
     initialQuality: 0.9,       // 90% quality — human eye cannot tell the difference
-    fileType: 'image/webp',    // WebP — best quality-to-size ratio for web
+    fileType: 'image/webp' as const,    // WebP — best quality-to-size ratio for web
     useWebWorker: true,        // Non-blocking compression
     preserveExif: true,        // Preserve EXIF metadata (ICC profile best-effort)
     onProgress: (progress: number) => {
@@ -29,13 +32,13 @@ export async function compressForUpload(
     const compressedMB = (compressed.size / 1024 / 1024).toFixed(2);
     console.log(
       `📸 Compressed: ${originalMB}MB → ${compressedMB}MB ` +
-      `(WebP, 90% quality, max 3840px)`
+      `(WebP, 90% quality, max 3840px, max 4MB)`
     );
     // Return as a File with .webp extension
     const webpName = file.name.replace(/\.[^.]+$/, '') + '.webp';
     return new File([compressed], webpName, { type: 'image/webp' });
   } catch (err) {
-    console.warn('📸 Compression failed, using original:', err);
+    console.error('📸 Compression failed:', err);
     throw err;
   }
 }

@@ -395,14 +395,20 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
       if (imageUrl.startsWith('data:')) {
         try {
           setUploadProgress(0);
-          // Use compressed WebP File for upload (with progress), or fall back to data URL
-          const fileToUpload: File | string = compressedFile ?? imageUrl;
+          // Always use File/Blob for resumable upload (never uploadString — it hangs on large files)
+          const fileToUpload: File | Blob = compressedFile ??
+            await fetch(imageUrl).then(r => r.blob()); // Convert data URL → Blob as fallback
           const uploadName = compressedFile
             ? (uploadedFileName || 'photo').replace(/\.[^.]+$/, '') + '.webp'
             : (uploadedFileName || 'photo.jpg');
+          console.log(`📤 Uploading ${compressedFile ? 'compressed WebP' : 'original (compression failed)'}: ${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB`);
           finalImageUrl = await uploadPhotoToStorage(fileToUpload, uploadName, (p) => setUploadProgress(p));
-        } catch (err) {
-          console.warn('Firebase Storage upload failed, using data URL:', err);
+        } catch (err: any) {
+          console.error('Firebase Storage upload failed:', err);
+          alert(`❌ Upload failed: ${err?.message || 'Unknown error'}. Please try again.`);
+          setSaving(false);
+          setUploadProgress(0);
+          return;
         }
       }
       
@@ -429,13 +435,16 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
           const docId = await addPhotoToFirestore(photoData as any);
           firestoreId = docId;
         }
-      } catch (err) {
-        console.warn('Firestore save failed:', err);
+      } catch (err: any) {
+        console.error('Firestore save failed:', err);
+        alert(`❌ Firestore save failed: ${err?.message || 'Unknown error'}. Image was uploaded but metadata save failed.`);
       }
-    } catch (err) {
-      console.warn('Firebase operations failed:', err);
+    } catch (err: any) {
+      console.error('Firebase operations failed:', err);
+      alert(`❌ Save failed: ${err?.message || 'Unknown error'}. Please try again.`);
     } finally {
       setSaving(false);
+      setUploadProgress(0);
     }
     
     // Build the photo object for the parent (no undefined values)

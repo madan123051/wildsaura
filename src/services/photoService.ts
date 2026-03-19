@@ -1,6 +1,6 @@
 import { db, storage } from '../firebase';
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, serverTimestamp, onSnapshot, Unsubscribe } from 'firebase/firestore';
-import { ref, uploadBytesResumable, uploadString, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 export interface FirestorePhoto {
   id?: string;
@@ -28,10 +28,22 @@ export interface FirestorePhoto {
 
 const PHOTOS_COLLECTION = 'photos';
 
+/** Convert a data URL to a Blob (for resumable upload) */
+function dataUrlToBlob(dataUrl: string): Blob {
+  const [header, base64] = dataUrl.split(',');
+  const mime = header.match(/:(.*?);/)?.[1] || 'image/jpeg';
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+}
+
 /**
  * Upload a photo to Firebase Storage.
- * Accepts either a File/Blob (preferred — supports progress tracking)
- * or a data URL string (legacy fallback).
+ * Accepts File/Blob (preferred) or data URL string.
+ * ALWAYS uses resumable upload for progress tracking and reliability.
+ * Includes a 90-second timeout to prevent infinite hanging.
+ *
  * @param input    File/Blob from compressForUpload, or data URL string
  * @param filename Destination filename in storage
  * @param onProgress Optional callback: receives 0–100 integer during upload
@@ -43,18 +55,26 @@ export async function uploadPhotoToStorage(
 ): Promise<string> {
   const storageRef = ref(storage, `photos/${Date.now()}_${filename}`);
 
-  // Legacy path: data URL string (no progress available)
+  // Always convert to Blob for resumable upload (never use uploadString — it hangs on large files)
+  let blob: Blob;
   if (typeof input === 'string') {
-    await uploadString(storageRef, input, 'data_url');
-    if (onProgress) onProgress(100);
-    return await getDownloadURL(storageRef);
+    console.log('📤 Converting data URL to Blob for resumable upload...');
+    blob = dataUrlToBlob(input);
+  } else {
+    blob = input;
   }
 
-  // Preferred path: File/Blob with resumable upload + progress tracking
+  const contentType = blob.type || 'image/webp';
+  console.log(`📤 Starting resumable upload: ${(blob.size / 1024 / 1024).toFixed(2)}MB (${contentType})`);
+
   return new Promise<string>((resolve, reject) => {
-    const uploadTask = uploadBytesResumable(storageRef, input, {
-      contentType: input.type || 'image/webp',
-    });
+    // 90-second timeout — prevents infinite hanging
+    const timeoutId = setTimeout(() => {
+      uploadTask.cancel();
+      reject(new Error('Upload timed out after 90 seconds. Please check your internet connection and try again.'));
+    }, 90000);
+
+    const uploadTask = uploadBytesResumable(storageRef, blob, { contentType });
 
     uploadTask.on(
       'state_changed',
@@ -64,13 +84,16 @@ export async function uploadPhotoToStorage(
         if (onProgress) onProgress(40 + Math.round(pct * 0.6));
       },
       (error) => {
-        console.error('Firebase Storage upload error:', error);
+        clearTimeout(timeoutId);
+        console.error('📤 Firebase Storage upload error:', error);
         reject(error);
       },
       async () => {
+        clearTimeout(timeoutId);
         try {
           const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
           if (onProgress) onProgress(100);
+          console.log('📤 Upload complete!');
           resolve(downloadUrl);
         } catch (err) {
           reject(err);
