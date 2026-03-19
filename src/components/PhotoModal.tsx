@@ -63,6 +63,28 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
         {/* Image */}
         <div style={{ position: 'relative' }}>
           <img src={photo.imageUrl} alt={photo.title} style={{ width: '100%', objectFit: 'cover', borderRadius: '1rem 1rem 0 0', maxHeight: '55vh' }} />
+          {/* Watermark badge */}
+          <span
+            className="font-cinzel"
+            style={{
+              position: 'absolute',
+              bottom: 8,
+              right: 8,
+              padding: '3px 8px',
+              background: 'rgba(0, 0, 0, 0.5)',
+              border: '1px solid rgba(201, 168, 76, 0.4)',
+              borderRadius: '4px',
+              color: 'rgba(201, 168, 76, 0.8)',
+              fontSize: '0.55rem',
+              fontWeight: 700,
+              letterSpacing: '0.08em',
+              pointerEvents: 'none',
+              zIndex: 2,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            © WILDSAURA PHOTOGRAPHY
+          </span>
           <div style={{ position: 'absolute', top: '0.75rem', left: '0.75rem' }}>
             <span className="font-cinzel" style={{
               padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.7rem', fontWeight: 500,

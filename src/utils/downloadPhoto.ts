@@ -1,5 +1,7 @@
 /**
  * Download a photo with optional watermark and 1MB size limit.
+ * IMPORTANT: If applyWatermark is true, we NEVER skip the watermark.
+ * The old fallback (direct link download) bypassed the watermark — now fixed.
  */
 
 function drawWatermark(ctx: CanvasRenderingContext2D, width: number, height: number): void {
@@ -141,8 +143,15 @@ export async function downloadPhoto(
       tryExport();
     });
   } catch (err) {
-    // Ultimate fallback: direct link download
-    console.warn('Canvas download failed, trying direct download:', err);
+    console.warn('Canvas download failed:', err instanceof Error ? err.message : 'unknown');
+
+    // FIXED: If watermark is required, do NOT allow non-watermarked download
+    if (applyWatermark) {
+      alert('⚠️ Download failed — watermark could not be applied. Please try again or contact support.');
+      throw err;
+    }
+
+    // Only allow direct download if watermark is NOT required (first 2 free downloads)
     const a = document.createElement('a');
     a.href = imageUrl;
     a.download = `${title.replace(/[^a-zA-Z0-9_-]/g, '_')}_wildsaura.jpg`;

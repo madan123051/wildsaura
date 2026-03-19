@@ -39,6 +39,28 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, on
           style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.7s' }}
           loading="lazy"
         />
+        {/* Watermark badge */}
+        <span
+          className="font-cinzel"
+          style={{
+            position: 'absolute',
+            bottom: 6,
+            right: 6,
+            padding: '2px 6px',
+            background: 'rgba(0, 0, 0, 0.5)',
+            border: '1px solid rgba(201, 168, 76, 0.4)',
+            borderRadius: '4px',
+            color: 'rgba(201, 168, 76, 0.8)',
+            fontSize: '0.5rem',
+            fontWeight: 700,
+            letterSpacing: '0.08em',
+            pointerEvents: 'none',
+            zIndex: 2,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          © WILDSAURA
+        </span>
         {/* Hover overlay */}
         <div
           className="card-overlay"
