@@ -10,7 +10,7 @@ import { analyzePhoto, getAnimalInfo } from '../utils/aiService';
 import { uploadPhotoToStorage, addPhotoToFirestore } from '../services/photoService';
 import { getAISettings } from '../services/aiSettingsService';
 import { AISettingsPanel } from './AISettings';
-import { getSiteSettings, saveSiteSettings, uploadHeroImage, uploadDefaultThumbnail, SiteSettings } from '../services/siteSettingsService';
+import { getSiteSettings, saveSiteSettings, uploadHeroImage, uploadDefaultThumbnail, uploadCategoryImage, SiteSettings } from '../services/siteSettingsService';
 import { applyWatermark } from '../utils/watermark';
 import { compressImageForAI } from '../utils/imageCompressor';
 import { readExifFromFile } from '../utils/exifReader';
@@ -1086,6 +1086,7 @@ const VideoForm: React.FC<VideoFormProps> = ({ initial, onSave, onCancel, nextId
 const SiteSettingsForm = () => {
   const [heroImages, setHeroImages] = React.useState<string[]>(['', '', '', '']);
   const [defaultThumbnail, setDefaultThumbnail] = React.useState('');
+  const [categoryImages, setCategoryImages] = React.useState<{ wildlife?: string; landscape?: string; portraits?: string }>({});
   const [saving, setSaving] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
   const [uploadingSlot, setUploadingSlot] = React.useState<number | null>(null);
@@ -1098,6 +1099,7 @@ const SiteSettingsForm = () => {
         setHeroImages(padded.slice(0, 4));
       }
       if (settings.defaultThumbnail) setDefaultThumbnail(settings.defaultThumbnail);
+      if (settings.categoryImages) setCategoryImages(settings.categoryImages);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
@@ -1130,6 +1132,18 @@ const SiteSettingsForm = () => {
     setUploadingSlot(null);
   };
 
+  const handleCategoryImageUpload = async (key: string, file: File) => {
+    setUploadingSlot(200);
+    try {
+      const url = await uploadCategoryImage(key, file);
+      setCategoryImages(prev => ({ ...prev, [key]: url }));
+    } catch (err) {
+      console.warn('Category image upload failed:', err);
+      alert('Upload failed. Please try again.');
+    }
+    setUploadingSlot(null);
+  };
+
   const handleRemoveHero = (index: number) => {
     setHeroImages(prev => {
       const updated = [...prev];
@@ -1144,6 +1158,7 @@ const SiteSettingsForm = () => {
       await saveSiteSettings({
         heroImages: heroImages.filter(url => url.length > 0),
         defaultThumbnail: defaultThumbnail || undefined,
+        categoryImages,
       });
       alert('✅ Site settings saved successfully!');
     } catch (err) {
@@ -1224,6 +1239,80 @@ const SiteSettingsForm = () => {
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) handleHeroImageUpload(idx, file);
+                    }}
+                  />
+                </label>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Category Images Section */}
+      <div style={{ marginBottom: '2rem' }}>
+        <h3 style={{ fontSize: '1rem', color: 'var(--wa-light)', marginBottom: '0.75rem', fontWeight: 600 }}>
+          🏷️ Category Images
+        </h3>
+        <p style={{ fontSize: '0.75rem', color: 'rgba(235,230,220,0.4)', marginBottom: '1rem' }}>
+          Upload custom images for each category displayed on the homepage.
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+          {([
+            { key: 'wildlife', label: 'Wildlife' },
+            { key: 'landscape', label: 'Landscapes' },
+            { key: 'portraits', label: 'Portraits' },
+          ] as { key: string; label: string }[]).map((cat) => (
+            <div key={cat.key} style={{
+              border: '2px dashed rgba(201,168,76,0.2)',
+              borderRadius: '12px',
+              overflow: 'hidden',
+              background: 'rgba(0,0,0,0.3)',
+              position: 'relative',
+              aspectRatio: '4/3',
+            }}>
+              {(categoryImages as any)[cat.key] ? (
+                <>
+                  <img src={(categoryImages as any)[cat.key]} alt={cat.label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <button
+                    onClick={() => setCategoryImages(prev => {
+                      const updated = { ...prev };
+                      delete (updated as any)[cat.key];
+                      return updated;
+                    })}
+                    style={{
+                      position: 'absolute', top: 6, right: 6,
+                      background: 'rgba(239,68,68,0.9)', border: 'none', borderRadius: '50%',
+                      width: 28, height: 28, cursor: 'pointer', color: '#fff',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '0.8rem', fontWeight: 700,
+                    }}
+                  >✕</button>
+                  <div style={{
+                    position: 'absolute', bottom: 0, left: 0, right: 0,
+                    background: 'linear-gradient(transparent, rgba(0,0,0,0.8))',
+                    padding: '0.5rem', fontSize: '0.7rem', color: 'var(--wa-gold)',
+                    textAlign: 'center',
+                  }}>
+                    {cat.label}
+                  </div>
+                </>
+              ) : (
+                <label style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  width: '100%', height: '100%', cursor: 'pointer',
+                  color: 'rgba(235,230,220,0.3)', fontSize: '0.75rem',
+                  minHeight: '120px',
+                }}>
+                  <Upload size={24} style={{ marginBottom: '0.3rem' }} />
+                  <span>{cat.label}</span>
+                  <span style={{ fontSize: '0.65rem', opacity: 0.6 }}>Click to upload</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleCategoryImageUpload(cat.key, file);
                     }}
                   />
                 </label>

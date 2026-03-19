@@ -1231,6 +1231,13 @@ const App: React.FC = () => {
     );
   }
 
+  // ── Dynamic Categories (uses custom images from site settings if available) ──
+  const dynamicCategories: Category[] = [
+    { key: 'wildlife', label: 'Wildlife', imageUrl: siteSettings.categoryImages?.wildlife || '/photos/photo-wildlife.jpeg' },
+    { key: 'landscape', label: 'Landscapes', imageUrl: siteSettings.categoryImages?.landscape || '/photos/photo-landscape.jpeg' },
+    { key: 'other', label: 'Portraits', imageUrl: siteSettings.categoryImages?.portraits || '/photos/photo-portrait.jpeg' },
+  ];
+
   // ── Home View ──
   return (
     <div style={{ minHeight: '100vh', background: 'var(--wa-dark)' }}>
@@ -1248,7 +1255,7 @@ const App: React.FC = () => {
           onNotificationClick={() => {}}
       />
       <Hero onExplore={scrollToGallery} logoUrl={logoUrl} heroImages={siteSettings.heroImages} />
-      <CategorySection categories={CATEGORIES} onCategoryClick={handleCategoryClick} />
+      <CategorySection categories={dynamicCategories} onCategoryClick={handleCategoryClick} />
       <Gallery
         photos={photos}
         filterTabs={FILTER_TABS}
