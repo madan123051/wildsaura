@@ -3,27 +3,80 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WILDS AURA Photography</title>
-  <meta name="description" content="WILDS AURA — Wildlife & Nature Photography by Madan Shrestha. Explore stunning wildlife photos, landscapes, and stories from the wild." />
-  
-  <!-- Open Graph / Social Media -->
+  <title>WILDS AURA — Wildlife & Nature Photography | Madan Shrestha</title>
+  <meta name="description" content="WILDS AURA — Stunning wildlife & nature photography by Madan Shrestha. Explore breathtaking photos of wild animals, birds, landscapes, and untold stories from the wild." />
+  <meta name="keywords" content="wildlife photography, nature photography, wild animals, birds, landscape, Madan Shrestha, WildSaura, WILDS AURA, wildlife photos, nature gallery, wildlife art" />
+  <meta name="author" content="Madan Shrestha" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <link rel="canonical" href="https://wildsaura.vercel.app" />
+  <meta name="theme-color" content="#0a0a0a" />
+
+  <!-- Open Graph / Facebook / WhatsApp -->
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="WILDS AURA Photography" />
   <meta property="og:title" content="WILDS AURA — Wildlife & Nature Photography" />
   <meta property="og:description" content="Explore stunning wildlife photos, landscapes, and stories from the wild by Madan Shrestha." />
-  <meta property="og:image" content="/photos/logo.png" />
+  <meta property="og:image" content="https://wildsaura.vercel.app/photos/logo.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="WILDS AURA Photography Logo" />
   <meta property="og:url" content="https://wildsaura.vercel.app" />
-  
+  <meta property="og:locale" content="en_US" />
+
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="WILDS AURA — Wildlife & Nature Photography" />
-  <meta name="twitter:description" content="Explore stunning wildlife photos, landscapes, and stories from the wild." />
-  <meta name="twitter:image" content="/photos/logo.png" />
+  <meta name="twitter:description" content="Explore stunning wildlife photos, landscapes, and stories from the wild by Madan Shrestha." />
+  <meta name="twitter:image" content="https://wildsaura.vercel.app/photos/logo.png" />
+  <meta name="twitter:creator" content="@wildsaura" />
 
+  <!-- Favicon & Icons -->
   <link rel="icon" type="image/x-icon" href="/favicon.ico" />
   <link rel="apple-touch-icon" sizes="192x192" href="/lion-192.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="/lion-192.png" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- Structured Data / JSON-LD -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "WILDS AURA Photography",
+    "url": "https://wildsaura.vercel.app",
+    "description": "Stunning wildlife & nature photography by Madan Shrestha",
+    "author": {
+      "@type": "Person",
+      "name": "Madan Shrestha",
+      "url": "https://wildsaura.vercel.app"
+    },
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": "https://wildsaura.vercel.app/?search={search_term_string}",
+      "query-input": "required name=search_term_string"
+    }
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "ImageGallery",
+    "name": "WILDS AURA Wildlife Photography Gallery",
+    "description": "A curated collection of wildlife and nature photographs",
+    "url": "https://wildsaura.vercel.app",
+    "creator": {
+      "@type": "Person",
+      "name": "Madan Shrestha"
+    },
+    "about": {
+      "@type": "Thing",
+      "name": "Wildlife Photography"
+    }
+  }
+  </script>
 </head>
 <body>
   <div id="root"></div>
