@@ -412,8 +412,8 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
             likeCount: initial?.likeCount || 0,
             type: mediaType === 'video' ? 'video' : 'photo',
             photographer: photographer || '',
-            ...(latitude != null && !isNaN(latitude) ? { latitude } : {}),
-            ...(longitude != null && !isNaN(longitude) ? { longitude } : {}),
+            ...(latitudeStr && !isNaN(parseFloat(latitudeStr)) ? { latitude: parseFloat(latitudeStr) } : {}),
+            ...(longitudeStr && !isNaN(parseFloat(longitudeStr)) ? { longitude: parseFloat(longitudeStr) } : {}),
           });
           firestoreId = initial.firestoreId;
         } else {
@@ -424,8 +424,8 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
             likeCount: initial?.likeCount || 0,
             type: mediaType === 'video' ? 'video' : 'photo',
             photographer: photographer || '',
-            ...(latitude != null && !isNaN(latitude) ? { latitude } : {}),
-            ...(longitude != null && !isNaN(longitude) ? { longitude } : {}),
+            ...(latitudeStr && !isNaN(parseFloat(latitudeStr)) ? { latitude: parseFloat(latitudeStr) } : {}),
+            ...(longitudeStr && !isNaN(parseFloat(longitudeStr)) ? { longitude: parseFloat(longitudeStr) } : {}),
           });
           firestoreId = docId;
         }
@@ -445,8 +445,8 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
       cameraModel, lens, aperture, shutterSpeed, iso, focalLength,
       tags: finalTags, animalName, wikiSummary,
       photographer,
-      latitude: latitude != null && !isNaN(latitude) ? latitude : undefined,
-      longitude: longitude != null && !isNaN(longitude) ? longitude : undefined,
+      latitude: latitudeStr && !isNaN(parseFloat(latitudeStr)) ? parseFloat(latitudeStr) : undefined,
+      longitude: longitudeStr && !isNaN(parseFloat(longitudeStr)) ? parseFloat(longitudeStr) : undefined,
       likeCount: initial?.likeCount || 0, liked: initial?.liked || false,
       published: initial?.published !== false,
     });
@@ -536,11 +536,11 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
             <div>
               <label style={labelStyle}>📍 Latitude</label>
-              <input type="number" step="any" value={latitude ?? ''} onChange={(e) => setLatitude(e.target.value ? parseFloat(e.target.value) : undefined)} placeholder="e.g. 27.7172" style={inputStyle} />
+              <input type="text" inputMode="decimal" pattern="[0-9.\-]*" value={latitudeStr} onChange={(e) => setLatitudeStr(e.target.value.replace(/[^0-9.\-]/g, ''))} placeholder="e.g. 27.7172" style={inputStyle} />
             </div>
             <div>
               <label style={labelStyle}>📍 Longitude</label>
-              <input type="number" step="any" value={longitude ?? ''} onChange={(e) => setLongitude(e.target.value ? parseFloat(e.target.value) : undefined)} placeholder="e.g. 85.3240" style={inputStyle} />
+              <input type="text" inputMode="decimal" pattern="[0-9.\-]*" value={longitudeStr} onChange={(e) => setLongitudeStr(e.target.value.replace(/[^0-9.\-]/g, ''))} placeholder="e.g. 85.3240" style={inputStyle} />
             </div>
           </div>
         </div>
