@@ -298,8 +298,13 @@ const App: React.FC = () => {
   // ── Deep Link State ──────────────────────────────────────────────────────
   const [pendingPhotoId, setPendingPhotoId] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null;
+    // Check /photo/:id path OR ?photo= query param (from OG redirect)
     const m = window.location.pathname.match(/^\/photo\/(.+)$/);
-    return m ? decodeURIComponent(m[1]) : null;
+    if (m) return decodeURIComponent(m[1]);
+    const params = new URLSearchParams(window.location.search);
+    const photoParam = params.get('photo');
+    if (photoParam) return decodeURIComponent(photoParam);
+    return null;
   });
   const [pendingStorySlug, setPendingStorySlug] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null;
