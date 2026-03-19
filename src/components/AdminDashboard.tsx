@@ -389,6 +389,14 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
     setSaving(true);
     const finalTags = tagsInput ? tagsInput.split(',').map(t => t.trim()).filter(Boolean) : tags;
     
+    // Parse lat/lng safely - strip any non-numeric chars except dot and minus
+    const cleanLat = latitudeStr.replace(/[^0-9.\-]/g, '').trim();
+    const cleanLng = longitudeStr.replace(/[^0-9.\-]/g, '').trim();
+    const parsedLat = cleanLat ? parseFloat(cleanLat) : NaN;
+    const parsedLng = cleanLng ? parseFloat(cleanLng) : NaN;
+    const hasValidLat = !isNaN(parsedLat) && isFinite(parsedLat);
+    const hasValidLng = !isNaN(parsedLng) && isFinite(parsedLng);
+    
     let finalImageUrl = imageUrl;
     let firestoreId: string | undefined;
     
@@ -402,31 +410,27 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
         }
       }
       
+      // Build Firestore data object (never include undefined values)
+      const photoData: Record<string, any> = {
+        title, caption: caption || '', category, imageUrl: finalImageUrl,
+        location: location || '', tags: finalTags, animalName: animalName || '',
+        cameraModel: cameraModel || '', lens: lens || '', aperture: aperture || '',
+        shutterSpeed: shutterSpeed || '', iso: iso || '', focalLength: focalLength || '',
+        likeCount: initial?.likeCount || 0,
+        type: mediaType === 'video' ? 'video' : 'photo',
+        photographer: photographer || '',
+      };
+      // Only add lat/lng if they are valid finite numbers
+      if (hasValidLat) photoData.latitude = parsedLat;
+      if (hasValidLng) photoData.longitude = parsedLng;
+      
       // Save metadata to Firestore
       try {
         if (initial?.firestoreId) {
-          await updatePhotoInFirestore(initial.firestoreId, {
-            title, caption: caption || '', category, imageUrl: finalImageUrl,
-            location: location || '', tags: finalTags, animalName,
-            cameraModel, lens, aperture, shutterSpeed, iso, focalLength,
-            likeCount: initial?.likeCount || 0,
-            type: mediaType === 'video' ? 'video' : 'photo',
-            photographer: photographer || '',
-            ...(latitudeStr && !isNaN(parseFloat(latitudeStr)) ? { latitude: parseFloat(latitudeStr) } : {}),
-            ...(longitudeStr && !isNaN(parseFloat(longitudeStr)) ? { longitude: parseFloat(longitudeStr) } : {}),
-          });
+          await updatePhotoInFirestore(initial.firestoreId, photoData);
           firestoreId = initial.firestoreId;
         } else {
-          const docId = await addPhotoToFirestore({
-            title, caption: caption || '', category, imageUrl: finalImageUrl,
-            location: location || '', tags: finalTags, animalName,
-            cameraModel, lens, aperture, shutterSpeed, iso, focalLength,
-            likeCount: initial?.likeCount || 0,
-            type: mediaType === 'video' ? 'video' : 'photo',
-            photographer: photographer || '',
-            ...(latitudeStr && !isNaN(parseFloat(latitudeStr)) ? { latitude: parseFloat(latitudeStr) } : {}),
-            ...(longitudeStr && !isNaN(parseFloat(longitudeStr)) ? { longitude: parseFloat(longitudeStr) } : {}),
-          });
+          const docId = await addPhotoToFirestore(photoData as any);
           firestoreId = docId;
         }
       } catch (err) {
@@ -434,26 +438,30 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
       }
     } catch (err) {
       console.warn('Firebase operations failed:', err);
+    } finally {
+      setSaving(false);
     }
     
-    setSaving(false);
-    onSave({
+    // Build the photo object for the parent (no undefined values)
+    const savedPhoto: any = {
       id: initial?.id || nextId,
       firestoreId,
       title, category, imageUrl: finalImageUrl, location, caption,
       type: mediaType === 'video' ? 'video' : 'photo',
       cameraModel, lens, aperture, shutterSpeed, iso, focalLength,
-      tags: finalTags, animalName, wikiSummary,
-      photographer,
-      latitude: latitudeStr && !isNaN(parseFloat(latitudeStr)) ? parseFloat(latitudeStr) : undefined,
-      longitude: longitudeStr && !isNaN(parseFloat(longitudeStr)) ? parseFloat(longitudeStr) : undefined,
+      tags: finalTags, animalName: animalName || '', wikiSummary: wikiSummary || '',
+      photographer: photographer || '',
       likeCount: initial?.likeCount || 0, liked: initial?.liked || false,
       published: initial?.published !== false,
-    });
+    };
+    if (hasValidLat) savedPhoto.latitude = parsedLat;
+    if (hasValidLng) savedPhoto.longitude = parsedLng;
+    
+    onSave(savedPhoto);
   };
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit} noValidate>
       {/* Upload Zone */}
       <div style={{ marginBottom: '1.5rem' }}>
         <UploadZone
@@ -536,11 +544,11 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
             <div>
               <label style={labelStyle}>📍 Latitude</label>
-              <input type="text" inputMode="decimal" pattern="[0-9.\-]*" value={latitudeStr} onChange={(e) => setLatitudeStr(e.target.value.replace(/[^0-9.\-]/g, ''))} placeholder="e.g. 27.7172" style={inputStyle} />
+              <input type="text" inputMode="decimal" value={latitudeStr} onChange={(e) => setLatitudeStr(e.target.value.replace(/[^0-9.\-]/g, ''))} placeholder="e.g. 27.7172" style={inputStyle} />
             </div>
             <div>
               <label style={labelStyle}>📍 Longitude</label>
-              <input type="text" inputMode="decimal" pattern="[0-9.\-]*" value={longitudeStr} onChange={(e) => setLongitudeStr(e.target.value.replace(/[^0-9.\-]/g, ''))} placeholder="e.g. 85.3240" style={inputStyle} />
+              <input type="text" inputMode="decimal" value={longitudeStr} onChange={(e) => setLongitudeStr(e.target.value.replace(/[^0-9.\-]/g, ''))} placeholder="e.g. 85.3240" style={inputStyle} />
             </div>
           </div>
         </div>
