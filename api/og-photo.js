@@ -4,7 +4,7 @@
 
 const FIREBASE_PROJECT_ID = 'wildsaura-1ef8a';
 const FIREBASE_API_KEY = 'AIzaSyCXDJrFmn-pzbqys91tj4Fruqn4tl58p9Y';
-const SITE_URL = 'https://wildsaura.vercel.app';
+const SITE_URL = 'https://wildsaura.com';
 
 // Known social media crawler user agents
 const BOT_USER_AGENTS = [
