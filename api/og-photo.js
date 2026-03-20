@@ -34,7 +34,6 @@ async function getPhotoFromFirestore(photoId) {
     const doc = await res.json();
     if (!doc.fields) return null;
 
-    // Parse Firestore document fields
     const fields = doc.fields;
     return {
       title: fields.title?.stringValue || 'Wildlife Photo',
@@ -55,7 +54,7 @@ function escapeHtml(str) {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   const photoId = req.query.id;
   const userAgent = req.headers['user-agent'] || '';
 
@@ -63,9 +62,8 @@ module.exports = async function handler(req, res) {
     return res.redirect(302, SITE_URL);
   }
 
-  // For normal users, redirect to the SPA (React router handles /photo/:id)
+  // For normal users, redirect to the SPA
   if (!isBot(userAgent)) {
-    // Redirect to SPA with the photo ID — the React app will open the modal
     return res.redirect(302, `${SITE_URL}/?photo=${encodeURIComponent(photoId)}`);
   }
 
@@ -73,7 +71,6 @@ module.exports = async function handler(req, res) {
   const photo = await getPhotoFromFirestore(photoId);
 
   if (!photo) {
-    // Fallback to generic OG tags if photo not found
     return res.redirect(302, SITE_URL);
   }
 
@@ -126,4 +123,4 @@ module.exports = async function handler(req, res) {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=3600');
   return res.status(200).send(html);
-};
+}
