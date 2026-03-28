@@ -15,6 +15,7 @@ import { VisitorLogin } from './components/VisitorLogin';
 import { StoriesSection } from './components/StoriesSection';
 import { VideoSection } from './components/VideoSection';
 import { TermsConditions } from './components/TermsConditions';
+import { OurAppsSection } from './components/OurAppsSection';
 import { StoryDetail } from './components/StoryDetail';
 import { downloadPhoto } from './utils/downloadPhoto';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
@@ -1357,6 +1358,7 @@ const App: React.FC = () => {
         onDeleteComment={handleDeleteComment}
       />
       <AboutSection onMapClick={() => setShowMap(true)} />
+      <OurAppsSection />
       <Footer logoUrl={logoUrl} onTermsClick={handleTermsClick} />
 
       {/* Live Stats Floating Widget - Admin Only */}
