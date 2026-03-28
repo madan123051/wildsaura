@@ -7,12 +7,13 @@ import {
 } from 'lucide-react';
 import { Photo, Story, Video } from '../types';
 import { analyzePhoto, getAnimalInfo } from '../utils/aiService';
-import { uploadPhotoToStorage, addPhotoToFirestore, updatePhotoInFirestore } from '../services/photoService';
+import { uploadPhotoToStorage, uploadThumbnailToStorage, addPhotoToFirestore, updatePhotoInFirestore } from '../services/photoService';
 import { getAISettings } from '../services/aiSettingsService';
 import { AISettingsPanel } from './AISettings';
 import { getSiteSettings, saveSiteSettings, uploadHeroImage, uploadDefaultThumbnail, uploadCategoryImage, SiteSettings } from '../services/siteSettingsService';
 import { applyWatermark, bakeWatermarkOnFile } from '../utils/watermark';
-import { compressImageForAI, compressForUpload } from '../utils/imageCompressor';
+import { uploadVideoToStorage, uploadVideoThumbnailToStorage } from '../services/videoService';
+import { compressImageForAI, compressForUpload, generateThumbnail } from '../utils/imageCompressor';
 import { readExifFromFile } from '../utils/exifReader';
 import { subscribeToContactMessages, deleteContactMessage, ContactMessage } from '../services/contactService';
 
@@ -235,12 +236,17 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
   const [aiStatus, setAiStatus] = useState('');
   const [exifStatus, setExifStatus] = useState('');
   const [compressedFile, setCompressedFile] = useState<File | null>(null);
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [originalFileSize, setOriginalFileSize] = useState<number>(0);
+  const [compressionStats, setCompressionStats] = useState<string>('');
   const [uploadProgress, setUploadProgress] = useState(0);
 
   const handleFileSelected = useCallback(async (file: File) => {
     setUploading(true);
     setUploadedFileName(file.name);
     setExifStatus('');
+    setOriginalFileSize(file.size);
+    setCompressionStats('');
 
     const isVideo = file.type.startsWith('video/');
     setMediaType(isVideo ? 'video' : 'photo');
@@ -274,12 +280,28 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
     reader.onload = async () => {
       let dataUrl = reader.result as string;
 
-      // Client-side compression: WebP format, 90% quality, max 3840px (4K)
-      // Runs in background — aapko pata bhi nahi chalega, sab background mein hoga!
+      // Smart compression: WebP, adaptive quality, targets 1-2MB max
+      // Also generates a small thumbnail for fast gallery loading
       if (!isVideo) {
         try {
           const webpFile = await compressForUpload(file);
           setCompressedFile(webpFile);
+
+          // Generate thumbnail for gallery (600px, ~150KB WebP)
+          try {
+            const thumbFile = await generateThumbnail(webpFile);
+            setThumbnailFile(thumbFile);
+          } catch (thumbErr) {
+            console.warn('Thumbnail generation failed:', thumbErr);
+            setThumbnailFile(null);
+          }
+
+          // Show compression stats
+          const origMB = (file.size / 1024 / 1024).toFixed(2);
+          const compMB = (webpFile.size / 1024 / 1024).toFixed(2);
+          const savedPct = Math.round((1 - webpFile.size / file.size) * 100);
+          setCompressionStats(\`📸 \${origMB}MB → \${compMB}MB WebP (\${savedPct}% saved)\`);
+
           // Convert compressed WebP to data URL for preview & watermark
           dataUrl = await new Promise<string>((res, rej) => {
             const r2 = new FileReader();
@@ -290,6 +312,8 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
         } catch (compErr) {
           console.warn('Client-side compression failed, using original:', compErr);
           setCompressedFile(null);
+          setThumbnailFile(null);
+          setCompressionStats('');
         }
       }
 
@@ -422,9 +446,22 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
         }
       }
       
+      // Upload thumbnail alongside main photo (non-blocking — if it fails, no problem)
+      let thumbnailUrl = '';
+      if (thumbnailFile) {
+        try {
+          const thumbName = (uploadedFileName || 'photo').replace(/\.[^.]+$/, '') + '_thumb.webp';
+          thumbnailUrl = await uploadThumbnailToStorage(thumbnailFile, thumbName);
+          if (onProgress) setUploadProgress(95);
+        } catch (thumbErr) {
+          console.warn('Thumbnail upload failed (non-critical):', thumbErr);
+        }
+      }
+
       // Build Firestore data object (never include undefined values)
       const photoData: Record<string, any> = {
         title, caption: caption || '', category, imageUrl: finalImageUrl,
+        thumbnailUrl: thumbnailUrl || '',
         location: location || '', tags: finalTags, animalName: animalName || '',
         cameraModel: cameraModel || '', lens: lens || '', aperture: aperture || '',
         shutterSpeed: shutterSpeed || '', iso: iso || '', focalLength: focalLength || '',
@@ -432,6 +469,9 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
         type: mediaType === 'video' ? 'video' : 'photo',
         photographer: photographer || '',
       };
+      // Store compression metadata for storage tracking
+      if (originalFileSize > 0) photoData.originalSize = originalFileSize;
+      if (compressedFile) photoData.compressedSize = compressedFile.size;
       // Only add lat/lng if they are valid finite numbers
       if (hasValidLat) photoData.latitude = parsedLat;
       if (hasValidLng) photoData.longitude = parsedLng;
@@ -461,11 +501,13 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
     const savedPhoto: any = {
       id: initial?.id || nextId,
       firestoreId,
-      title, category, imageUrl: finalImageUrl, location, caption,
+      title, category, imageUrl: finalImageUrl, thumbnailUrl: thumbnailUrl || '', location, caption,
       type: mediaType === 'video' ? 'video' : 'photo',
       cameraModel, lens, aperture, shutterSpeed, iso, focalLength,
       tags: finalTags, animalName: animalName || '', wikiSummary: wikiSummary || '',
       photographer: photographer || '',
+      originalSize: originalFileSize || undefined,
+      compressedSize: compressedFile?.size || undefined,
       likeCount: initial?.likeCount || 0, liked: initial?.liked || false,
       published: initial?.published !== false,
     };
@@ -485,6 +527,23 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
           uploading={uploading}
         />
       </div>
+
+      {/* Compression Stats */}
+      {compressionStats && (
+        <div style={{
+          padding: '0.5rem 0.75rem', marginBottom: '0.75rem',
+          background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)',
+          borderRadius: '8px', fontSize: '0.78rem', color: '#4ade80',
+          textAlign: 'center', fontWeight: 500,
+        }}>
+          {compressionStats}
+          {thumbnailFile && (
+            <span style={{ display: 'block', fontSize: '0.7rem', color: 'rgba(34,197,94,0.6)', marginTop: '0.2rem' }}>
+              🖼️ Gallery thumbnail: {(thumbnailFile.size / 1024).toFixed(0)}KB WebP
+            </span>
+          )}
+        </div>
+      )}
 
       {/* OR use URL */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: '1rem 0' }}>
@@ -962,23 +1021,26 @@ const VideoForm: React.FC<VideoFormProps> = ({ initial, onSave, onCancel, nextId
   const [videoPreview, setVideoPreview] = useState<string | null>(initial?.videoUrl || null);
   const [thumbPreview, setThumbPreview] = useState<string | null>(initial?.thumbnailUrl || null);
   const [photographer, setPhotographer] = useState(initial?.photographer || '');
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [thumbFile, setThumbFile] = useState<File | null>(null);
+  const [videoUploadProgress, setVideoUploadProgress] = useState(0);
+  const [videoSaving, setVideoSaving] = useState(false);
 
   const handleVideoUpload = useCallback(async (file: File) => {
     setUploadingVideo(true);
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      setVideoPreview(dataUrl);
-      setVideoUrl(dataUrl);
-      setUploadingVideo(false);
-    };
-    reader.readAsDataURL(file);
+    setVideoFile(file);
+    // Create object URL for preview (no data URL needed — saves memory!)
+    const previewUrl = URL.createObjectURL(file);
+    setVideoPreview(previewUrl);
+    setVideoUrl(previewUrl); // Temporary — will be replaced with Firebase URL on save
+    console.log(\`🎬 Video selected: \${file.name} (\${(file.size / 1024 / 1024).toFixed(2)}MB)\`);
+    setUploadingVideo(false);
   }, []);
 
   const handleThumbnailUpload = useCallback(async (file: File) => {
     setUploadingThumb(true);
     try {
-      // Compress thumbnail like story cover (max 800px, JPEG 0.6)
+      // Compress thumbnail to WebP (max 800px, 80% quality — ~100-200KB)
       const bitmap = await createImageBitmap(file);
       const MAX_DIM = 800;
       let w = bitmap.width, h = bitmap.height;
@@ -991,50 +1053,93 @@ const VideoForm: React.FC<VideoFormProps> = ({ initial, onSave, onCancel, nextId
       canvas.width = w; canvas.height = h;
       const ctx = canvas.getContext('2d')!;
       ctx.drawImage(bitmap, 0, 0, w, h);
-      const compressedUrl = canvas.toDataURL('image/jpeg', 0.6);
-      setThumbPreview(compressedUrl);
-      let finalThumbUrl = compressedUrl;
-      try {
-        finalThumbUrl = await applyWatermark(compressedUrl);
-      } catch {}
-      setThumbnailUrl(finalThumbUrl);
 
-      // Also try uploading to Firebase Storage for persistence
-      try {
-        const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
-        const { storage } = await import('../firebase');
-        const storageRef = ref(storage, `video-thumbnails/${Date.now()}_${file.name}`);
-        const response = await fetch(finalThumbUrl);
-        const blob = await response.blob();
-        await uploadBytes(storageRef, blob);
-        const firebaseUrl = await getDownloadURL(storageRef);
-        setThumbnailUrl(firebaseUrl);
-      } catch {
-        console.log('Firebase upload failed, using compressed data URL');
-      }
+      // Generate WebP blob (better quality-to-size than JPEG)
+      const webpBlob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob(
+          (blob) => blob ? resolve(blob) : reject(new Error('WebP blob failed')),
+          'image/webp',
+          0.80
+        );
+      });
+      const webpFile = new File([webpBlob], file.name.replace(/\.[^.]+$/, '') + '.webp', { type: 'image/webp' });
+      setThumbFile(webpFile);
+
+      const previewUrl = URL.createObjectURL(webpFile);
+      setThumbPreview(previewUrl);
+      setThumbnailUrl(previewUrl); // Temporary — replaced with Firebase URL on save
+      console.log(\`🖼️ Video thumbnail compressed: \${(webpFile.size / 1024).toFixed(0)}KB WebP\`);
     } catch {
-      // Fallback to basic data URL
-      const reader = new FileReader();
-      reader.onload = () => {
-        const dataUrl = reader.result as string;
-        setThumbPreview(dataUrl);
-        setThumbnailUrl(dataUrl);
-      };
-      reader.readAsDataURL(file);
+      // Fallback: use original file
+      setThumbFile(file);
+      const previewUrl = URL.createObjectURL(file);
+      setThumbPreview(previewUrl);
+      setThumbnailUrl(previewUrl);
     }
     setUploadingThumb(false);
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!videoUrl) return;
+    if (!videoUrl && !videoFile) return;
+    setVideoSaving(true);
+    setVideoUploadProgress(0);
+
+    let finalVideoUrl = videoUrl;
+    let finalThumbUrl = thumbnailUrl;
+
+    try {
+      // Upload video file to Firebase Storage (resumable upload with progress)
+      if (videoFile) {
+        try {
+          finalVideoUrl = await uploadVideoToStorage(
+            videoFile,
+            videoFile.name,
+            (p) => setVideoUploadProgress(Math.round(p * 0.8)) // 0-80% for video
+          );
+        } catch (err: any) {
+          console.error('Video upload failed:', err);
+          alert(\`❌ Video upload failed: \${err?.message || 'Unknown error'}. Please try again.\`);
+          setVideoSaving(false);
+          setVideoUploadProgress(0);
+          return;
+        }
+      }
+
+      // Upload thumbnail to Firebase Storage
+      if (thumbFile) {
+        try {
+          setVideoUploadProgress(85);
+          finalThumbUrl = await uploadVideoThumbnailToStorage(
+            thumbFile,
+            thumbFile.name
+          );
+          setVideoUploadProgress(95);
+        } catch (err) {
+          console.warn('Thumbnail upload failed:', err);
+          // Non-critical — continue without thumbnail
+        }
+      }
+
+      setVideoUploadProgress(100);
+    } catch (err: any) {
+      console.error('Upload failed:', err);
+      alert(\`❌ Upload failed: \${err?.message || 'Unknown error'}\`);
+      setVideoSaving(false);
+      setVideoUploadProgress(0);
+      return;
+    }
+
+    setVideoSaving(false);
+    setVideoUploadProgress(0);
+
     onSave({
       id: initial?.id || nextId,
       firestoreId: initial?.firestoreId,
       title,
       description,
-      videoUrl,
-      thumbnailUrl,
+      videoUrl: finalVideoUrl,
+      thumbnailUrl: finalThumbUrl,
       location,
       duration,
       photographer,
@@ -1131,9 +1236,10 @@ const VideoForm: React.FC<VideoFormProps> = ({ initial, onSave, onCancel, nextId
           border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px',
           color: 'rgba(235,230,220,0.6)', cursor: 'pointer', fontSize: '0.8rem',
         }}>Cancel</button>
-        <button type="submit" className="btn-gold" style={{
+        <button type="submit" className="btn-gold" disabled={videoSaving} style={{
           padding: '0.6rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem',
-        }}><Save size={16} /> {initial ? 'Update Video' : 'Add Video'}</button>
+          opacity: videoSaving ? 0.5 : 1, pointerEvents: videoSaving ? 'none' : 'auto',
+        }}><Save size={16} /> {videoSaving ? (videoUploadProgress > 0 && videoUploadProgress < 100 ? \`Uploading \${videoUploadProgress}%\` : 'Saving...') : initial ? 'Update Video' : 'Add Video'}</button>
       </div>
     </form>
   );

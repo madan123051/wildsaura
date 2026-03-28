@@ -4,6 +4,7 @@ export interface Photo {
   title: string;
   category: 'wildlife' | 'landscape' | 'street' | 'other';
   imageUrl: string;
+  thumbnailUrl?: string;       // ← NEW: Optimized gallery thumbnail (WebP ~150KB, 600px)
   location?: string;
   caption?: string;
   type: 'photo' | 'video';
@@ -22,6 +23,8 @@ export interface Photo {
   photographer?: string;
   latitude?: number;
   longitude?: number;
+  originalSize?: number;       // ← NEW: Original file size in bytes (before compression)
+  compressedSize?: number;     // ← NEW: Compressed WebP size in bytes (after compression)
 }
 
 export interface Category {
@@ -85,6 +88,7 @@ export interface Video {
   likeCount: number;
   liked: boolean;
   photographer?: string;
+  originalSize?: number;       // ← NEW: Original video file size in bytes
 }
 
 export interface ChatMessage {

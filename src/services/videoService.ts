@@ -1,6 +1,21 @@
 import { db, storage } from '../firebase';
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, serverTimestamp, onSnapshot, Unsubscribe } from 'firebase/firestore';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════
+ *  WILDSAURA — Video Service v2.0 (Resumable Upload)
+ * ═══════════════════════════════════════════════════════════════════════
+ *
+ *  🔧 FIXED: Switched from uploadString to uploadBytesResumable
+ *    - uploadString hangs/crashes on videos > 5MB (data URL too large)
+ *    - uploadBytesResumable: reliable, shows progress, auto-retry
+ *
+ *  ✅ Accepts File/Blob directly (no more data URL conversion)
+ *  ✅ Progress callback for UI feedback
+ *  ✅ 3-minute timeout for large videos
+ *  ✅ Thumbnail also uses resumable upload
+ */
 
 export interface FirestoreVideo {
   id?: string;
@@ -14,20 +29,138 @@ export interface FirestoreVideo {
   createdAt?: any;
   viewCount: number;
   likeCount: number;
+  originalSize?: number;       // ← NEW: Original video file size in bytes
 }
 
 const VIDEOS_COLLECTION = 'videos';
 
-export async function uploadVideoThumbnailToStorage(dataUrl: string, filename: string): Promise<string> {
-  const storageRef = ref(storage, `video-thumbnails/${Date.now()}_${filename}`);
-  await uploadString(storageRef, dataUrl, 'data_url');
-  return await getDownloadURL(storageRef);
+/** Convert a data URL to a Blob (legacy support) */
+function dataUrlToBlob(dataUrl: string): Blob {
+  const [header, base64] = dataUrl.split(',');
+  const mime = header.match(/:(.*?);/)?.[1] || 'video/mp4';
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
 }
 
-export async function uploadVideoToStorage(dataUrl: string, filename: string): Promise<string> {
+/**
+ * 🎬 Upload video thumbnail to Firebase Storage.
+ * Uses resumable upload (replaced uploadString).
+ */
+export async function uploadVideoThumbnailToStorage(
+  input: File | Blob | string,
+  filename: string,
+  onProgress?: (progress: number) => void
+): Promise<string> {
+  const storageRef = ref(storage, `video-thumbnails/${Date.now()}_${filename}`);
+
+  let blob: Blob;
+  if (typeof input === 'string') {
+    blob = dataUrlToBlob(input);
+  } else {
+    blob = input;
+  }
+
+  const contentType = blob.type || 'image/webp';
+  console.log(`🖼️ Uploading video thumbnail: ${(blob.size / 1024).toFixed(0)}KB (${contentType})`);
+
+  return new Promise<string>((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      uploadTask.cancel();
+      reject(new Error('Thumbnail upload timed out after 30 seconds.'));
+    }, 30000);
+
+    const uploadTask = uploadBytesResumable(storageRef, blob, { contentType });
+
+    uploadTask.on(
+      'state_changed',
+      (snapshot) => {
+        const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+        if (onProgress) onProgress(pct);
+      },
+      (error) => {
+        clearTimeout(timeoutId);
+        console.error('🖼️ Thumbnail upload error:', error);
+        reject(error);
+      },
+      async () => {
+        clearTimeout(timeoutId);
+        try {
+          const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+          console.log('🖼️ Thumbnail upload complete!');
+          resolve(downloadUrl);
+        } catch (err) {
+          reject(err);
+        }
+      }
+    );
+  });
+}
+
+/**
+ * 🎬 Upload video file to Firebase Storage.
+ * Uses resumable upload for reliability on large video files.
+ *
+ * @param input    File/Blob (preferred) or data URL string (legacy)
+ * @param filename Destination filename
+ * @param onProgress Optional callback: receives 0–100 integer
+ */
+export async function uploadVideoToStorage(
+  input: File | Blob | string,
+  filename: string,
+  onProgress?: (progress: number) => void
+): Promise<string> {
   const storageRef = ref(storage, `videos/${Date.now()}_${filename}`);
-  await uploadString(storageRef, dataUrl, 'data_url');
-  return await getDownloadURL(storageRef);
+
+  let blob: Blob;
+  if (typeof input === 'string') {
+    console.log('🎬 Converting data URL to Blob for resumable upload...');
+    blob = dataUrlToBlob(input);
+  } else {
+    blob = input;
+  }
+
+  const contentType = blob.type || 'video/mp4';
+  const sizeMB = (blob.size / 1024 / 1024).toFixed(2);
+  console.log(`🎬 Starting resumable video upload: ${sizeMB}MB (${contentType})`);
+
+  return new Promise<string>((resolve, reject) => {
+    // 3-minute timeout for large video files
+    const timeoutId = setTimeout(() => {
+      uploadTask.cancel();
+      reject(new Error('Video upload timed out after 3 minutes. File may be too large or connection too slow.'));
+    }, 180000);
+
+    const uploadTask = uploadBytesResumable(storageRef, blob, { contentType });
+
+    uploadTask.on(
+      'state_changed',
+      (snapshot) => {
+        const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+        if (onProgress) onProgress(pct);
+        if (pct % 20 === 0) {
+          console.log(`🎬 Upload progress: ${pct}% (${(snapshot.bytesTransferred / 1024 / 1024).toFixed(1)}MB / ${sizeMB}MB)`);
+        }
+      },
+      (error) => {
+        clearTimeout(timeoutId);
+        console.error('🎬 Video upload error:', error);
+        reject(error);
+      },
+      async () => {
+        clearTimeout(timeoutId);
+        try {
+          const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+          if (onProgress) onProgress(100);
+          console.log('🎬 ✅ Video upload complete!');
+          resolve(downloadUrl);
+        } catch (err) {
+          reject(err);
+        }
+      }
+    );
+  });
 }
 
 export async function addVideoToFirestore(video: Omit<FirestoreVideo, 'id'>): Promise<string> {

@@ -8,6 +8,7 @@ export interface FirestorePhoto {
   caption: string;
   category: string;
   imageUrl: string;
+  thumbnailUrl?: string;       // ← NEW: Optimized gallery thumbnail (WebP, ~150KB)
   location: string;
   tags: string[];
   animalName?: string;
@@ -23,6 +24,8 @@ export interface FirestorePhoto {
   latitude?: number;
   longitude?: number;
   published?: boolean;
+  originalSize?: number;       // ← NEW: Original file size in bytes (before compression)
+  compressedSize?: number;     // ← NEW: Compressed file size in bytes (after WebP conversion)
   createdAt?: any;
 }
 
@@ -80,8 +83,8 @@ export async function uploadPhotoToStorage(
       'state_changed',
       (snapshot) => {
         const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-        // Upload is 40–100% of the total progress (0–40% was compression)
-        if (onProgress) onProgress(40 + Math.round(pct * 0.6));
+        // Upload is 40–90% of the total progress (0–40% was compression)
+        if (onProgress) onProgress(40 + Math.round(pct * 0.5));
       },
       (error) => {
         clearTimeout(timeoutId);
@@ -92,8 +95,53 @@ export async function uploadPhotoToStorage(
         clearTimeout(timeoutId);
         try {
           const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
-          if (onProgress) onProgress(100);
-          console.log('📤 Upload complete!');
+          if (onProgress) onProgress(90);
+          console.log('📤 Main photo upload complete!');
+          resolve(downloadUrl);
+        } catch (err) {
+          reject(err);
+        }
+      }
+    );
+  });
+}
+
+/**
+ * 🖼️ Upload a thumbnail to Firebase Storage.
+ * Separate from main photo — stored in photos-thumbs/ folder.
+ * No progress tracking needed (thumbnails are tiny ~150KB).
+ */
+export async function uploadThumbnailToStorage(
+  input: File | Blob,
+  filename: string
+): Promise<string> {
+  const thumbFilename = filename.replace(/\.[^.]+$/, '') + '_thumb.webp';
+  const storageRef = ref(storage, `photos-thumbs/${Date.now()}_${thumbFilename}`);
+
+  const contentType = input.type || 'image/webp';
+  console.log(`🖼️ Uploading thumbnail: ${(input.size / 1024).toFixed(0)}KB (${contentType})`);
+
+  return new Promise<string>((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      uploadTask.cancel();
+      reject(new Error('Thumbnail upload timed out'));
+    }, 30000); // 30 sec timeout for tiny thumbnails
+
+    const uploadTask = uploadBytesResumable(storageRef, input, { contentType });
+
+    uploadTask.on(
+      'state_changed',
+      () => {}, // No progress needed for thumbnails
+      (error) => {
+        clearTimeout(timeoutId);
+        console.warn('🖼️ Thumbnail upload failed:', error);
+        reject(error);
+      },
+      async () => {
+        clearTimeout(timeoutId);
+        try {
+          const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+          console.log('🖼️ Thumbnail upload complete!');
           resolve(downloadUrl);
         } catch (err) {
           reject(err);
