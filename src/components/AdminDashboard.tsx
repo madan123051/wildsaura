@@ -59,6 +59,7 @@ const WILDLIFE_KEYWORDS = ['tiger', 'lion', 'elephant', 'bird', 'eagle', 'deer',
 const LANDSCAPE_KEYWORDS = ['mountain', 'lake', 'ocean', 'river', 'sunset', 'sunrise', 'valley', 'forest', 'desert', 'beach', 'waterfall', 'cliff', 'hill', 'coast', 'island', 'sky', 'cloud', 'sea', 'rock', 'field'];
 const STREET_KEYWORDS = ['city', 'street', 'building', 'urban', 'neon', 'night', 'road', 'bridge', 'market', 'alley', 'tokyo', 'new york', 'london', 'rain', 'car', 'bus', 'train'];
 const PORTRAIT_KEYWORDS = ['portrait', 'person', 'face', 'model', 'woman', 'man', 'child', 'people', 'smile', 'fashion'];
+const NATURE_KEYWORDS = ['nature', 'flower', 'tree', 'plant', 'garden', 'leaf', 'rain', 'waterfall', 'pond', 'butterfly', 'insect', 'mushroom', 'moss', 'fern', 'bloom', 'petal', 'green', 'spring', 'autumn', 'macro'];
 
 
 
@@ -67,6 +68,7 @@ function detectCategory(filename: string): Photo['category'] {
   if (WILDLIFE_KEYWORDS.some(k => lower.includes(k))) return 'wildlife';
   if (LANDSCAPE_KEYWORDS.some(k => lower.includes(k))) return 'landscape';
   if (STREET_KEYWORDS.some(k => lower.includes(k))) return 'street';
+  if (NATURE_KEYWORDS.some(k => lower.includes(k))) return 'nature';
   if (PORTRAIT_KEYWORDS.some(k => lower.includes(k))) return 'other';
   return 'wildlife'; // default
 }
@@ -603,6 +605,7 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
             <option value="wildlife">Wildlife</option>
             <option value="landscape">Landscape</option>
             <option value="street">Street</option>
+            <option value="nature">Nature</option>
             <option value="other">Portrait / Other</option>
           </select>
         </div>
@@ -1543,6 +1546,7 @@ const SiteSettingsForm = () => {
           {([
             { key: 'wildlife', label: 'Wildlife' },
             { key: 'landscape', label: 'Landscapes' },
+            { key: 'nature', label: 'Nature' },
             { key: 'portraits', label: 'Portraits' },
           ] as { key: string; label: string }[]).map((cat) => (
             <div key={cat.key} style={{
@@ -1877,7 +1881,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
               <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.1)', borderRadius: '12px', padding: '1.5rem', marginBottom: '2rem' }}>
                 <h3 className="font-cinzel" style={{ fontSize: '0.85rem', color: 'var(--wa-gold)', marginBottom: '1rem', letterSpacing: '0.08em' }}>Category Breakdown</h3>
-                {['wildlife', 'landscape', 'street', 'other'].map((cat) => {
+                {['wildlife', 'landscape', 'street', 'nature', 'other'].map((cat) => {
                   const count = photos.filter((p) => p.category === cat).length;
                   const pct = photos.length ? Math.round((count / photos.length) * 100) : 0;
                   return (
