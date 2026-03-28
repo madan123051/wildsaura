@@ -30,6 +30,9 @@ export interface FirestoreVideo {
   viewCount: number;
   likeCount: number;
   originalSize?: number;       // ← NEW: Original video file size in bytes
+  aspectRatio?: string;        // ← NEW: Video aspect ratio e.g. '16:9', '9:16', '1:1'
+  videoWidth?: number;         // ← NEW: Original video width in pixels
+  videoHeight?: number;        // ← NEW: Original video height in pixels
 }
 
 const VIDEOS_COLLECTION = 'videos';

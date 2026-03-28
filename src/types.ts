@@ -89,6 +89,9 @@ export interface Video {
   liked: boolean;
   photographer?: string;
   originalSize?: number;       // ← NEW: Original video file size in bytes
+  aspectRatio?: string;        // ← NEW: Video aspect ratio e.g. '16:9', '9:16', '1:1', '4:5'
+  videoWidth?: number;         // ← NEW: Original video width in pixels
+  videoHeight?: number;        // ← NEW: Original video height in pixels
 }
 
 export interface ChatMessage {

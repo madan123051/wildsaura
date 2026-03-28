@@ -1025,17 +1025,61 @@ const VideoForm: React.FC<VideoFormProps> = ({ initial, onSave, onCancel, nextId
   const [thumbFile, setThumbFile] = useState<File | null>(null);
   const [videoUploadProgress, setVideoUploadProgress] = useState(0);
   const [videoSaving, setVideoSaving] = useState(false);
+  const [aspectRatio, setAspectRatio] = useState(initial?.aspectRatio || '');
+  const [videoWidth, setVideoWidth] = useState(initial?.videoWidth || 0);
+  const [videoHeight, setVideoHeight] = useState(initial?.videoHeight || 0);
+  const [detectedRatio, setDetectedRatio] = useState('');
 
   const handleVideoUpload = useCallback(async (file: File) => {
     setUploadingVideo(true);
     setVideoFile(file);
-    // Create object URL for preview (no data URL needed — saves memory!)
     const previewUrl = URL.createObjectURL(file);
     setVideoPreview(previewUrl);
-    setVideoUrl(previewUrl); // Temporary — will be replaced with Firebase URL on save
-    console.log(\`🎬 Video selected: \${file.name} (\${(file.size / 1024 / 1024).toFixed(2)}MB)\`);
+    setVideoUrl(previewUrl);
+    console.log(`🎬 Video selected: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
+
+    // 🎬 Auto-detect video dimensions & aspect ratio
+    try {
+      const videoEl = document.createElement('video');
+      videoEl.preload = 'metadata';
+      videoEl.src = previewUrl;
+      await new Promise<void>((resolve) => {
+        videoEl.onloadedmetadata = () => {
+          const w = videoEl.videoWidth;
+          const h = videoEl.videoHeight;
+          setVideoWidth(w);
+          setVideoHeight(h);
+
+          // Auto-detect duration
+          if (videoEl.duration && isFinite(videoEl.duration)) {
+            const mins = Math.floor(videoEl.duration / 60);
+            const secs = Math.floor(videoEl.duration % 60);
+            setDuration(`${mins}:${secs.toString().padStart(2, '0')}`);
+          }
+
+          // Detect closest standard aspect ratio
+          if (w > 0 && h > 0) {
+            const ratio = w / h;
+            let detected = 'custom';
+            if (Math.abs(ratio - 16/9) < 0.15) detected = '16:9';
+            else if (Math.abs(ratio - 9/16) < 0.15) detected = '9:16';
+            else if (Math.abs(ratio - 1) < 0.1) detected = '1:1';
+            else if (Math.abs(ratio - 4/5) < 0.1) detected = '4:5';
+            else if (Math.abs(ratio - 4/3) < 0.1) detected = '4:3';
+            else if (Math.abs(ratio - 3/4) < 0.1) detected = '3:4';
+            setDetectedRatio(detected);
+            if (!aspectRatio) setAspectRatio(detected);
+            console.log(`📐 Video: ${w}x${h} → ${detected} (ratio: ${ratio.toFixed(3)})`);
+          }
+          resolve();
+        };
+        videoEl.onerror = () => resolve();
+      });
+    } catch (err) {
+      console.warn('Video dimension detection failed:', err);
+    }
     setUploadingVideo(false);
-  }, []);
+  }, [aspectRatio]);
 
   const handleThumbnailUpload = useCallback(async (file: File) => {
     setUploadingThumb(true);
@@ -1143,6 +1187,9 @@ const VideoForm: React.FC<VideoFormProps> = ({ initial, onSave, onCancel, nextId
       location,
       duration,
       photographer,
+      aspectRatio: aspectRatio || detectedRatio || undefined,
+      videoWidth: videoWidth || undefined,
+      videoHeight: videoHeight || undefined,
       tags: tagsStr.split(',').map((t) => t.trim()).filter(Boolean),
       createdAt: initial?.createdAt || new Date().toISOString().split('T')[0],
       viewCount: initial?.viewCount || 0,
@@ -1201,6 +1248,79 @@ const VideoForm: React.FC<VideoFormProps> = ({ initial, onSave, onCancel, nextId
           placeholder="https://example.com/thumbnail.jpg"
           style={inputStyle}
         />
+      </div>
+
+      {/* 📐 Video Dimensions & Aspect Ratio Info */}
+      {(videoWidth > 0 || detectedRatio) && (
+        <div style={{
+          padding: '0.75rem 1rem', marginBottom: '1rem',
+          background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)',
+          borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap',
+        }}>
+          {videoWidth > 0 && (
+            <span style={{ fontSize: '0.78rem', color: '#60a5fa', fontWeight: 500 }}>
+              📐 {videoWidth} × {videoHeight}px
+            </span>
+          )}
+          {detectedRatio && (
+            <span style={{
+              padding: '0.2rem 0.6rem', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 600,
+              background: detectedRatio === '16:9' ? 'rgba(34,197,94,0.15)' :
+                          detectedRatio === '9:16' ? 'rgba(168,85,247,0.15)' :
+                          detectedRatio === '1:1' ? 'rgba(251,191,36,0.15)' : 'rgba(201,168,76,0.15)',
+              color: detectedRatio === '16:9' ? '#4ade80' :
+                     detectedRatio === '9:16' ? '#c084fc' :
+                     detectedRatio === '1:1' ? '#fbbf24' : 'var(--wa-gold)',
+              border: '1px solid rgba(255,255,255,0.1)',
+            }}>
+              {detectedRatio === '16:9' ? '🖥️ Landscape' :
+               detectedRatio === '9:16' ? '📱 Portrait (Reels)' :
+               detectedRatio === '1:1' ? '⬜ Square' :
+               detectedRatio === '4:5' ? '📸 Instagram' :
+               detectedRatio === '4:3' ? '📺 Classic' :
+               detectedRatio === '3:4' ? '📱 Portrait' :
+               '📐 Custom'} ({detectedRatio})
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* 🎬 Aspect Ratio Selector */}
+      <div style={{ marginBottom: '1.25rem' }}>
+        <label style={labelStyle}>📐 Aspect Ratio (auto-detected, or choose manually)</label>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.4rem' }}>
+          {[
+            { value: '16:9', label: '🖥️ 16:9', desc: 'Landscape' },
+            { value: '9:16', label: '📱 9:16', desc: 'Portrait/Reels' },
+            { value: '1:1', label: '⬜ 1:1', desc: 'Square' },
+            { value: '4:5', label: '📸 4:5', desc: 'Instagram' },
+            { value: '4:3', label: '📺 4:3', desc: 'Classic' },
+          ].map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setAspectRatio(opt.value)}
+              style={{
+                padding: '0.5rem 0.85rem', borderRadius: '8px', cursor: 'pointer',
+                fontSize: '0.75rem', fontWeight: 600,
+                background: aspectRatio === opt.value ? 'rgba(201,168,76,0.2)' : 'rgba(255,255,255,0.04)',
+                border: aspectRatio === opt.value ? '2px solid var(--wa-gold)' : '1px solid rgba(255,255,255,0.1)',
+                color: aspectRatio === opt.value ? 'var(--wa-gold)' : 'rgba(235,230,220,0.5)',
+                transition: 'all 0.2s',
+              }}
+            >
+              {opt.label}
+              <span style={{ display: 'block', fontSize: '0.6rem', fontWeight: 400, opacity: 0.7, marginTop: '0.15rem' }}>
+                {opt.desc}
+              </span>
+            </button>
+          ))}
+        </div>
+        {detectedRatio && aspectRatio !== detectedRatio && (
+          <p style={{ fontSize: '0.7rem', color: '#fbbf24', marginTop: '0.4rem' }}>
+            ⚠️ Auto-detected was {detectedRatio} — you selected {aspectRatio}
+          </p>
+        )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
