@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, Shield, Search, LogOut, Bell } from 'lucide-react';
+import { Menu, X, Search, LogOut, Bell } from 'lucide-react';
 import { Visitor } from '../types';
 
 const ANIMAL_AVATARS = [
@@ -14,8 +14,6 @@ const ANIMAL_AVATARS = [
 interface HeaderProps {
   onScrollToGallery: () => void;
   logoUrl?: string;
-  onAdminClick?: () => void;
-  isAdmin?: boolean;
   onSearchClick?: () => void;
   visitor: Visitor | null;
   onVisitorLoginClick: () => void;
@@ -27,7 +25,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({
-  onScrollToGallery, logoUrl, onAdminClick, isAdmin,
+  onScrollToGallery, logoUrl,
   onSearchClick, visitor, onVisitorLoginClick, onVisitorLogout, onStoriesClick, onVisitorUpdate,
   notificationCount = 0, onNotificationClick,
 }) => {
@@ -341,27 +339,7 @@ export const Header: React.FC<HeaderProps> = ({
               )}
             </div>
 
-            {/* Admin */}
-            {onAdminClick && (
-              <button
-                onClick={() => { onAdminClick(); setMenuOpen(false); }}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '0.5rem',
-                  background: isAdmin
-                    ? 'linear-gradient(135deg, rgba(201,168,76,0.2), rgba(201,168,76,0.08))'
-                    : 'rgba(255,255,255,0.03)',
-                  border: isAdmin ? '1px solid rgba(201,168,76,0.3)' : '1px solid rgba(255,255,255,0.08)',
-                  borderRadius: '8px', padding: '0.6rem 1rem', marginTop: '0.75rem',
-                  cursor: 'pointer', width: '100%',
-                  color: isAdmin ? 'var(--wa-gold)' : 'rgba(235,230,220,0.5)',
-                  fontSize: '0.8rem', fontFamily: "'Cinzel', serif", letterSpacing: '0.1em',
-                  transition: 'all 0.3s',
-                }}
-              >
-                <Shield size={16} />
-                {isAdmin ? 'Dashboard' : 'Admin Login'}
-              </button>
-            )}
+
           </div>
         </div>
       )}
