@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, Search, LogOut, Bell } from 'lucide-react';
+import { Menu, X, Search, LogOut, Bell, Settings } from 'lucide-react';
 import { Visitor } from '../types';
 
 const ANIMAL_AVATARS = [
@@ -22,12 +22,14 @@ interface HeaderProps {
   onVisitorUpdate?: (v: Visitor) => void;
   notificationCount?: number;
   onNotificationClick?: () => void;
+  isAdmin?: boolean;
+  onAdminClick?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   onScrollToGallery, logoUrl,
   onSearchClick, visitor, onVisitorLoginClick, onVisitorLogout, onStoriesClick, onVisitorUpdate,
-  notificationCount = 0, onNotificationClick,
+  notificationCount = 0, onNotificationClick, isAdmin, onAdminClick,
 }) => {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -93,6 +95,28 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Right: Search icon + Hamburger menu */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          {/* Admin Dashboard Icon — only visible when admin is logged in */}
+          {isAdmin && onAdminClick && (
+            <button
+              onClick={onAdminClick}
+              title="Admin Dashboard"
+              style={{
+                background: 'linear-gradient(135deg, rgba(201,168,76,0.2), rgba(201,168,76,0.08))',
+                border: '1px solid rgba(201,168,76,0.3)',
+                cursor: 'pointer',
+                color: 'var(--wa-gold)',
+                padding: '0.35rem',
+                borderRadius: '8px',
+                transition: 'all 0.3s',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+              onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(201,168,76,0.25)'; e.currentTarget.style.boxShadow = '0 0 12px rgba(201,168,76,0.3)'; }}
+              onMouseOut={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(201,168,76,0.2), rgba(201,168,76,0.08))'; e.currentTarget.style.boxShadow = 'none'; }}
+            >
+              <Settings size={20} />
+            </button>
+          )}
+
           {/* Notification Bell */}
           {onNotificationClick && (
             <button

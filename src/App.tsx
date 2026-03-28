@@ -1188,6 +1188,11 @@ const App: React.FC = () => {
     }, 100);
   }, [view]);
 
+  const handleAdminClick = useCallback(() => {
+    setView('admin-dashboard');
+    window.history.pushState({}, '', '/admin');
+  }, []);
+
   // ── Helper: Open/Close Photo with URL ────────────────────────────────────
   const openPhoto = useCallback((photo: Photo | null) => {
     setSelectedPhoto(photo);
@@ -1254,6 +1259,8 @@ const App: React.FC = () => {
           onStoriesClick={handleStoriesNavClick}
           notificationCount={unreadNotifCount}
           onNotificationClick={() => setShowNotifPanel(p => !p)}
+          isAdmin={isAdmin}
+          onAdminClick={handleAdminClick}
         />
         <TermsConditions onBack={() => { setView('home'); window.history.pushState({}, '', '/'); window.scrollTo(0, 0); }} />
         <Footer logoUrl={logoUrl} onTermsClick={handleTermsClick} />
@@ -1290,6 +1297,8 @@ const App: React.FC = () => {
           onStoriesClick={handleStoriesNavClick}
           notificationCount={unreadNotifCount}
           onNotificationClick={() => setShowNotifPanel(p => !p)}
+          isAdmin={isAdmin}
+          onAdminClick={handleAdminClick}
         />
         <StoryDetail
           story={selectedStory}
@@ -1342,6 +1351,8 @@ const App: React.FC = () => {
         onStoriesClick={handleStoriesNavClick}
           notificationCount={unreadNotifCount}
           onNotificationClick={() => setShowNotifPanel(p => !p)}
+          isAdmin={isAdmin}
+          onAdminClick={handleAdminClick}
       />
       <Hero onExplore={scrollToGallery} logoUrl={logoUrl} heroImages={siteSettings.heroImages} />
       <CategorySection categories={dynamicCategories} onCategoryClick={handleCategoryClick} />
