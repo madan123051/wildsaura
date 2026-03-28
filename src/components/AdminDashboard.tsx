@@ -1372,7 +1372,7 @@ const VideoForm: React.FC<VideoFormProps> = ({ initial, onSave, onCancel, nextId
 const SiteSettingsForm = () => {
   const [heroImages, setHeroImages] = React.useState<string[]>(['', '', '', '']);
   const [defaultThumbnail, setDefaultThumbnail] = React.useState('');
-  const [categoryImages, setCategoryImages] = React.useState<{ wildlife?: string; landscape?: string; portraits?: string }>({});
+  const [categoryImages, setCategoryImages] = React.useState<{ wildlife?: string; landscape?: string; nature?: string; portraits?: string }>({});
   const [saving, setSaving] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
   const [uploadingSlot, setUploadingSlot] = React.useState<number | null>(null);
