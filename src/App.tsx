@@ -454,6 +454,10 @@ const App: React.FC = () => {
         viewCount: fv.viewCount || 0,
         likeCount: fv.likeCount || 0,
         liked: false,
+        aspectRatio: fv.aspectRatio || undefined,
+        videoWidth: fv.videoWidth || undefined,
+        videoHeight: fv.videoHeight || undefined,
+        originalSize: fv.originalSize || undefined,
       }));
 
       setVideos(prev => {
@@ -804,6 +808,10 @@ const App: React.FC = () => {
         duration: video.duration || '',
         viewCount: video.viewCount || 0,
         likeCount: video.likeCount || 0,
+        ...(video.aspectRatio ? { aspectRatio: video.aspectRatio } : {}),
+        ...(video.videoWidth ? { videoWidth: video.videoWidth } : {}),
+        ...(video.videoHeight ? { videoHeight: video.videoHeight } : {}),
+        ...(video.originalSize ? { originalSize: video.originalSize } : {}),
       });
       video = { ...video, firestoreId, videoUrl: finalVideoUrl, thumbnailUrl: finalThumbnailUrl };
     } catch (err) {
@@ -851,6 +859,9 @@ const App: React.FC = () => {
         duration: finalUpdated.duration || '',
         viewCount: finalUpdated.viewCount,
         likeCount: finalUpdated.likeCount,
+        ...(finalUpdated.aspectRatio ? { aspectRatio: finalUpdated.aspectRatio } : {}),
+        ...(finalUpdated.videoWidth ? { videoWidth: finalUpdated.videoWidth } : {}),
+        ...(finalUpdated.videoHeight ? { videoHeight: finalUpdated.videoHeight } : {}),
       }).catch(err => console.warn('Firestore video update failed:', err));
     }
     setVideos((prev) => prev.map((v) => v.id === finalUpdated.id ? finalUpdated : v));
@@ -877,8 +888,8 @@ const App: React.FC = () => {
       updateStoryInFirestore(selectedStory.firestoreId, { likeCount: updated.likeCount }).catch(err => console.warn('Story like update failed:', err));
     }
     // Save per-user like to Firestore
+    const sLikeKey = selectedStory.firestoreId || String(selectedStory.id);
     if (visitor?.email) {
-      const sLikeKey = selectedStory.firestoreId || String(selectedStory.id);
       if (updated.liked) addUserLike(visitor.email, 'story', sLikeKey).catch(console.warn);
       else removeUserLike(visitor.email, 'story', sLikeKey).catch(console.warn);
     }
@@ -1052,8 +1063,8 @@ const App: React.FC = () => {
         updateVideoInFirestore(video.firestoreId, { likeCount: newLikeCount }).catch(err => console.warn('Video like update failed:', err));
       }
       // Save per-user like to Firestore
+      const vLikeKey = video?.firestoreId || String(id);
       if (visitor?.email) {
-        const vLikeKey = video?.firestoreId || String(id);
         if (newLiked) addUserLike(visitor.email, 'video', vLikeKey).catch(console.warn);
         else removeUserLike(visitor.email, 'video', vLikeKey).catch(console.warn);
       }
