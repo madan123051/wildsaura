@@ -115,8 +115,9 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
         {/* Video Cards */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
           gap: '1.5rem',
+          alignItems: 'start',
         }}>
           {displayVideos.map((video) => {
             const comments = videoComments[video.firestoreId || ''] || [];
@@ -142,30 +143,39 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
                   e.currentTarget.style.transform = 'translateY(0)';
                 }}
               >
-                {/* Video Player / Thumbnail */}
-                <div style={{ position: 'relative', overflow: 'hidden', background: '#000' }}>
+                {/* Video Player / Thumbnail — Dynamic Aspect Ratio */}
+                <div style={{
+                  position: 'relative', overflow: 'hidden', background: '#000',
+                  aspectRatio: (video as any).aspectRatio
+                    ? (video as any).aspectRatio.replace(':', '/')
+                    : ((video as any).videoWidth && (video as any).videoHeight
+                      ? `${(video as any).videoWidth}/${(video as any).videoHeight}`
+                      : '16/9'),
+                  maxHeight: (video as any).aspectRatio === '9:16' || (video as any).aspectRatio === '3:4' || (video as any).aspectRatio === '4:5'
+                    ? 520 : 400,
+                }}>
                   {playingId === video.id ? (
                     <video
                       src={video.videoUrl}
                       controls
                       autoPlay
-                      style={{ width: '100%', maxHeight: 240, objectFit: 'contain', background: '#000' }}
+                      style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000' }}
                       onEnded={() => setPlayingId(null)}
                     />
                   ) : (
                     <div
-                      style={{ cursor: 'pointer', position: 'relative' }}
+                      style={{ cursor: 'pointer', position: 'relative', width: '100%', height: '100%' }}
                       onClick={() => setPlayingId(video.id)}
                     >
                       {video.thumbnailUrl ? (
                         <img
                           src={video.thumbnailUrl}
                           alt={video.title}
-                          style={{ width: '100%', height: 220, objectFit: 'cover', transition: 'transform 0.5s' }}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s' }}
                         />
                       ) : (
                         <div style={{
-                          width: '100%', height: 220,
+                          width: '100%', height: '100%',
                           background: 'linear-gradient(135deg, rgba(201,168,76,0.1), rgba(0,0,0,0.8))',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>
@@ -215,6 +225,24 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
                           </span>
                         ))}
                       </div>
+                    </div>
+                  )}
+
+                  {/* ── Aspect Ratio Badge ── */}
+                  {(video as any).aspectRatio && (
+                    <div style={{
+                      position: 'absolute', top: 8, right: 8,
+                      padding: '0.15rem 0.45rem', borderRadius: '4px',
+                      background: (video as any).aspectRatio === '9:16' ? 'rgba(168,85,247,0.8)' :
+                                  (video as any).aspectRatio === '1:1' ? 'rgba(251,191,36,0.8)' :
+                                  (video as any).aspectRatio === '4:5' ? 'rgba(59,130,246,0.8)' :
+                                  'rgba(34,197,94,0.8)',
+                      color: '#fff', fontSize: '0.55rem', fontWeight: 700,
+                      letterSpacing: '0.04em', zIndex: 2,
+                    }}>
+                      {(video as any).aspectRatio === '16:9' ? '🖥️' :
+                       (video as any).aspectRatio === '9:16' ? '📱' :
+                       (video as any).aspectRatio === '1:1' ? '⬜' : '📐'} {(video as any).aspectRatio}
                     </div>
                   )}
 
