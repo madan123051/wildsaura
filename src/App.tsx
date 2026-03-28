@@ -7,7 +7,6 @@ import { Gallery } from './components/Gallery';
 import { PhotoModal } from './components/PhotoModal';
 import { AboutSection } from './components/AboutSection';
 import { Footer } from './components/Footer';
-import { AdminLogin } from './components/AdminLogin';
 import { AdminDashboard } from './components/AdminDashboard';
 import { SearchBar } from './components/SearchBar';
 import { AIChatbot } from './components/AIChatbot';
@@ -32,6 +31,7 @@ import { onSiteSettingsChange, SiteSettings } from './services/siteSettingsServi
 import { NotificationPanel, AppNotification } from './components/NotificationPanel';
 
 const logoUrl = '/photos/logo.png';
+const ADMIN_EMAIL = 'madan123050@gmail.com';
 
 // ── Sample Photo Data ───────────────────────────────────────────────────────
 const SAMPLE_PHOTOS: Photo[] = [
@@ -266,6 +266,11 @@ const App: React.FC = () => {
                 loginMethod: (saved.loginMethod || 'email') as any,
               });
               setDownloadCount(saved.downloadCount || 0);
+              // Auto-detect admin by email
+              if (firebaseUser.email.toLowerCase() === ADMIN_EMAIL) {
+                setIsAdmin(true);
+                localStorage.setItem('wa_admin_session', 'true');
+              }
             } else {
               setVisitor({
                 displayName: firebaseUser.displayName || firebaseUser.email.split('@')[0] || 'User',
@@ -274,6 +279,11 @@ const App: React.FC = () => {
                 avatarUrl: firebaseUser.photoURL || undefined,
                 loginMethod: 'email',
               });
+              // Auto-detect admin by email
+              if (firebaseUser.email.toLowerCase() === ADMIN_EMAIL) {
+                setIsAdmin(true);
+                localStorage.setItem('wa_admin_session', 'true');
+              }
             }
             // Load user's likes
             try {
@@ -679,14 +689,7 @@ const App: React.FC = () => {
     window.history.pushState({}, '', '/');
   }, []);
 
-  const handleAdminClick = useCallback(() => {
-    if (isAdmin) {
-      setView('admin-dashboard');
-      window.history.pushState({}, '', '/admin');
-    } else {
-      setView('admin-login');
-    }
-  }, [isAdmin]);
+  // Admin login removed — admin detected by email (madan123050@gmail.com)
 
   const handleAddPhoto = useCallback((photo: Photo) => {
     setPhotos((prev) => {
@@ -919,6 +922,13 @@ const App: React.FC = () => {
     }
     setVisitor(merged);
     setShowVisitorLogin(false);
+    // Auto-detect admin by email
+    if (merged.email && merged.email.toLowerCase() === ADMIN_EMAIL) {
+      setIsAdmin(true);
+      setView('admin-dashboard');
+      localStorage.setItem('wa_admin_session', 'true');
+      window.history.pushState({}, '', '/admin');
+    }
     // Welcome notification for first-time visitors
     const welcomeKey = `wa_welcomed_${userKey || merged.displayName}`;
     if (!localStorage.getItem(welcomeKey)) {
@@ -953,6 +963,8 @@ const App: React.FC = () => {
   const handleVisitorLogout = useCallback(() => {
     signOut(auth).catch(console.warn);
     setVisitor(null);
+    setIsAdmin(false);
+    localStorage.removeItem('wa_admin_session');
     setDownloadCount(0);
     setUserLikes(new Set());
     // Reset liked state on all items
@@ -1200,12 +1212,7 @@ const App: React.FC = () => {
     window.history.pushState({}, '', '/');
   }, []);
 
-  // ── Admin Login View ──
-  if (view === 'admin-login') {
-    return (
-      <AdminLogin logoUrl={logoUrl} onLogin={handleLogin} onBack={() => { setView('home'); window.history.pushState({}, '', '/'); }} />
-    );
-  }
+  // Admin login removed — admin auto-detected by email
 
   // ── Admin Dashboard View ──
   if (view === 'admin-dashboard') {
@@ -1239,8 +1246,6 @@ const App: React.FC = () => {
         <Header
           onScrollToGallery={scrollToGallery}
           logoUrl={logoUrl}
-          onAdminClick={handleAdminClick}
-          isAdmin={isAdmin}
           onSearchClick={() => setShowSearch(true)}
           visitor={visitor}
           onVisitorLoginClick={() => setShowVisitorLogin(true)}
@@ -1277,8 +1282,6 @@ const App: React.FC = () => {
         <Header
           onScrollToGallery={scrollToGallery}
           logoUrl={logoUrl}
-          onAdminClick={handleAdminClick}
-          isAdmin={isAdmin}
           onSearchClick={() => setShowSearch(true)}
           visitor={visitor}
           onVisitorLoginClick={() => setShowVisitorLogin(true)}
@@ -1331,8 +1334,6 @@ const App: React.FC = () => {
       <Header
         onScrollToGallery={scrollToGallery}
         logoUrl={logoUrl}
-        onAdminClick={handleAdminClick}
-        isAdmin={isAdmin}
         onSearchClick={() => setShowSearch(true)}
         visitor={visitor}
         onVisitorLoginClick={() => setShowVisitorLogin(true)}
