@@ -140,6 +140,7 @@ The technical challenge of night street photography is real. At ISO 3200 and 1/6
 const CATEGORIES: Category[] = [
   { key: 'wildlife', label: 'Wildlife', imageUrl: '/photos/photo-wildlife.jpeg' },
   { key: 'landscape', label: 'Landscapes', imageUrl: '/photos/photo-landscape.jpeg' },
+  { key: 'nature', label: 'Nature', imageUrl: '/photos/photo-nature.jpeg' },
   { key: 'other', label: 'Portraits', imageUrl: '/photos/photo-portrait.jpeg' },
 ];
 
@@ -147,6 +148,7 @@ const FILTER_TABS: FilterTab[] = [
   { key: 'all', label: 'All' },
   { key: 'wildlife', label: 'Wildlife' },
   { key: 'landscape', label: 'Landscapes' },
+  { key: 'nature', label: 'Nature' },
   { key: 'street', label: 'Street' },
   { key: 'other', label: 'Portraits' },
 ];
@@ -1188,11 +1190,6 @@ const App: React.FC = () => {
     }, 100);
   }, [view]);
 
-  const handleAdminClick = useCallback(() => {
-    setView('admin-dashboard');
-    window.history.pushState({}, '', '/admin');
-  }, []);
-
   // ── Helper: Open/Close Photo with URL ────────────────────────────────────
   const openPhoto = useCallback((photo: Photo | null) => {
     setSelectedPhoto(photo);
@@ -1259,8 +1256,6 @@ const App: React.FC = () => {
           onStoriesClick={handleStoriesNavClick}
           notificationCount={unreadNotifCount}
           onNotificationClick={() => setShowNotifPanel(p => !p)}
-          isAdmin={isAdmin}
-          onAdminClick={handleAdminClick}
         />
         <TermsConditions onBack={() => { setView('home'); window.history.pushState({}, '', '/'); window.scrollTo(0, 0); }} />
         <Footer logoUrl={logoUrl} onTermsClick={handleTermsClick} />
@@ -1297,8 +1292,6 @@ const App: React.FC = () => {
           onStoriesClick={handleStoriesNavClick}
           notificationCount={unreadNotifCount}
           onNotificationClick={() => setShowNotifPanel(p => !p)}
-          isAdmin={isAdmin}
-          onAdminClick={handleAdminClick}
         />
         <StoryDetail
           story={selectedStory}
@@ -1334,6 +1327,7 @@ const App: React.FC = () => {
   const dynamicCategories: Category[] = [
     { key: 'wildlife', label: 'Wildlife', imageUrl: siteSettings.categoryImages?.wildlife || '/photos/photo-wildlife.jpeg' },
     { key: 'landscape', label: 'Landscapes', imageUrl: siteSettings.categoryImages?.landscape || '/photos/photo-landscape.jpeg' },
+    { key: 'nature', label: 'Nature', imageUrl: siteSettings.categoryImages?.nature || '/photos/photo-nature.jpeg' },
     { key: 'other', label: 'Portraits', imageUrl: siteSettings.categoryImages?.portraits || '/photos/photo-portrait.jpeg' },
   ];
 
@@ -1351,8 +1345,6 @@ const App: React.FC = () => {
         onStoriesClick={handleStoriesNavClick}
           notificationCount={unreadNotifCount}
           onNotificationClick={() => setShowNotifPanel(p => !p)}
-          isAdmin={isAdmin}
-          onAdminClick={handleAdminClick}
       />
       <Hero onExplore={scrollToGallery} logoUrl={logoUrl} heroImages={siteSettings.heroImages} />
       <CategorySection categories={dynamicCategories} onCategoryClick={handleCategoryClick} />
