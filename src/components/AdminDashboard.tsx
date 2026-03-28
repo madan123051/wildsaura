@@ -300,7 +300,7 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
           const origMB = (file.size / 1024 / 1024).toFixed(2);
           const compMB = (webpFile.size / 1024 / 1024).toFixed(2);
           const savedPct = Math.round((1 - webpFile.size / file.size) * 100);
-          setCompressionStats(\`📸 \${origMB}MB → \${compMB}MB WebP (\${savedPct}% saved)\`);
+          setCompressionStats(`📸 ${origMB}MB → ${compMB}MB WebP (${savedPct}% saved)`);
 
           // Convert compressed WebP to data URL for preview & watermark
           dataUrl = await new Promise<string>((res, rej) => {
@@ -452,7 +452,7 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
         try {
           const thumbName = (uploadedFileName || 'photo').replace(/\.[^.]+$/, '') + '_thumb.webp';
           thumbnailUrl = await uploadThumbnailToStorage(thumbnailFile, thumbName);
-          if (onProgress) setUploadProgress(95);
+          setUploadProgress(95);
         } catch (thumbErr) {
           console.warn('Thumbnail upload failed (non-critical):', thumbErr);
         }
@@ -1112,7 +1112,7 @@ const VideoForm: React.FC<VideoFormProps> = ({ initial, onSave, onCancel, nextId
       const previewUrl = URL.createObjectURL(webpFile);
       setThumbPreview(previewUrl);
       setThumbnailUrl(previewUrl); // Temporary — replaced with Firebase URL on save
-      console.log(\`🖼️ Video thumbnail compressed: \${(webpFile.size / 1024).toFixed(0)}KB WebP\`);
+      console.log(`🖼️ Video thumbnail compressed: ${(webpFile.size / 1024).toFixed(0)}KB WebP`);
     } catch {
       // Fallback: use original file
       setThumbFile(file);
@@ -1143,7 +1143,7 @@ const VideoForm: React.FC<VideoFormProps> = ({ initial, onSave, onCancel, nextId
           );
         } catch (err: any) {
           console.error('Video upload failed:', err);
-          alert(\`❌ Video upload failed: \${err?.message || 'Unknown error'}. Please try again.\`);
+          alert(`❌ Video upload failed: ${err?.message || 'Unknown error'}. Please try again.`);
           setVideoSaving(false);
           setVideoUploadProgress(0);
           return;
@@ -1168,7 +1168,7 @@ const VideoForm: React.FC<VideoFormProps> = ({ initial, onSave, onCancel, nextId
       setVideoUploadProgress(100);
     } catch (err: any) {
       console.error('Upload failed:', err);
-      alert(\`❌ Upload failed: \${err?.message || 'Unknown error'}\`);
+      alert(`❌ Upload failed: ${err?.message || 'Unknown error'}`);
       setVideoSaving(false);
       setVideoUploadProgress(0);
       return;
@@ -1359,7 +1359,7 @@ const VideoForm: React.FC<VideoFormProps> = ({ initial, onSave, onCancel, nextId
         <button type="submit" className="btn-gold" disabled={videoSaving} style={{
           padding: '0.6rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem',
           opacity: videoSaving ? 0.5 : 1, pointerEvents: videoSaving ? 'none' : 'auto',
-        }}><Save size={16} /> {videoSaving ? (videoUploadProgress > 0 && videoUploadProgress < 100 ? \`Uploading \${videoUploadProgress}%\` : 'Saving...') : initial ? 'Update Video' : 'Add Video'}</button>
+        }}><Save size={16} /> {videoSaving ? (videoUploadProgress > 0 && videoUploadProgress < 100 ? `Uploading ${videoUploadProgress}%` : 'Saving...') : initial ? 'Update Video' : 'Add Video'}</button>
       </div>
     </form>
   );
