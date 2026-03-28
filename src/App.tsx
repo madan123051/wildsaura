@@ -1256,6 +1256,8 @@ const App: React.FC = () => {
           onStoriesClick={handleStoriesNavClick}
           notificationCount={unreadNotifCount}
           onNotificationClick={() => setShowNotifPanel(p => !p)}
+          isAdmin={isAdmin}
+          onAdminClick={() => { setView('admin-dashboard'); window.history.pushState({}, '', '/admin'); }}
         />
         <TermsConditions onBack={() => { setView('home'); window.history.pushState({}, '', '/'); window.scrollTo(0, 0); }} />
         <Footer logoUrl={logoUrl} onTermsClick={handleTermsClick} />
@@ -1292,6 +1294,8 @@ const App: React.FC = () => {
           onStoriesClick={handleStoriesNavClick}
           notificationCount={unreadNotifCount}
           onNotificationClick={() => setShowNotifPanel(p => !p)}
+          isAdmin={isAdmin}
+          onAdminClick={() => { setView('admin-dashboard'); window.history.pushState({}, '', '/admin'); }}
         />
         <StoryDetail
           story={selectedStory}
@@ -1345,6 +1349,8 @@ const App: React.FC = () => {
         onStoriesClick={handleStoriesNavClick}
           notificationCount={unreadNotifCount}
           onNotificationClick={() => setShowNotifPanel(p => !p)}
+          isAdmin={isAdmin}
+          onAdminClick={() => { setView('admin-dashboard'); window.history.pushState({}, '', '/admin'); }}
       />
       <Hero onExplore={scrollToGallery} logoUrl={logoUrl} heroImages={siteSettings.heroImages} />
       <CategorySection categories={dynamicCategories} onCategoryClick={handleCategoryClick} />
