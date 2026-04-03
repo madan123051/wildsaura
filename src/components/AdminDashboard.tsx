@@ -471,6 +471,7 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
         type: mediaType === 'video' ? 'video' : 'photo',
         photographer: photographer || '',
         published: initial ? (initial.published !== false) : true,
+        source: 'wildsaura',  // Tag photos from this app (shared DB with marketplace)
       };
       // Store compression metadata for storage tracking
       if (originalFileSize > 0) photoData.originalSize = originalFileSize;
