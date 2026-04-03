@@ -470,6 +470,7 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
         likeCount: initial?.likeCount || 0,
         type: mediaType === 'video' ? 'video' : 'photo',
         photographer: photographer || '',
+        published: initial ? (initial.published !== false) : true,
       };
       // Store compression metadata for storage tracking
       if (originalFileSize > 0) photoData.originalSize = originalFileSize;
@@ -1942,7 +1943,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', color: 'rgba(239,68,68,0.6)' }}><Heart size={13} /> {p.likeCount}</span>
                         <div style={{ display: 'flex', gap: '0.4rem' }}>
-                          <button onClick={() => onUpdatePhoto({ ...p, published: p.published === false ? true : false })} title={p.published !== false ? 'Unpublish' : 'Publish'} style={{ width: 32, height: 32, borderRadius: '6px', background: p.published !== false ? 'rgba(34,197,94,0.15)' : 'rgba(255,165,0,0.15)', border: `1px solid ${p.published !== false ? 'rgba(34,197,94,0.2)' : 'rgba(255,165,0,0.2)'}`, color: p.published !== false ? '#22c55e' : '#f59e0b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{p.published !== false ? <Eye size={14} /> : <EyeOff size={14} />}</button>
+                          <button onClick={() => { const newPublished = p.published !== false ? false : true; onUpdatePhoto({ ...p, published: newPublished }); if (p.firestoreId) { updatePhotoInFirestore(p.firestoreId, { published: newPublished }).catch(err => console.warn('Publish toggle failed:', err)); } }} title={p.published !== false ? 'Unpublish' : 'Publish'} style={{ width: 32, height: 32, borderRadius: '6px', background: p.published !== false ? 'rgba(34,197,94,0.15)' : 'rgba(255,165,0,0.15)', border: `1px solid ${p.published !== false ? 'rgba(34,197,94,0.2)' : 'rgba(255,165,0,0.2)'}`, color: p.published !== false ? '#22c55e' : '#f59e0b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{p.published !== false ? <Eye size={14} /> : <EyeOff size={14} />}</button>
                           <button onClick={() => setEditingPhoto(p)} style={{ width: 32, height: 32, borderRadius: '6px', background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.2)', color: '#60a5fa', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Pencil size={14} /></button>
                           {deleteConfirm === p.id ? (
                             <div style={{ display: 'flex', gap: '0.25rem' }}>
