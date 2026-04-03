@@ -156,6 +156,9 @@ export async function addPhotoToFirestore(photo: Omit<FirestorePhoto, 'id'>): Pr
   const docRef = await addDoc(collection(db, PHOTOS_COLLECTION), {
     ...photo,
     source: 'wildsaura',  // ← Always tag photos from this app
+    status: 'approved',    // ← WildSaura photos go live immediately (no approval needed)
+    isPublic: true,        // ← Visible on market website
+    published: true,       // ← Explicitly mark as published for gallery
     createdAt: serverTimestamp(),
   });
   return docRef.id;
