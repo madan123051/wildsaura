@@ -8,7 +8,7 @@ export interface FirestorePhoto {
   caption: string;
   category: string;
   imageUrl: string;
-  thumbnailUrl?: string;       // ← NEW: Optimized gallery thumbnail (WebP, ~150KB)
+  thumbnailUrl?: string;       // ← Optimized gallery thumbnail (WebP, ~150KB)
   location: string;
   tags: string[];
   animalName?: string;
@@ -24,8 +24,9 @@ export interface FirestorePhoto {
   latitude?: number;
   longitude?: number;
   published?: boolean;
-  originalSize?: number;       // ← NEW: Original file size in bytes (before compression)
-  compressedSize?: number;     // ← NEW: Compressed file size in bytes (after WebP conversion)
+  source?: string;              // ← NEW: App identifier ("wildsaura" | "market")
+  originalSize?: number;       // ← Original file size in bytes (before compression)
+  compressedSize?: number;     // ← Compressed file size in bytes (after WebP conversion)
   createdAt?: any;
 }
 
@@ -154,6 +155,7 @@ export async function uploadThumbnailToStorage(
 export async function addPhotoToFirestore(photo: Omit<FirestorePhoto, 'id'>): Promise<string> {
   const docRef = await addDoc(collection(db, PHOTOS_COLLECTION), {
     ...photo,
+    source: 'wildsaura',  // ← Always tag photos from this app
     createdAt: serverTimestamp(),
   });
   return docRef.id;
@@ -163,12 +165,17 @@ export async function getPhotosFromFirestore(): Promise<FirestorePhoto[]> {
   try {
     const q = query(collection(db, PHOTOS_COLLECTION), orderBy('createdAt', 'desc'));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as FirestorePhoto));
+    // Only return WildSaura photos (source === "wildsaura" or legacy photos without marketplace fields)
+    return snapshot.docs
+      .map(d => ({ id: d.id, ...d.data() } as FirestorePhoto & Record<string, any>))
+      .filter(p => p.source === 'wildsaura' || (!p.source && !p.status && !p.ownerId));
   } catch (err) {
     // If orderBy fails (no index), try without ordering
     try {
       const snapshot = await getDocs(collection(db, PHOTOS_COLLECTION));
-      return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as FirestorePhoto));
+      return snapshot.docs
+        .map(d => ({ id: d.id, ...d.data() } as FirestorePhoto & Record<string, any>))
+        .filter(p => p.source === 'wildsaura' || (!p.source && !p.status && !p.ownerId));
     } catch {
       console.warn('Firestore fetch failed:', err);
       return [];
@@ -185,8 +192,9 @@ export async function updatePhotoInFirestore(docId: string, data: Partial<Firest
 }
 
 /**
- * Real-time subscription to all photos.
- * Fires onUpdate whenever any photo document changes (add/edit/delete).
+ * Real-time subscription to WildSaura photos only.
+ * Filters out marketplace photos (which have status/ownerId fields).
+ * Fires onUpdate whenever any matching photo document changes.
  * Returns an unsubscribe function.
  */
 export function subscribeToPhotos(
@@ -196,8 +204,12 @@ export function subscribeToPhotos(
   const q = query(collection(db, PHOTOS_COLLECTION), orderBy('createdAt', 'desc'));
   return onSnapshot(q,
     (snapshot) => {
-      const photos = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as FirestorePhoto));
-      onUpdate(photos);
+      const allPhotos = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as FirestorePhoto & Record<string, any>));
+      // Only show WildSaura photos: source === "wildsaura" OR legacy photos (no source AND no marketplace fields)
+      const wildsauraPhotos = allPhotos.filter(p => 
+        p.source === 'wildsaura' || (!p.source && !p.status && !p.ownerId)
+      );
+      onUpdate(wildsauraPhotos);
     },
     (error) => {
       console.error('Photo subscription error:', error);
