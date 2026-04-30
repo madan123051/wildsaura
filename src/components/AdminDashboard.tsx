@@ -1737,8 +1737,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     display: 'flex', alignItems: 'center', gap: '0.6rem',
     width: '100%', padding: '0.65rem 1rem', border: 'none',
     borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem',
-    background: active ? 'rgba(201,168,76,0.15)' : 'transparent',
-    color: active ? 'var(--wa-gold)' : 'rgba(235,230,220,0.5)',
+    background: active ? 'rgba(249,115,22,0.2)' : 'transparent',
+    color: active ? '#ffffff' : 'rgba(248,250,252,0.88)',
     transition: 'all 0.2s',
   });
 
@@ -1794,7 +1794,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </button>
 
           <div style={{ borderTop: '1px solid rgba(201,168,76,0.08)', margin: '0.5rem 0', paddingTop: '0.5rem' }}>
-            <p style={{ fontSize: '0.6rem', color: 'rgba(235,230,220,0.25)', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0 1rem', marginBottom: '0.25rem' }}>Content</p>
+            <p style={{ fontSize: '0.6rem', color: 'rgba(248,250,252,0.62)', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0 1rem', marginBottom: '0.25rem' }}>Content</p>
           </div>
 
           <button style={sidebarItemStyle(view === 'stories')} onClick={() => { setView('stories'); setEditingStory(null); }}>
@@ -1811,7 +1811,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </button>
 
           <div style={{ borderTop: '1px solid rgba(201,168,76,0.08)', margin: '0.5rem 0', paddingTop: '0.5rem' }}>
-            <p style={{ fontSize: '0.6rem', color: 'rgba(235,230,220,0.25)', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0 1rem', marginBottom: '0.25rem' }}>Social</p>
+            <p style={{ fontSize: '0.6rem', color: 'rgba(248,250,252,0.62)', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0 1rem', marginBottom: '0.25rem' }}>Social</p>
           </div>
           <button style={sidebarItemStyle(view === 'comments')} onClick={() => { setView('comments'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); }}>
             <MessageCircle size={18} /> Comments
@@ -1833,7 +1833,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </button>
 
           <div style={{ borderTop: '1px solid rgba(201,168,76,0.08)', margin: '0.5rem 0', paddingTop: '0.5rem' }}>
-            <p style={{ fontSize: '0.6rem', color: 'rgba(235,230,220,0.25)', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0 1rem', marginBottom: '0.25rem' }}>Settings</p>
+            <p style={{ fontSize: '0.6rem', color: 'rgba(248,250,252,0.62)', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0 1rem', marginBottom: '0.25rem' }}>Settings</p>
           </div>
           <button style={sidebarItemStyle(view === 'ai-settings')} onClick={() => { setView('ai-settings'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); }}>
             <Cpu size={18} /> AI Settings
