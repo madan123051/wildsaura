@@ -69,27 +69,28 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, logoUrl, heroImages }) =>
       {/* Content */}
       <div className="wa-container" style={{ position: 'relative', paddingTop: '6rem', paddingBottom: '4rem' }}>
         <div style={{ maxWidth: '600px' }}>
-          <h1 className="font-playfair animate-fade-in-up anim-delay-200" style={{ fontSize: 'clamp(2.5rem, 8vw, 5rem)', fontWeight: 700, lineHeight: 1.1, marginBottom: '1.5rem' }}>
+          <h1 className="font-playfair animate-fade-in-up anim-delay-200" style={{ fontSize: 'clamp(2.4rem, 8vw, 5rem)', fontWeight: 700, lineHeight: 1.1, marginBottom: '1.5rem', color: '#f8fafc', textShadow: '0 4px 20px rgba(0,0,0,0.55)' }}>
             <span style={{ display: 'block', fontStyle: 'italic', fontWeight: 400, fontSize: '0.65em', opacity: 0.9 }}>
-              Explore the
+              Explore Nepal Through
             </span>
-            <span className="text-gold-gradient">Wonders of World</span>
+            <span style={{ color: '#fbbf24' }}>Photography. Support Animal Rescue.</span>
           </h1>
-          <p className="font-inter text-wa-mid animate-fade-in-up anim-delay-400" style={{ fontSize: '1rem', marginBottom: '2.5rem', maxWidth: '400px', lineHeight: 1.7 }}>
-            Capturing the wild, one frame at a time.
+          <p className="font-inter animate-fade-in-up anim-delay-400" style={{ fontSize: '1rem', marginBottom: '2.5rem', maxWidth: '440px', lineHeight: 1.7, color: 'rgba(248,250,252,0.92)', textShadow: '0 2px 12px rgba(0,0,0,0.45)' }}>
+            WildSaura connects photographers, nature lovers, and a mission to protect animals. Every photo you explore or purchase helps make a difference.
           </p>
           <div className="animate-fade-in-up anim-delay-600" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <button className="btn-gold" onClick={onExplore}>
-              View Gallery
+              Explore Photos
             </button>
             <a
-              href="#about"
+              href="/marketplace"
               style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none' }}
               className="text-wa-muted"
             >
               <ChevronDown size={16} style={{ animation: 'bounce 2s infinite' }} />
-              <span className="font-cinzel" style={{ fontSize: '0.7rem', letterSpacing: '0.15em' }}>Scroll Down</span>
+              <span className="font-cinzel" style={{ fontSize: '0.7rem', letterSpacing: '0.15em' }}>Visit Marketplace</span>
             </a>
+            <a href="/ngo" className="btn-gold-outline" style={{ textDecoration: 'none' }}>Support Animals</a>
           </div>
         </div>
       </div>

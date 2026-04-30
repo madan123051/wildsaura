@@ -3,17 +3,20 @@
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --wa-dark: #0f0d0a;
-  --wa-dark-alt: #151210;
-  --wa-dark-card: #1a1714;
-  --wa-gold: #c9a84c;
-  --wa-gold-light: #f5d98b;
-  --wa-gold-dark: #a07830;
-  --wa-text: #ebe6dc;
-  --wa-text-muted: rgba(235, 230, 220, 0.4);
-  --wa-text-mid: rgba(235, 230, 220, 0.6);
-  --wa-border: rgba(235, 230, 220, 0.08);
-  --wa-border-gold: rgba(201, 168, 76, 0.3);
+  --wa-dark: #0b3d2e;
+  --wa-dark-alt: #0f4d39;
+  --wa-dark-card: #14532d;
+  --wa-gold: #f97316;
+  --wa-gold-light: #fb923c;
+  --wa-gold-dark: #ea580c;
+  --wa-text: #f8fafc;
+  --wa-text-muted: rgba(248, 250, 252, 0.62);
+  --wa-text-mid: rgba(248, 250, 252, 0.82);
+  --wa-border: rgba(248, 250, 252, 0.2);
+  --wa-border-gold: rgba(249, 115, 22, 0.4);
+  --wa-primary-dark: #0b3d2e;
+  --wa-secondary: #14532d;
+  --wa-accent: #f97316;
 }
 
 /* Override DaisyUI body */
@@ -88,8 +91,8 @@ html, body, #root {
 
 /* ── Gold Button ───────────────────────────────────────────────────────── */
 .btn-gold {
-  background: linear-gradient(135deg, #c9a84c 0%, #f5d98b 50%, #c9a84c 100%);
-  color: #1a1200;
+  background: linear-gradient(135deg, #f97316 0%, #fb923c 50%, #f97316 100%);
+  color: #ffffff;
   font-family: 'Cinzel', serif;
   font-weight: 600;
   font-size: 11px;
@@ -100,11 +103,11 @@ html, body, #root {
   padding: 0.75rem 2rem;
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
-  box-shadow: 0 4px 20px rgba(201,168,76,0.4);
+  box-shadow: 0 4px 20px rgba(249,115,22,0.35);
 }
 .btn-gold:hover {
   transform: scale(1.05);
-  box-shadow: 0 6px 30px rgba(201,168,76,0.5);
+  box-shadow: 0 6px 30px rgba(249,115,22,0.45);
 }
 
 /* ── Gold Outline Button ───────────────────────────────────────────────── */
@@ -115,14 +118,14 @@ html, body, #root {
   font-size: 11px;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  border: 1px solid rgba(201,168,76,0.5);
+  border: 1px solid rgba(249,115,22,0.65);
   border-radius: 9999px;
   padding: 0.6rem 1.5rem;
   cursor: pointer;
   transition: all 0.2s;
 }
 .btn-gold-outline:hover {
-  background: rgba(201,168,76,0.1);
+  background: rgba(249,115,22,0.15);
   border-color: var(--wa-gold);
 }
 
@@ -273,7 +276,10 @@ html, body, #root {
   background: linear-gradient(to right, #c9a84c, #f5d98b);
   transition: width 0.3s;
 }
-.nav-link:hover { color: var(--wa-text); }
+.nav-link:hover { color: var(--wa-text);
+  --wa-primary-dark: #0B3D2E;
+  --wa-secondary: #14532D;
+  --wa-accent: #F97316; }
 .nav-link:hover::after { width: 100%; }
 
 /* ── EXIF Card ─────────────────────────────────────────────────────────── */
