@@ -73,9 +73,6 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, logoUrl, heroImages }) =>
             <span style={{ display: 'block', fontStyle: 'italic', fontWeight: 400, fontSize: '0.65em', opacity: 0.9 }}>
               Explore Nepal Through
             </span>
-            <span style={{ color: '#fbbf24' }}>Photography. Support Animal Rescue.</span>
-          </h1>
-          <p className="font-inter animate-fade-in-up anim-delay-400" style={{ fontSize: '1rem', marginBottom: '2.5rem', maxWidth: '440px', lineHeight: 1.7, color: 'rgba(248,250,252,0.92)', textShadow: '0 2px 12px rgba(0,0,0,0.45)' }}>
             WildSaura connects photographers, nature lovers, and a mission to protect animals. Every photo you explore or purchase helps make a difference.
           </p>
           <div className="animate-fade-in-up anim-delay-600" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
