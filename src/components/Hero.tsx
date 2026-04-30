@@ -70,12 +70,10 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, logoUrl, heroImages }) =>
       <div className="wa-container" style={{ position: 'relative', paddingTop: '6rem', paddingBottom: '4rem' }}>
         <div style={{ maxWidth: '600px' }}>
           <h1 className="font-playfair animate-fade-in-up anim-delay-200" style={{ fontSize: 'clamp(2.5rem, 8vw, 5rem)', fontWeight: 700, lineHeight: 1.1, marginBottom: '1.5rem' }}>
-            <span style={{ display: 'block', fontStyle: 'italic', fontWeight: 400, fontSize: '0.65em', opacity: 0.9 }}>
               Explore Nepal Through
             </span>
             <span className="text-gold-gradient">Photography. Support Animal Rescue.</span>
           </h1>
-          <p className="font-inter text-wa-mid animate-fade-in-up anim-delay-400" style={{ fontSize: '1rem', marginBottom: '2.5rem', maxWidth: '400px', lineHeight: 1.7 }}>
             WildSaura connects photographers, nature lovers, and a mission to protect animals. Every photo you explore or purchase helps make a difference.
           </p>
           <div className="animate-fade-in-up anim-delay-600" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>

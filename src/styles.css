@@ -3,8 +3,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --wa-border: rgba(235, 230, 220, 0.08);
-  --wa-border-gold: rgba(201, 168, 76, 0.3);
 }
 
 /* Override DaisyUI body */
@@ -139,13 +137,13 @@ html, body, #root {
 
 /* ── Cinematic Overlay ─────────────────────────────────────────────────── */
 .cinematic-overlay-left {
-  background: linear-gradient(to right, rgba(15,13,10,0.88) 0%, rgba(15,13,10,0.5) 50%, rgba(15,13,10,0.2) 100%);
+  background: linear-gradient(to right, rgba(11,61,46,0.82) 0%, rgba(11,61,46,0.48) 50%, rgba(11,61,46,0.15) 100%);
 }
 .cinematic-overlay-bottom {
-  background: linear-gradient(to top, rgba(15,13,10,0.9) 0%, transparent 50%);
+  background: linear-gradient(to top, rgba(5,23,18,0.95) 0%, rgba(5,23,18,0.35) 45%, transparent 75%);
 }
 .cinematic-vignette {
-  background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.6) 100%);
+  background: radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,0.72) 100%);
 }
 
 /* ── Filter Tab ────────────────────────────────────────────────────────── */
