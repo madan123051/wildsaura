@@ -3,13 +3,13 @@
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --wa-dark: #0f0d0a;
-  --wa-dark-alt: #151210;
-  --wa-dark-card: #1a1714;
-  --wa-gold: #c9a84c;
-  --wa-gold-light: #f5d98b;
-  --wa-gold-dark: #a07830;
-  --wa-text: #ebe6dc;
+  --wa-dark: #FFFFFF;
+  --wa-dark-alt: #f8fafc;
+  --wa-dark-card: #ffffff;
+  --wa-gold: #F97316;
+  --wa-gold-light: #fb923c;
+  --wa-gold-dark: #ea580c;
+  --wa-text: #0B3D2E;
   --wa-text-muted: rgba(235, 230, 220, 0.4);
   --wa-text-mid: rgba(235, 230, 220, 0.6);
   --wa-border: rgba(235, 230, 220, 0.08);
@@ -22,6 +22,9 @@ html, body, #root {
   padding: 0;
   background: var(--wa-dark) !important;
   color: var(--wa-text);
+  --wa-primary-dark: #0B3D2E;
+  --wa-secondary: #14532D;
+  --wa-accent: #F97316;
   font-family: 'Inter', system-ui, sans-serif;
   scroll-behavior: smooth;
 }
@@ -52,7 +55,10 @@ html, body, #root {
 .bg-wa-dark { background: var(--wa-dark); }
 .bg-wa-dark-alt { background: var(--wa-dark-alt); }
 .bg-wa-card { background: var(--wa-dark-card); }
-.text-wa { color: var(--wa-text); }
+.text-wa { color: var(--wa-text);
+  --wa-primary-dark: #0B3D2E;
+  --wa-secondary: #14532D;
+  --wa-accent: #F97316; }
 .text-wa-muted { color: var(--wa-text-muted); }
 .text-wa-mid { color: var(--wa-text-mid); }
 .border-wa { border-color: var(--wa-border); }
@@ -88,6 +94,7 @@ html, body, #root {
 
 /* ── Gold Button ───────────────────────────────────────────────────────── */
 .btn-gold {
+  background: var(--wa-accent);
   background: linear-gradient(135deg, #c9a84c 0%, #f5d98b 50%, #c9a84c 100%);
   color: #1a1200;
   font-family: 'Cinzel', serif;
@@ -200,6 +207,9 @@ html, body, #root {
   background: var(--wa-dark-alt);
   border: 1px solid var(--wa-border);
   color: var(--wa-text);
+  --wa-primary-dark: #0B3D2E;
+  --wa-secondary: #14532D;
+  --wa-accent: #F97316;
   outline: none;
   transition: border-color 0.2s;
 }
@@ -219,6 +229,9 @@ html, body, #root {
   font-size: 1.75rem;
   font-weight: 700;
   color: var(--wa-text);
+  --wa-primary-dark: #0B3D2E;
+  --wa-secondary: #14532D;
+  --wa-accent: #F97316;
   font-family: 'Cinzel', serif;
   letter-spacing: 0.05em;
 }
@@ -273,7 +286,10 @@ html, body, #root {
   background: linear-gradient(to right, #c9a84c, #f5d98b);
   transition: width 0.3s;
 }
-.nav-link:hover { color: var(--wa-text); }
+.nav-link:hover { color: var(--wa-text);
+  --wa-primary-dark: #0B3D2E;
+  --wa-secondary: #14532D;
+  --wa-accent: #F97316; }
 .nav-link:hover::after { width: 100%; }
 
 /* ── EXIF Card ─────────────────────────────────────────────────────────── */
