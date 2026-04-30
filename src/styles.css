@@ -3,15 +3,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --wa-dark: #FFFFFF;
-  --wa-dark-alt: #f8fafc;
-  --wa-dark-card: #ffffff;
-  --wa-gold: #F97316;
-  --wa-gold-light: #fb923c;
-  --wa-gold-dark: #ea580c;
-  --wa-text: #0B3D2E;
-  --wa-text-muted: rgba(235, 230, 220, 0.4);
-  --wa-text-mid: rgba(235, 230, 220, 0.6);
   --wa-border: rgba(235, 230, 220, 0.08);
   --wa-border-gold: rgba(201, 168, 76, 0.3);
 }
@@ -94,9 +85,6 @@ html, body, #root {
 
 /* ── Gold Button ───────────────────────────────────────────────────────── */
 .btn-gold {
-  background: var(--wa-accent);
-  background: linear-gradient(135deg, #c9a84c 0%, #f5d98b 50%, #c9a84c 100%);
-  color: #1a1200;
   font-family: 'Cinzel', serif;
   font-weight: 600;
   font-size: 11px;
@@ -107,11 +95,11 @@ html, body, #root {
   padding: 0.75rem 2rem;
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
-  box-shadow: 0 4px 20px rgba(201,168,76,0.4);
+  box-shadow: 0 4px 20px rgba(249,115,22,0.35);
 }
 .btn-gold:hover {
   transform: scale(1.05);
-  box-shadow: 0 6px 30px rgba(201,168,76,0.5);
+  box-shadow: 0 6px 30px rgba(249,115,22,0.45);
 }
 
 /* ── Gold Outline Button ───────────────────────────────────────────────── */
@@ -122,14 +110,14 @@ html, body, #root {
   font-size: 11px;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  border: 1px solid rgba(201,168,76,0.5);
+  border: 1px solid rgba(249,115,22,0.65);
   border-radius: 9999px;
   padding: 0.6rem 1.5rem;
   cursor: pointer;
   transition: all 0.2s;
 }
 .btn-gold-outline:hover {
-  background: rgba(201,168,76,0.1);
+  background: rgba(249,115,22,0.15);
   border-color: var(--wa-gold);
 }
 
