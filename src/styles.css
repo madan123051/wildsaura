@@ -27,7 +27,6 @@ html, body, #root {
 .font-nepali { font-family: 'Noto Serif Devanagari', serif; }
 .font-inter { font-family: 'Inter', sans-serif; }
 
-.text-gold { color: var(--wa-moss); }
 .text-gold-gradient {
   background: linear-gradient(135deg, var(--wa-forest) 0%, var(--wa-moss) 45%, var(--wa-himal-sky) 100%);
   -webkit-background-clip: text;
@@ -37,6 +36,7 @@ html, body, #root {
 .bg-gold-gradient {
   background: linear-gradient(135deg, var(--wa-forest) 0%, var(--wa-moss) 50%, #72aa81 100%);
 }
+.bg-gold-subtle { background: rgba(63, 123, 74, 0.1); }
 
 .bg-wa-dark { background: var(--wa-dark); }
 .bg-wa-dark-alt { background: var(--wa-dark-alt); }
@@ -107,7 +107,6 @@ html, body, #root {
 
 .filter-tab {
   padding: 0.5rem 1.25rem; border-radius: 9999px; font-size: 0.7rem; font-family: 'Cinzel', serif;
-  letter-spacing: 0.15em; text-transform: uppercase; border: 1px solid var(--wa-border); color: var(--wa-text-mid);
 }
 .filter-tab:hover { border-color: rgba(141,195,216,0.45); color: var(--wa-himal-sky); }
 .filter-tab.active {
@@ -119,4 +118,3 @@ html, body, #root {
 ::-webkit-scrollbar-track { background: #0a1a13; }
 ::-webkit-scrollbar-thumb { background: rgba(159,203,143,0.35); border-radius: 8px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--wa-moss); }
-
