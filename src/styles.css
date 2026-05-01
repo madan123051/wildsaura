@@ -1,85 +1,122 @@
-import React from 'react';
+/* ── Wilds Aura • Nepali Nature Professional Theme ───────────────────── */
 
-interface HeroProps {
-  onExplore?: () => void;
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Noto+Serif+Devanagari:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --wa-forest: #3f7b4a;
+  --wa-moss: #9fcb8f;
+  --wa-himal-sky: #8dc3d8;
+  --wa-earth: #876247;
+  --wa-dark: #03100c;
+  --wa-dark-alt: #051a14;
+  --wa-text: #e2e8f0;
+  --wa-text-muted: #94a3b8;
+  --wa-text-mid: #cbd5e1;
+  --wa-border: rgba(159, 203, 143, 0.18);
+  --wa-border-gold: rgba(63, 123, 74, 0.45);
 }
 
-const Hero: React.FC<HeroProps> = ({ onExplore }) => {
-  return (
-    <section className="relative min-h-screen flex items-center overflow-hidden bg-wa-dark">
-      {/* Background Image/Overlay */}
-      <div className="absolute inset-0 z-0">
-        <div className="absolute inset-0 cinematic-vignette z-10" />
-        <div className="absolute inset-0 cinematic-overlay-left z-10" />
-        {/* Placeholder for your Hero Image */}
-        <div 
-          className="w-full h-full bg-cover bg-center transition-transform duration-10000 hover:scale-110"
-          style={{ 
-            backgroundImage: 'url("https://images.unsplash.com/photo-1547005327-ef75a6961556?auto=format&fit=crop&q=80")',
-          }} 
-        />
-      </div>
+* { 
+  box-sizing: border-box; 
+}
 
-      <div className="wa-container relative z-20 pt-20">
-        <div className="max-w-3xl">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gold-subtle border border-wa-gold mb-6 animate-fade-in">
-            <span className="gold-line w-8" />
-            <span className="text-[10px] font-cinzel text-wa-moss tracking-[0.2em] uppercase">
-              Preserving Nepal's Wilderness
-            </span>
-          </div>
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  color: var(--wa-text);
+  font-family: 'Inter', system-ui, sans-serif;
+  scroll-behavior: smooth;
+  background: var(--wa-dark);
+}
 
-          {/* Main Title */}
-          <h1 className="text-5xl md:text-7xl lg:text-8xl font-cinzel text-white leading-tight mb-6 animate-fade-in-up">
-            Wilds <span className="text-gold-gradient">Aura</span>
-          </h1>
+.font-cinzel { font-family: 'Cinzel', serif; }
+.font-nepali { font-family: 'Noto Serif Devanagari', serif; }
+.font-inter { font-family: 'Inter', sans-serif; }
 
-          {/* Subtitle / Description */}
-          <div className="animate-fade-in-up anim-delay-300 mb-8" style={{ maxWidth: '600px' }}>
-            <p className="text-wa-mid text-lg md:text-xl leading-relaxed font-inter">
-              WildSaura connects photographers, nature lovers, and a mission to protect animals. 
-              Every photo you explore or purchase helps make a difference.
-            </p>
-          </div>
+.text-gold-gradient {
+  background: linear-gradient(135deg, var(--wa-forest) 0%, var(--wa-moss) 45%, var(--wa-himal-sky) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
 
-          {/* Buttons */}
-          <div className="animate-fade-in-up anim-delay-600 flex flex-wrap items-center gap-4">
-            <button className="btn-gold" onClick={onExplore}>
-              Explore Gallery
-            </button>
-            <button className="btn-gold-outline">
-              Our Mission
-            </button>
-          </div>
-        </div>
-      </div>
+.bg-gold-gradient {
+  background: linear-gradient(135deg, var(--wa-forest) 0%, var(--wa-moss) 50%, #72aa81 100%);
+}
 
-      {/* Scroll indicator */}
-      <div 
-        className="animate-fade-in anim-delay-800" 
-        style={{ 
-          position: 'absolute', 
-          bottom: '2rem', 
-          left: '50%', 
-          transform: 'translateX(-50%)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '1rem'
-        }}
-      >
-        <span className="text-[9px] font-cinzel text-wa-moss tracking-[0.3em] uppercase rotate-90 mb-8">
-          Scroll
-        </span>
-        <div style={{ 
-          width: 1, 
-          height: 48, 
-          background: 'linear-gradient(to bottom, transparent, rgba(159,203,143,0.6), transparent)' 
-        }} />
-      </div>
-    </section>
-  );
-};
+.bg-gold-subtle { background: rgba(63, 123, 74, 0.1); }
+.bg-wa-dark { background: var(--wa-dark); }
+.bg-wa-dark-alt { background: var(--wa-dark-alt); }
 
-export default Hero;
+.bg-wa-card {
+  border: 1px solid var(--wa-border);
+  box-shadow: 0 14px 45px rgba(0, 0, 0, 0.28);
+}
+
+.wa-container { 
+  max-width: 1280px; 
+  margin: 0 auto; 
+  padding-left: 1rem; 
+  padding-right: 1rem; 
+}
+
+@media (min-width: 640px) { .wa-container { padding-left: 1.5rem; padding-right: 1.5rem; } }
+@media (min-width: 1024px) { .wa-container { padding-left: 2rem; padding-right: 2rem; } }
+
+.photo-card {
+  transition: transform 0.35s ease, box-shadow 0.35s ease, border-color 0.3s ease;
+  border: 1px solid rgba(159, 203, 143, 0.2);
+}
+
+.photo-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 22px 55px rgba(0,0,0,0.52), 0 0 0 1px rgba(141,195,216,0.24);
+  border-color: rgba(141,195,216,0.45);
+}
+
+.btn-gold {
+  background: linear-gradient(135deg, var(--wa-forest) 0%, var(--wa-moss) 55%, #72aa81 100%);
+  color: #062013;
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  border: none;
+  border-radius: 9999px;
+  padding: 0.8rem 2rem;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 6px 22px rgba(63,123,74,0.4);
+}
+
+.btn-gold:hover { 
+  transform: translateY(-1px) scale(1.03); 
+  box-shadow: 0 8px 30px rgba(63,123,74,0.52); 
+}
+
+.btn-gold-outline {
+  background: transparent;
+  color: var(--wa-moss);
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  border: 1px solid rgba(141,195,216,0.55);
+  border-radius: 9999px;
+  padding: 0.6rem 1.5rem;
+}
+
+.cinematic-overlay-left {
+  background: linear-gradient(to right, rgba(8,35,26,0.86) 0%, rgba(8,35,26,0.52) 52%, rgba(8,35,26,0.12) 100%);
+}
+
+.cinematic-vignette { 
+  background: radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.74) 100%); 
+}
+
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: #0a1a13; }
+::-webkit-scrollbar-thumb { background: rgba(159,203,143,0.35); border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: var(--wa-moss); }
