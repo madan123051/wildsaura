@@ -126,7 +126,6 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages }) => {
               <ChevronDown size={16} style={{ animation: 'bounce 2s infinite' }} />
               <span className="font-cinzel" style={{ fontSize: '0.7rem', letterSpacing: '0.15em' }}>Visit Marketplace</span>
             </a>
-            <a href="/ngo" className="btn-gold-outline" style={{ textDecoration: 'none' }}>Support Animals</a>
           </div>
         </div>
       </div>
