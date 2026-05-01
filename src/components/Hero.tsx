@@ -69,12 +69,6 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages }) => {
       {/* Content */}
       <div className="wa-container" style={{ position: 'relative', paddingTop: '6rem', paddingBottom: '4rem' }}>
         <div style={{ maxWidth: '600px' }}>
-          <p className="animate-fade-in-up anim-delay-200" style={{ color: 'var(--wa-gold-light)', marginBottom: '0.75rem', letterSpacing: '0.18em', fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 600 }}>
-            WildSaura • Nepal Nature Collective
-          </p>
-          <h1 className="font-cinzel animate-fade-in-up anim-delay-400" style={{ margin: 0, fontSize: 'clamp(2rem, 5vw, 4rem)', lineHeight: 1.05, letterSpacing: '0.04em' }}>
-            Discover Wildlife, Stories & Mountain Spirit
-          </h1>
           <p className="animate-fade-in-up anim-delay-400" style={{ color: 'var(--wa-text-mid)', marginBottom: '1.25rem', lineHeight: 1.8 }}>
             WildSaura connects photographers, nature lovers, and a mission to protect animals. Every photo you explore or purchase helps make a difference.
           </p>
