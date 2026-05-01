@@ -10,8 +10,8 @@
   --wa-gold-light: #a8d8a2;
   --wa-gold-dark: #2d6a3f;
   --wa-text: #e8f3e8;
-  --wa-text-muted: rgba(232, 243, 232, 0.45);
-  --wa-text-mid: rgba(232, 243, 232, 0.68);
+  --wa-text-muted: rgba(232, 243, 232, 0.62);
+  --wa-text-mid: rgba(232, 243, 232, 0.82);
   --wa-border: rgba(168, 216, 162, 0.15);
   --wa-border-gold: rgba(79, 159, 98, 0.35);
 }
@@ -88,6 +88,8 @@ html, body, #root {
 
 /* ── Gold Button ───────────────────────────────────────────────────────── */
 .btn-gold {
+  background: linear-gradient(135deg, #4f9f62 0%, #a8d8a2 55%, #4f9f62 100%);
+  color: #0a1a10;
   font-family: 'Cinzel', serif;
   font-weight: 600;
   font-size: 11px;
@@ -98,11 +100,11 @@ html, body, #root {
   padding: 0.75rem 2rem;
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
-  box-shadow: 0 4px 20px rgba(249,115,22,0.35);
+  box-shadow: 0 4px 20px rgba(79,159,98,0.35);
 }
 .btn-gold:hover {
   transform: scale(1.05);
-  box-shadow: 0 6px 30px rgba(249,115,22,0.45);
+  box-shadow: 0 6px 30px rgba(79,159,98,0.48);
 }
 
 /* ── Gold Outline Button ───────────────────────────────────────────────── */
@@ -113,14 +115,14 @@ html, body, #root {
   font-size: 11px;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  border: 1px solid rgba(249,115,22,0.65);
+  border: 1px solid rgba(79,159,98,0.7);
   border-radius: 9999px;
   padding: 0.6rem 1.5rem;
   cursor: pointer;
   transition: all 0.2s;
 }
 .btn-gold-outline:hover {
-  background: rgba(249,115,22,0.15);
+  background: rgba(79,159,98,0.2);
   border-color: var(--wa-gold);
 }
 
