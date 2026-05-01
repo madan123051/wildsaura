@@ -154,7 +154,7 @@ const FILTER_TABS: FilterTab[] = [
 ];
 
 // ── App ─────────────────────────────────────────────────────────────────────
-type AppView = 'home' | 'admin-login' | 'admin-dashboard' | 'story-detail' | 'terms';
+type AppView = 'home' | 'admin-login' | 'admin-dashboard' | 'story-detail' | 'terms' | 'marketplace' | 'community' | 'ngo' | 'about' | 'contact' | 'photos';
 
 const App: React.FC = () => {
   const [view, setView] = useState<AppView>(() => {
@@ -162,6 +162,12 @@ const App: React.FC = () => {
       const path = window.location.pathname;
       if (path.startsWith('/story/')) return 'story-detail';
       if (path === '/terms') return 'terms';
+      if (path === '/marketplace') return 'marketplace';
+      if (path === '/community') return 'community';
+      if (path === '/ngo') return 'ngo';
+      if (path === '/about') return 'about';
+      if (path === '/contact') return 'contact';
+      if (path === '/photos') return 'photos';
       if (localStorage.getItem('wa_admin_session')) return 'admin-dashboard';
     }
     return 'home';
@@ -1327,6 +1333,18 @@ const App: React.FC = () => {
     );
   }
 
+  const StaticPage = ({ title, text, cta }: { title: string; text: string; cta?: string }) => (
+    <div className="wa-container" style={{ paddingTop: '8rem', paddingBottom: '5rem', maxWidth: 900 }}>
+      <h1 style={{ fontSize: '2.5rem', color: 'var(--wa-primary-dark)', marginBottom: '1rem' }}>{title}</h1>
+      <p style={{ fontSize: '1.1rem', lineHeight: 1.8, color: '#1f2937' }}>{text}</p>
+      {cta && <p style={{ marginTop: '1.5rem', fontWeight: 700, color: 'var(--wa-accent)' }}>{cta}</p>}
+    </div>
+  );
+  if (view === 'marketplace') return <StaticPage title="Buy & Sell Authentic Nepal Photography" text="Support local photographers by purchasing high-quality images. Use them for personal or commercial projects. Option A: Buy Now via Google Form/DM and payment by eSewa or bank. Option B: Stripe or Gumroad links." cta="20% of every purchase supports animal rescue in Nepal." />;
+  if (view === 'community') return <StaticPage title="Join the Photography Community" text="Connect with creators, share your work, and grow your photography journey with Drishya." cta="Photography that makes an impact." />;
+  if (view === 'ngo') return <StaticPage title="Save Animal Nepal" text="We are building a system to support injured and abandoned animals across Nepal. Through photography and community support, we aim to create real impact. Mission: rescue, treatment, and feeding. Future plan: transparent monthly reporting and verified rescue partners." />;
+  if (view === 'about') return <StaticPage title="About WildSaura" text="WildSaura connects photographers, nature lovers, and a mission to protect animals in Nepal. Start small, grow fast, and use visual storytelling for impact." />;
+  if (view === 'contact') return <StaticPage title="Contact" text="For partnerships, volunteering, and media inquiries, message us through the contact form on the homepage." />;
   // ── Dynamic Categories (uses custom images from site settings if available) ──
   const dynamicCategories: Category[] = [
     { key: 'wildlife', label: 'Wildlife', imageUrl: siteSettings.categoryImages?.wildlife || '/photos/photo-wildlife.jpeg' },
@@ -1334,8 +1352,7 @@ const App: React.FC = () => {
     { key: 'nature', label: 'Nature', imageUrl: siteSettings.categoryImages?.nature || '/photos/photo-nature.jpeg' },
     { key: 'other', label: 'Portraits', imageUrl: siteSettings.categoryImages?.portraits || '/photos/photo-portrait.jpeg' },
   ];
-
-  // ── Home View ──
+// ── Home View ──
   return (
     <div style={{ minHeight: '100vh', background: 'var(--wa-dark)' }}>
       <Header
