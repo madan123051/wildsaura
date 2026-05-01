@@ -69,14 +69,6 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages }) => {
       {/* Content */}
       <div className="wa-container" style={{ position: 'relative', paddingTop: '6rem', paddingBottom: '4rem' }}>
         <div style={{ maxWidth: '600px' }}>
-          <p className="animate-fade-in-up anim-delay-200" style={{ color: 'var(--wa-gold-light)', marginBottom: '0.75rem', letterSpacing: '0.18em', fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 600 }}>
-            WildSaura • Nepal • Himalayan Stories
-          </p>
-          <h1 className="font-cinzel animate-fade-in-up anim-delay-400" style={{ margin: 0, fontSize: 'clamp(2rem, 5vw, 4rem)', lineHeight: 1.05, letterSpacing: '0.04em' }}>
-            नेपालको जंगल, हिमाल र वन्यजीवनको National Geographic शैली
-          </h1>
-          <p className="animate-fade-in-up anim-delay-400" style={{ color: 'var(--wa-text-mid)', marginBottom: '1.25rem', lineHeight: 1.8 }}>
-            Nepal ko raw nature, culture, wildlife ra mountain stories lai premium documentary style ma dekhaune platform. Her post bata conservation mission lai support milcha.
           </p>
           <div className="animate-fade-in-up anim-delay-600" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <button className="btn-gold" onClick={onExplore}>
@@ -97,7 +89,6 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages }) => {
 
       {/* Scroll indicator */}
       <div className="animate-fade-in anim-delay-800" style={{ position: 'absolute', bottom: '2rem', left: '50%', transform: 'translateX(-50%)' }}>
-        <div style={{ width: 1, height: 48, background: 'linear-gradient(to bottom, transparent, rgba(226,75,45,0.7), transparent)' }} />
       </div>
 
       <style>{`

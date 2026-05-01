@@ -3,17 +3,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --wa-dark: #08110f;
-  --wa-dark-alt: #111c19;
-  --wa-dark-card: #172621;
-  --wa-gold: #e24b2d;
-  --wa-gold-light: #ffd9b7;
-  --wa-gold-dark: #a3321d;
-  --wa-text: #f4f2eb;
-  --wa-text-muted: rgba(244, 242, 235, 0.66);
-  --wa-text-mid: rgba(244, 242, 235, 0.85);
-  --wa-border: rgba(255, 217, 183, 0.16);
-  --wa-border-gold: rgba(226, 75, 45, 0.45);
 }
 
 /* Override DaisyUI body */
@@ -36,16 +25,11 @@ html, body, #root {
 /* ── Gold Gradient Effects ─────────────────────────────────────────────── */
 .text-gold { color: var(--wa-gold); }
 .text-gold-gradient {
-  background: linear-gradient(135deg, #e24b2d 0%, #ffd9b7 40%, #e24b2d 70%, #a3321d 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 .bg-gold-gradient {
-  background: linear-gradient(135deg, #e24b2d 0%, #ffd9b7 50%, #e24b2d 100%);
-}
-.bg-gold-subtle {
-  background: rgba(226, 75, 45, 0.12);
 }
 
 /* ── Surface Colors ────────────────────────────────────────────────────── */
@@ -88,8 +72,6 @@ html, body, #root {
 
 /* ── Gold Button ───────────────────────────────────────────────────────── */
 .btn-gold {
-  background: linear-gradient(135deg, #e24b2d 0%, #ffd9b7 55%, #e24b2d 100%);
-  color: #28130f;
   font-family: 'Cinzel', serif;
   font-weight: 600;
   font-size: 11px;
@@ -100,11 +82,6 @@ html, body, #root {
   padding: 0.75rem 2rem;
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
-  box-shadow: 0 4px 20px rgba(226,75,45,0.35);
-}
-.btn-gold:hover {
-  transform: scale(1.05);
-  box-shadow: 0 6px 30px rgba(226,75,45,0.48);
 }
 
 /* ── Gold Outline Button ───────────────────────────────────────────────── */
@@ -173,8 +150,6 @@ html, body, #root {
   color: var(--wa-gold);
 }
 .filter-tab.active {
-  background: linear-gradient(135deg, #e24b2d 0%, #ffd9b7 50%, #e24b2d 100%);
-  color: #2e1a12;
   border-color: transparent;
   box-shadow: 0 2px 12px rgba(79,159,98,0.35);
 }
@@ -226,7 +201,6 @@ html, body, #root {
   width: 4rem;
   height: 2px;
   margin-top: 1rem;
-  background: linear-gradient(to right, #e24b2d, transparent);
 }
 
 /* ── Social Icon ───────────────────────────────────────────────────────── */
@@ -270,7 +244,6 @@ html, body, #root {
   left: 0;
   width: 0;
   height: 1px;
-  background: linear-gradient(to right, #e24b2d, #ffd9b7);
   transition: width 0.3s;
 }
 .nav-link:hover { color: var(--wa-text); }
