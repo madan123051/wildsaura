@@ -69,28 +69,13 @@ export const Header: React.FC<HeaderProps> = ({
     >
       <div className="wa-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '72px' }}>
         {/* Left: Logo + Brand Name */}
-        <a href="#top" style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', textDecoration: 'none' }}>
+        <a href="#top" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none' }}>
           {logoUrl && (
             <img
               src={logoUrl} alt="Wilds Aura"
               style={{ height: 52, width: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 0 10px rgba(79,159,98,0.35))' }}
             />
           )}
-          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.3 }}>
-            <span className="font-cinzel" style={{
-              fontWeight: 700, letterSpacing: '0.2em', fontSize: '1.15rem',
-              background: 'linear-gradient(135deg, #70c985 0%, #d6f2cd 50%, #4f9f62 100%)',
-              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-            }}>
-              WILDS AURA
-            </span>
-            <span style={{
-              fontSize: '0.65rem', letterSpacing: '0.35em', textTransform: 'uppercase',
-              color: 'rgba(168, 216, 162, 0.82)', fontWeight: 400,
-            }}>
-              Photography
-            </span>
-          </div>
         </a>
 
         {/* Right: Search icon + Hamburger menu */}
