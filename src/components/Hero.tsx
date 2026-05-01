@@ -70,25 +70,6 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages }) => {
       <div className="wa-container" style={{ position: 'relative', zIndex: 6, paddingTop: '6rem', paddingBottom: '4rem' }}>
         <div style={{ maxWidth: '600px' }}>
           <div className="animate-fade-in-up anim-delay-200" style={{ marginBottom: '1rem' }}>
-            <p className="section-subtitle" style={{ marginBottom: '0.6rem', color: '#f0fff4', fontWeight: 600 }}>Nature • Stories • Conservation</p>
-            <h1
-              className="font-cinzel"
-              style={{
-                margin: 0,
-                fontSize: 'clamp(1.5rem, 3.8vw, 2.4rem)',
-                lineHeight: 1.2,
-                letterSpacing: '0.04em',
-                color: '#ffffff',
-                textShadow: '0 4px 18px rgba(0,0,0,0.85)',
-              }}
-            >
-              WildSaura: Simple moments from the wild
-            </h1>
-            <p style={{ marginTop: '0.65rem', color: '#f2fff6', maxWidth: '36rem', lineHeight: 1.65, fontWeight: 500 }}>
-              Beautiful wildlife photos, short stories, and a small mission to protect animals and nature.
-            </p>
-          </div>
-          <p className="animate-fade-in-up anim-delay-400" style={{ color: '#f5fff7', marginBottom: '1.25rem', lineHeight: 1.8, fontWeight: 500 }}>
             WildSaura connects photographers, nature lovers, and a mission to protect animals. Every photo you explore or purchase helps make a difference.
           </p>
           <div className="animate-fade-in-up anim-delay-600" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
