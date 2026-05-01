@@ -3,16 +3,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Noto+Serif+Devanagari:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --wa-dark: #07150f;
-  --wa-dark-alt: #0d241a;
-  --wa-dark-card: #133224;
   --wa-forest: #3f7b4a;
   --wa-moss: #9fcb8f;
   --wa-himal-sky: #8dc3d8;
   --wa-earth: #876247;
-  --wa-text: #edf7ed;
-  --wa-text-muted: rgba(237, 247, 237, 0.65);
-  --wa-text-mid: rgba(237, 247, 237, 0.85);
   --wa-border: rgba(159, 203, 143, 0.18);
   --wa-border-gold: rgba(63, 123, 74, 0.45);
 }
@@ -25,9 +19,6 @@ html, body, #root {
   font-family: 'Inter', system-ui, sans-serif;
   scroll-behavior: smooth;
   background:
-    radial-gradient(circle at 15% 20%, rgba(141,195,216,0.16), transparent 38%),
-    radial-gradient(circle at 82% 14%, rgba(159,203,143,0.14), transparent 32%),
-    linear-gradient(160deg, #07150f 0%, #0c2218 45%, #102b1f 100%) !important;
 }
 
 * { box-sizing: border-box; }
@@ -46,12 +37,10 @@ html, body, #root {
 .bg-gold-gradient {
   background: linear-gradient(135deg, var(--wa-forest) 0%, var(--wa-moss) 50%, #72aa81 100%);
 }
-.bg-gold-subtle { background: rgba(63, 123, 74, 0.15); }
 
 .bg-wa-dark { background: var(--wa-dark); }
 .bg-wa-dark-alt { background: var(--wa-dark-alt); }
 .bg-wa-card {
-  background: linear-gradient(160deg, rgba(19,50,36,0.95), rgba(13,36,26,0.96));
   border: 1px solid var(--wa-border);
   box-shadow: 0 14px 45px rgba(0, 0, 0, 0.28);
 }
@@ -68,7 +57,6 @@ html, body, #root {
 .photo-card {
   transition: transform 0.35s ease, box-shadow 0.35s ease, border-color 0.3s ease;
   border: 1px solid rgba(159, 203, 143, 0.2);
-  background: linear-gradient(165deg, rgba(13,36,26,0.86), rgba(7,21,15,0.92));
 }
 .photo-card:hover {
   transform: translateY(-6px);
@@ -132,10 +120,3 @@ html, body, #root {
 ::-webkit-scrollbar-thumb { background: rgba(159,203,143,0.35); border-radius: 8px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--wa-moss); }
 
-.nav-link { color: rgba(237,247,237,0.82); font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; font-family: 'Cinzel', serif; }
-.nav-link::after { background: linear-gradient(to right, var(--wa-moss), var(--wa-himal-sky)); }
-.nav-link:hover { color: var(--wa-himal-sky); }
-
-.section-subtitle { color: rgba(159,203,143,0.92); font-size: 0.72rem; letter-spacing: 0.42em; text-transform: uppercase; font-family: 'Cinzel', serif; }
-.section-title { font-size: 1.78rem; font-weight: 700; color: var(--wa-text); font-family: 'Cinzel', serif; }
-.section-line { width: 4rem; height: 2px; margin-top: 1rem; background: linear-gradient(to right, var(--wa-himal-sky), transparent); }
