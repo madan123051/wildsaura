@@ -1,126 +1,131 @@
-/* ── Wilds Aura Cinematic Theme ─────────────────────────────────────────── */
+/* ── Wilds Aura • Nepali Nature Professional Theme ───────────────────── */
 
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Noto+Serif+Devanagari:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
+<<<<<<< codex/fix-colors-for-nepali-nature-theme
+=======
+  --wa-dark: #07150f;
+  --wa-dark-alt: #0d241a;
+  --wa-dark-card: #133224;
+  --wa-forest: #3f7b4a;
+  --wa-moss: #9fcb8f;
+  --wa-himal-sky: #8dc3d8;
+  --wa-earth: #876247;
+  --wa-text: #edf7ed;
+  --wa-text-muted: rgba(237, 247, 237, 0.65);
+  --wa-text-mid: rgba(237, 247, 237, 0.85);
+  --wa-border: rgba(159, 203, 143, 0.18);
+  --wa-border-gold: rgba(63, 123, 74, 0.45);
+>>>>>>> main
 }
 
-/* Override DaisyUI body */
 html, body, #root {
   margin: 0;
   padding: 0;
-  background: var(--wa-dark) !important;
+  min-height: 100%;
   color: var(--wa-text);
   font-family: 'Inter', system-ui, sans-serif;
   scroll-behavior: smooth;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(141,195,216,0.16), transparent 38%),
+    radial-gradient(circle at 82% 14%, rgba(159,203,143,0.14), transparent 32%),
+    linear-gradient(160deg, #07150f 0%, #0c2218 45%, #102b1f 100%) !important;
 }
 
 * { box-sizing: border-box; }
 
-/* ── Typography ────────────────────────────────────────────────────────── */
 .font-cinzel { font-family: 'Cinzel', serif; }
-.font-playfair { font-family: 'Playfair Display', serif; }
+.font-nepali { font-family: 'Noto Serif Devanagari', serif; }
 .font-inter { font-family: 'Inter', sans-serif; }
 
-/* ── Gold Gradient Effects ─────────────────────────────────────────────── */
-.text-gold { color: var(--wa-gold); }
+.text-gold { color: var(--wa-moss); }
 .text-gold-gradient {
+<<<<<<< codex/fix-colors-for-nepali-nature-theme
+=======
+  background: linear-gradient(135deg, var(--wa-forest) 0%, var(--wa-moss) 45%, var(--wa-himal-sky) 100%);
+>>>>>>> main
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 .bg-gold-gradient {
+<<<<<<< codex/fix-colors-for-nepali-nature-theme
+=======
+  background: linear-gradient(135deg, var(--wa-forest) 0%, var(--wa-moss) 50%, #72aa81 100%);
+>>>>>>> main
 }
+.bg-gold-subtle { background: rgba(63, 123, 74, 0.15); }
 
-/* ── Surface Colors ────────────────────────────────────────────────────── */
 .bg-wa-dark { background: var(--wa-dark); }
 .bg-wa-dark-alt { background: var(--wa-dark-alt); }
-.bg-wa-card { background: var(--wa-dark-card); }
+.bg-wa-card {
+  background: linear-gradient(160deg, rgba(19,50,36,0.95), rgba(13,36,26,0.96));
+  border: 1px solid var(--wa-border);
+  box-shadow: 0 14px 45px rgba(0, 0, 0, 0.28);
+}
 .text-wa { color: var(--wa-text); }
 .text-wa-muted { color: var(--wa-text-muted); }
 .text-wa-mid { color: var(--wa-text-mid); }
 .border-wa { border-color: var(--wa-border); }
 .border-wa-gold { border-color: var(--wa-border-gold); }
 
-/* ── Container ─────────────────────────────────────────────────────────── */
-.wa-container {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding-left: 1rem;
-  padding-right: 1rem;
-}
+.wa-container { max-width: 1280px; margin: 0 auto; padding-left: 1rem; padding-right: 1rem; }
 @media (min-width: 640px) { .wa-container { padding-left: 1.5rem; padding-right: 1.5rem; } }
 @media (min-width: 1024px) { .wa-container { padding-left: 2rem; padding-right: 2rem; } }
 
-/* ── Photo Card Hover ──────────────────────────────────────────────────── */
 .photo-card {
-  transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.4s ease;
+  transition: transform 0.35s ease, box-shadow 0.35s ease, border-color 0.3s ease;
+  border: 1px solid rgba(159, 203, 143, 0.2);
+  background: linear-gradient(165deg, rgba(13,36,26,0.86), rgba(7,21,15,0.92));
 }
 .photo-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(79,159,98,0.22);
+  transform: translateY(-6px);
+  box-shadow: 0 22px 55px rgba(0,0,0,0.52), 0 0 0 1px rgba(141,195,216,0.24);
+  border-color: rgba(141,195,216,0.45);
 }
 
-/* ── Gold Line Grow ────────────────────────────────────────────────────── */
-.gold-line {
-  width: 2rem;
-  height: 2px;
-  background: linear-gradient(to right, #4f9f62, #a8d8a2);
-  transition: width 0.3s ease;
-}
+.gold-line { width: 2rem; height: 2px; background: linear-gradient(to right, var(--wa-forest), var(--wa-himal-sky)); transition: width 0.3s ease; }
 .group:hover .gold-line { width: 4rem; }
 
-/* ── Gold Button ───────────────────────────────────────────────────────── */
 .btn-gold {
+<<<<<<< codex/fix-colors-for-nepali-nature-theme
+=======
+  background: linear-gradient(135deg, var(--wa-forest) 0%, var(--wa-moss) 55%, #72aa81 100%);
+  color: #062013;
+>>>>>>> main
   font-family: 'Cinzel', serif;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 11px;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   border: none;
   border-radius: 9999px;
-  padding: 0.75rem 2rem;
+  padding: 0.8rem 2rem;
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
+<<<<<<< codex/fix-colors-for-nepali-nature-theme
+=======
+  box-shadow: 0 6px 22px rgba(63,123,74,0.4);
+>>>>>>> main
 }
+.btn-gold:hover { transform: translateY(-1px) scale(1.03); box-shadow: 0 8px 30px rgba(63,123,74,0.52); }
 
-/* ── Gold Outline Button ───────────────────────────────────────────────── */
 .btn-gold-outline {
   background: transparent;
-  color: var(--wa-gold);
+  color: var(--wa-moss);
   font-family: 'Cinzel', serif;
   font-size: 11px;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  border: 1px solid rgba(79,159,98,0.7);
+  border: 1px solid rgba(141,195,216,0.55);
   border-radius: 9999px;
   padding: 0.6rem 1.5rem;
-  cursor: pointer;
-  transition: all 0.2s;
 }
-.btn-gold-outline:hover {
-  background: rgba(79,159,98,0.2);
-  border-color: var(--wa-gold);
-}
+.btn-gold-outline:hover { background: rgba(141,195,216,0.14); border-color: var(--wa-himal-sky); }
 
-/* ── Animations ────────────────────────────────────────────────────────── */
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(30px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-.animate-fade-in-up { animation: fadeInUp 0.8s ease forwards; }
-.animate-fade-in { animation: fadeIn 1.2s ease forwards; }
-.anim-delay-200 { animation-delay: 0.2s; opacity: 0; }
-.anim-delay-400 { animation-delay: 0.4s; opacity: 0; }
-.anim-delay-600 { animation-delay: 0.6s; opacity: 0; }
-.anim-delay-800 { animation-delay: 0.8s; opacity: 0; }
-
-/* ── Cinematic Overlay ─────────────────────────────────────────────────── */
 .cinematic-overlay-left {
+<<<<<<< codex/fix-colors-for-nepali-nature-theme
   background: linear-gradient(to right, rgba(35,22,18,0.85) 0%, rgba(35,22,18,0.5) 50%, rgba(35,22,18,0.2) 100%);
 }
 .cinematic-overlay-bottom {
@@ -128,59 +133,40 @@ html, body, #root {
 }
 .cinematic-vignette {
   background: radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,0.72) 100%);
+=======
+  background: linear-gradient(to right, rgba(8,35,26,0.86) 0%, rgba(8,35,26,0.52) 52%, rgba(8,35,26,0.12) 100%);
 }
+.cinematic-overlay-bottom {
+  background: linear-gradient(to top, rgba(3,16,12,0.95) 0%, rgba(3,16,12,0.38) 45%, transparent 75%);
+>>>>>>> main
+}
+.cinematic-vignette { background: radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.74) 100%); }
 
-/* ── Filter Tab ────────────────────────────────────────────────────────── */
 .filter-tab {
-  padding: 0.5rem 1.25rem;
-  border-radius: 9999px;
-  font-size: 0.7rem;
-  font-family: 'Cinzel', serif;
-  font-weight: 500;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: 1px solid var(--wa-border);
-  color: var(--wa-text-mid);
-  background: transparent;
+  padding: 0.5rem 1.25rem; border-radius: 9999px; font-size: 0.7rem; font-family: 'Cinzel', serif;
+  letter-spacing: 0.15em; text-transform: uppercase; border: 1px solid var(--wa-border); color: var(--wa-text-mid);
 }
-.filter-tab:hover {
-  border-color: var(--wa-border-gold);
-  color: var(--wa-gold);
-}
+.filter-tab:hover { border-color: rgba(141,195,216,0.45); color: var(--wa-himal-sky); }
 .filter-tab.active {
+<<<<<<< codex/fix-colors-for-nepali-nature-theme
   border-color: transparent;
   box-shadow: 0 2px 12px rgba(79,159,98,0.35);
+=======
+  background: linear-gradient(135deg, var(--wa-forest) 0%, var(--wa-moss) 65%, var(--wa-himal-sky) 100%);
+  color: #072015; border-color: transparent; box-shadow: 0 2px 14px rgba(63,123,74,0.38);
+>>>>>>> main
 }
 
-/* ── Scrollbar ─────────────────────────────────────────────────────────── */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: var(--wa-dark); }
-::-webkit-scrollbar-thumb { background: rgba(168,216,162,0.25); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--wa-gold); }
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: #0a1a13; }
+::-webkit-scrollbar-thumb { background: rgba(159,203,143,0.35); border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: var(--wa-moss); }
 
-/* ── Modal Backdrop ────────────────────────────────────────────────────── */
-.modal-backdrop {
-  background: rgba(0,0,0,0.88);
-  backdrop-filter: blur(10px);
-}
+.nav-link { color: rgba(237,247,237,0.82); font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; font-family: 'Cinzel', serif; }
+.nav-link::after { background: linear-gradient(to right, var(--wa-moss), var(--wa-himal-sky)); }
+.nav-link:hover { color: var(--wa-himal-sky); }
 
-/* ── Input Styles ──────────────────────────────────────────────────────── */
-.wa-input {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  background: var(--wa-dark-alt);
-  border: 1px solid var(--wa-border);
-  color: var(--wa-text);
-  outline: none;
-  transition: border-color 0.2s;
-}
-.wa-input::placeholder { color: var(--wa-text-muted); }
-.wa-input:focus { border-color: var(--wa-border-gold); }
-
+<<<<<<< codex/fix-colors-for-nepali-nature-theme
 /* ── Section Title ─────────────────────────────────────────────────────── */
 .section-subtitle {
   color: rgba(168,216,162,0.82);
@@ -295,3 +281,8 @@ button p, button span {
 .category-card h3, .category-card span {
   color: var(--wa-gold) !important;
 }
+=======
+.section-subtitle { color: rgba(159,203,143,0.92); font-size: 0.72rem; letter-spacing: 0.42em; text-transform: uppercase; font-family: 'Cinzel', serif; }
+.section-title { font-size: 1.78rem; font-weight: 700; color: var(--wa-text); font-family: 'Cinzel', serif; }
+.section-line { width: 4rem; height: 2px; margin-top: 1rem; background: linear-gradient(to right, var(--wa-himal-sky), transparent); }
+>>>>>>> main
