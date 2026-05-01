@@ -118,4 +118,4 @@ html, body, #root {
 ::-webkit-scrollbar-track { background: #0a1a13; }
 ::-webkit-scrollbar-thumb { background: rgba(159,203,143,0.35); border-radius: 8px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--wa-moss); }
-}
+
