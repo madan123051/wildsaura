@@ -70,20 +70,6 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages }) => {
       <div className="wa-container" style={{ position: 'relative', paddingTop: '6rem', paddingBottom: '4rem' }}>
         <div style={{ maxWidth: '600px' }}>
           <div className="animate-fade-in-up anim-delay-200" style={{ marginBottom: '1rem' }}>
-            <p className="section-subtitle" style={{ marginBottom: '0.6rem' }}>Wildlife Photography</p>
-            <h1
-              className="font-cinzel text-gold-gradient"
-              style={{
-                margin: 0,
-                fontSize: 'clamp(2rem, 5vw, 3.4rem)',
-                lineHeight: 1.08,
-                letterSpacing: '0.06em',
-                textTransform: 'uppercase',
-                textShadow: '0 3px 16px rgba(0,0,0,0.55)',
-              }}
-            >
-              Wilds Aura
-            </h1>
           </div>
           <p className="animate-fade-in-up anim-delay-400" style={{ color: 'var(--wa-text-mid)', marginBottom: '1.25rem', lineHeight: 1.8 }}>
             WildSaura connects photographers, nature lovers, and a mission to protect animals. Every photo you explore or purchase helps make a difference.
