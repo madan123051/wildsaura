@@ -48,6 +48,14 @@ export const StoryDetail: React.FC<StoryDetailProps> = ({
     setCommentText('');
   };
 
+  const shareUrl = window.location.origin + '/story/' + encodeURIComponent(story.slug);
+  const shareText = story.excerpt || `Read "${story.title}" on WILDS AURA Photography`;
+  const shareLinks = {
+    whatsapp: `https://api.whatsapp.com/send?text=${encodeURIComponent(`${story.title}\n${shareUrl}`)}`,
+    facebook: `https://www.facebook.com/sharer.php?u=${encodeURIComponent(shareUrl)}`,
+    x: `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`,
+  };
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--wa-dark)', paddingTop: '80px' }}>
       {/* Cover Image */}
@@ -158,6 +166,9 @@ export const StoryDetail: React.FC<StoryDetailProps> = ({
             >
               <Share2 size={18} /> Share
             </button>
+            <a href={shareLinks.whatsapp} target="_blank" rel="noopener noreferrer" className="btn-gold-outline" style={{ textDecoration: 'none', padding: '0.5rem 0.9rem' }}>WhatsApp</a>
+            <a href={shareLinks.facebook} target="_blank" rel="noopener noreferrer" className="btn-gold-outline" style={{ textDecoration: 'none', padding: '0.5rem 0.9rem' }}>Facebook</a>
+            <a href={shareLinks.x} target="_blank" rel="noopener noreferrer" className="btn-gold-outline" style={{ textDecoration: 'none', padding: '0.5rem 0.9rem' }}>X</a>
             {/* Share Toast */}
             {shareToast && (
               <div style={{
