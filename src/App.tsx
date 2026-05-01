@@ -206,6 +206,10 @@ const App: React.FC = () => {
   const [showNotifPanel, setShowNotifPanel] = useState(false);
   const FREE_DOWNLOADS = 2;
   const onlineCleanupRef = useRef<(() => void) | null>(null);
+  const getGuestIdentity = useCallback(() => {
+    const sid = sessionStorage.getItem('wa_session_id') || `guest_${Date.now()}`;
+    return { displayName: `Guest ${sid.slice(-4).toUpperCase()}`, avatarColor: '#4f9f62', avatarUrl: '' };
+  }, []);
 
   // ── Notification Helpers ──────────────────────────────────────────────────
   const saveNotifications = useCallback((notifs: AppNotification[]) => {
@@ -996,12 +1000,12 @@ const App: React.FC = () => {
 
   // Comment handlers
   const handleAddPhotoComment = useCallback((firestoreId: string, content: string) => {
-    if (!visitor) return;
+    const actor = visitor || getGuestIdentity();
     const newComment: Comment = {
       id: Date.now(),
-      displayName: visitor.displayName,
-      avatarColor: visitor.avatarColor,
-      avatarUrl: visitor.avatarUrl || '',
+      displayName: actor.displayName,
+      avatarColor: actor.avatarColor,
+      avatarUrl: actor.avatarUrl || '',
       content,
       createdAt: new Date().toISOString().split('T')[0],
     };
@@ -1012,20 +1016,20 @@ const App: React.FC = () => {
     addCommentToFirestore({
       targetType: 'photo',
       targetId: firestoreId,
-      displayName: visitor.displayName,
-      avatarColor: visitor.avatarColor || '',
-      avatarUrl: visitor.avatarUrl || '',
+      displayName: actor.displayName,
+      avatarColor: actor.avatarColor || '',
+      avatarUrl: actor.avatarUrl || '',
       content,
     }).catch(err => console.warn('Comment save failed:', err));
-  }, [visitor]);
+  }, [visitor, getGuestIdentity]);
 
   const handleAddStoryComment = useCallback((firestoreId: string, content: string) => {
-    if (!visitor) return;
+    const actor = visitor || getGuestIdentity();
     const newComment: Comment = {
       id: Date.now(),
-      displayName: visitor.displayName,
-      avatarColor: visitor.avatarColor,
-      avatarUrl: visitor.avatarUrl || '',
+      displayName: actor.displayName,
+      avatarColor: actor.avatarColor,
+      avatarUrl: actor.avatarUrl || '',
       content,
       createdAt: new Date().toISOString().split('T')[0],
     };
@@ -1036,20 +1040,20 @@ const App: React.FC = () => {
     addCommentToFirestore({
       targetType: 'story',
       targetId: firestoreId,
-      displayName: visitor.displayName,
-      avatarColor: visitor.avatarColor || '',
-      avatarUrl: visitor.avatarUrl || '',
+      displayName: actor.displayName,
+      avatarColor: actor.avatarColor || '',
+      avatarUrl: actor.avatarUrl || '',
       content,
     }).catch(err => console.warn('Comment save failed:', err));
-  }, [visitor]);
+  }, [visitor, getGuestIdentity]);
 
   const handleAddVideoComment = useCallback((firestoreId: string, content: string) => {
-    if (!visitor) return;
+    const actor = visitor || getGuestIdentity();
     const newComment: Comment = {
       id: Date.now(),
-      displayName: visitor.displayName,
-      avatarColor: visitor.avatarColor,
-      avatarUrl: visitor.avatarUrl || '',
+      displayName: actor.displayName,
+      avatarColor: actor.avatarColor,
+      avatarUrl: actor.avatarUrl || '',
       content,
       createdAt: new Date().toISOString().split('T')[0],
     };
@@ -1060,12 +1064,12 @@ const App: React.FC = () => {
     addCommentToFirestore({
       targetType: 'video',
       targetId: firestoreId,
-      displayName: visitor.displayName,
-      avatarColor: visitor.avatarColor || '',
-      avatarUrl: visitor.avatarUrl || '',
+      displayName: actor.displayName,
+      avatarColor: actor.avatarColor || '',
+      avatarUrl: actor.avatarUrl || '',
       content,
     }).catch(err => console.warn('Video comment save failed:', err));
-  }, [visitor]);
+  }, [visitor, getGuestIdentity]);
 
   const handleDeleteComment = useCallback((commentFirestoreId: string) => {
     if (!confirm('Delete this comment?')) return;

@@ -12,12 +12,8 @@ interface PhotoCardProps {
   onLoginRequired: () => void;
 }
 
-export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, onShare, onDownload, isLoggedIn, onLoginRequired }) => {
-  const gated = (action: () => void) => (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!isLoggedIn) { onLoginRequired(); return; }
-    action();
-  };
+export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, onShare, onDownload, isLoggedIn: _isLoggedIn, onLoginRequired: _onLoginRequired }) => {
+  const gated = (action: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); action(); };
 
   return (
     <div
