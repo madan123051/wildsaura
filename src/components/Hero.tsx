@@ -42,6 +42,10 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages }) => {
             opacity: fade ? 1 : 0,
           }}
         />
+<<<<<<< codex/redesign-layout-for-professional-look-m8xcqb
+=======
+        {/* Cinematic overlays */}
+>>>>>>> main
         <div className="cinematic-overlay-left" style={{ position: 'absolute', inset: 0, opacity: 0.62 }} />
         <div className="cinematic-overlay-bottom" style={{ position: 'absolute', inset: 0, opacity: 0.58 }} />
         <div className="cinematic-vignette" style={{ position: 'absolute', inset: 0 }} />
@@ -85,6 +89,7 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages }) => {
 
       <div className="wa-container" style={{ position: 'relative', zIndex: 6, paddingTop: '6rem', paddingBottom: '4rem' }}>
         <div style={{ maxWidth: '600px' }}>
+<<<<<<< codex/redesign-layout-for-professional-look-m8xcqb
           <div
             className="animate-fade-in-up anim-delay-200"
             style={{
@@ -118,6 +123,11 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages }) => {
           </div>
 
           <p className="animate-fade-in-up anim-delay-400" style={{ color: '#f5fff7', marginBottom: '1.25rem', lineHeight: 1.8, fontWeight: 500 }}>
+=======
+          <div className="animate-fade-in-up anim-delay-200" style={{ marginBottom: '1rem' }}>
+          </div>
+          <p className="animate-fade-in-up anim-delay-400" style={{ color: 'var(--wa-text-mid)', marginBottom: '1.25rem', lineHeight: 1.8 }}>
+>>>>>>> main
             WildSaura connects photographers, nature lovers, and a mission to protect animals. Every photo you explore or purchase helps make a difference.
           </p>
 
