@@ -40,8 +40,8 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages }) => {
           }}
         />
         {/* Cinematic overlays */}
-        <div className="cinematic-overlay-left" style={{ position: 'absolute', inset: 0 }} />
-        <div className="cinematic-overlay-bottom" style={{ position: 'absolute', inset: 0 }} />
+        <div className="cinematic-overlay-left" style={{ position: 'absolute', inset: 0, opacity: 0.62 }} />
+        <div className="cinematic-overlay-bottom" style={{ position: 'absolute', inset: 0, opacity: 0.58 }} />
         <div className="cinematic-vignette" style={{ position: 'absolute', inset: 0 }} />
       </div>
 
@@ -69,6 +69,25 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages }) => {
       {/* Content */}
       <div className="wa-container" style={{ position: 'relative', paddingTop: '6rem', paddingBottom: '4rem' }}>
         <div style={{ maxWidth: '600px' }}>
+          <div className="animate-fade-in-up anim-delay-200" style={{ marginBottom: '1rem' }}>
+            <p className="section-subtitle" style={{ marginBottom: '0.6rem', color: '#e5f4e8' }}>Nature • Stories • Conservation</p>
+            <h1
+              className="font-cinzel"
+              style={{
+                margin: 0,
+                fontSize: 'clamp(1.5rem, 3.8vw, 2.4rem)',
+                lineHeight: 1.2,
+                letterSpacing: '0.04em',
+                color: '#f4fbf6',
+                textShadow: '0 3px 14px rgba(0,0,0,0.6)',
+              }}
+            >
+              WildSaura: Simple moments from the wild
+            </h1>
+            <p style={{ marginTop: '0.65rem', color: '#d9ebde', maxWidth: '36rem', lineHeight: 1.65 }}>
+              Beautiful wildlife photos, short stories, and a small mission to protect animals and nature.
+            </p>
+          </div>
           <p className="animate-fade-in-up anim-delay-400" style={{ color: 'var(--wa-text-mid)', marginBottom: '1.25rem', lineHeight: 1.8 }}>
             WildSaura connects photographers, nature lovers, and a mission to protect animals. Every photo you explore or purchase helps make a difference.
           </p>
