@@ -61,9 +61,9 @@ export const Header: React.FC<HeaderProps> = ({
       style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50,
         transition: 'all 0.5s',
-        background: scrolled ? 'rgba(0,0,0,0.92)' : 'rgba(0,0,0,0.4)',
+        background: scrolled ? 'rgba(6, 17, 12, 0.92)' : 'rgba(6, 17, 12, 0.45)',
         backdropFilter: 'blur(12px)',
-        borderBottom: scrolled ? '1px solid rgba(235,230,220,0.05)' : '1px solid transparent',
+        borderBottom: scrolled ? '1px solid rgba(168,216,162,0.18)' : '1px solid transparent',
         boxShadow: scrolled ? '0 4px 30px rgba(0,0,0,0.5)' : 'none',
       }}
     >
@@ -73,20 +73,20 @@ export const Header: React.FC<HeaderProps> = ({
           {logoUrl && (
             <img
               src={logoUrl} alt="Wilds Aura"
-              style={{ height: 52, width: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 0 8px rgba(201,168,76,0.3))' }}
+              style={{ height: 52, width: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 0 10px rgba(79,159,98,0.35))' }}
             />
           )}
           <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.3 }}>
             <span className="font-cinzel" style={{
               fontWeight: 700, letterSpacing: '0.2em', fontSize: '1.15rem',
-              background: 'linear-gradient(135deg, #c9a84c 0%, #e8d18c 50%, #c9a84c 100%)',
+              background: 'linear-gradient(135deg, #70c985 0%, #d6f2cd 50%, #4f9f62 100%)',
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
             }}>
               WILDS AURA
             </span>
             <span style={{
               fontSize: '0.65rem', letterSpacing: '0.35em', textTransform: 'uppercase',
-              color: 'rgba(201,168,76,0.6)', fontWeight: 400,
+              color: 'rgba(168, 216, 162, 0.82)', fontWeight: 400,
             }}>
               Photography
             </span>
@@ -101,8 +101,8 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={onAdminClick}
               title="Admin Dashboard"
               style={{
-                background: 'linear-gradient(135deg, rgba(201,168,76,0.2), rgba(201,168,76,0.08))',
-                border: '1px solid rgba(201,168,76,0.3)',
+                background: 'linear-gradient(135deg, rgba(79,159,98,0.3), rgba(79,159,98,0.1))',
+                border: '1px solid rgba(168,216,162,0.4)',
                 cursor: 'pointer',
                 color: 'var(--wa-gold)',
                 padding: '0.35rem',
@@ -110,8 +110,8 @@ export const Header: React.FC<HeaderProps> = ({
                 transition: 'all 0.3s',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
-              onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(201,168,76,0.25)'; e.currentTarget.style.boxShadow = '0 0 12px rgba(201,168,76,0.3)'; }}
-              onMouseOut={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(201,168,76,0.2), rgba(201,168,76,0.08))'; e.currentTarget.style.boxShadow = 'none'; }}
+              onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(79,159,98,0.28)'; e.currentTarget.style.boxShadow = '0 0 14px rgba(79,159,98,0.35)'; }}
+              onMouseOut={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(79,159,98,0.3), rgba(79,159,98,0.1))'; e.currentTarget.style.boxShadow = 'none'; }}
             >
               <Settings size={20} />
             </button>
@@ -123,11 +123,11 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={onNotificationClick}
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
-                color: 'rgba(235,230,220,0.6)', padding: '0.4rem',
+                color: 'rgba(232,243,232,0.76)', padding: '0.4rem',
                 transition: 'color 0.3s', position: 'relative',
               }}
               onMouseOver={(e) => e.currentTarget.style.color = 'var(--wa-gold)'}
-              onMouseOut={(e) => e.currentTarget.style.color = 'rgba(235,230,220,0.6)'}
+              onMouseOut={(e) => e.currentTarget.style.color = 'rgba(232,243,232,0.76)'}
             >
               <Bell size={22} />
               {notificationCount > 0 && (
@@ -150,11 +150,11 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={onSearchClick}
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
-                color: 'rgba(235,230,220,0.6)', padding: '0.4rem',
+                color: 'rgba(232,243,232,0.76)', padding: '0.4rem',
                 transition: 'color 0.3s',
               }}
               onMouseOver={(e) => e.currentTarget.style.color = 'var(--wa-gold)'}
-              onMouseOut={(e) => e.currentTarget.style.color = 'rgba(235,230,220,0.6)'}
+              onMouseOut={(e) => e.currentTarget.style.color = 'rgba(232,243,232,0.76)'}
             >
               <Search size={24} />
             </button>
@@ -164,11 +164,11 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => setMenuOpen(!menuOpen)}
             style={{
               background: 'none', border: 'none',
-              color: 'rgba(235,230,220,0.6)', cursor: 'pointer', padding: '0.4rem',
+              color: 'rgba(232,243,232,0.76)', cursor: 'pointer', padding: '0.4rem',
               transition: 'color 0.3s',
             }}
-            onMouseOver={(e) => e.currentTarget.style.color = 'rgba(235,230,220,0.9)'}
-            onMouseOut={(e) => e.currentTarget.style.color = 'rgba(235,230,220,0.6)'}
+            onMouseOver={(e) => e.currentTarget.style.color = 'rgba(232,243,232,0.96)'}
+            onMouseOut={(e) => e.currentTarget.style.color = 'rgba(232,243,232,0.76)'}
           >
             {menuOpen ? <X size={26} /> : <Menu size={26} />}
           </button>
@@ -178,8 +178,8 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Dropdown Menu */}
       {menuOpen && (
         <div style={{
-          background: 'rgba(0,0,0,0.95)', backdropFilter: 'blur(16px)',
-          borderTop: '1px solid rgba(201,168,76,0.1)',
+          background: 'rgba(5, 16, 11, 0.95)', backdropFilter: 'blur(16px)',
+          borderTop: '1px solid rgba(168,216,162,0.2)',
           padding: '1.5rem 2rem',
           animation: 'menuSlideDown 0.3s ease',
         }}>
@@ -191,7 +191,7 @@ export const Header: React.FC<HeaderProps> = ({
                 onClick={(e) => { if (item.onClick) { e.preventDefault(); item.onClick(); } setMenuOpen(false); }}
                 style={{
                   display: 'block', padding: '0.85rem 0',
-                  borderBottom: '1px solid rgba(235,230,220,0.05)',
+                  borderBottom: '1px solid rgba(168,216,162,0.18)',
                   fontSize: '0.85rem', letterSpacing: '0.1em',
                 }}
               >
@@ -200,7 +200,7 @@ export const Header: React.FC<HeaderProps> = ({
             ))}
 
             {/* Visitor area */}
-            <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(201,168,76,0.1)' }}>
+            <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(168,216,162,0.2)' }}>
               {visitor ? (
                 <div style={{ padding: '0.5rem 0' }}>
                   {/* Profile row */}
@@ -209,11 +209,11 @@ export const Header: React.FC<HeaderProps> = ({
                     <div
                       style={{
                         width: 44, height: 44, borderRadius: '50%',
-                        background: getAvatarEmoji() ? 'rgba(201,168,76,0.15)' : visitor.avatarColor,
+                        background: getAvatarEmoji() ? 'rgba(79,159,98,0.22)' : visitor.avatarColor,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontSize: getAvatarEmoji() ? '1.5rem' : '1rem',
                         fontWeight: 700, color: getAvatarEmoji() ? undefined : '#000',
-                        border: '2px solid rgba(201,168,76,0.5)',
+                        border: '2px solid rgba(168,216,162,0.55)',
                         flexShrink: 0,
                       }}
                     >
@@ -233,7 +233,7 @@ export const Header: React.FC<HeaderProps> = ({
                             }}
                             autoFocus
                             style={{
-                              background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(201,168,76,0.3)',
+                              background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(168,216,162,0.4)',
                               borderRadius: 6, padding: '0.25rem 0.4rem', color: '#fff',
                               fontSize: '0.78rem', flex: 1, outline: 'none', minWidth: 0,
                             }}
@@ -291,8 +291,8 @@ export const Header: React.FC<HeaderProps> = ({
                     onClick={(e) => { e.stopPropagation(); setShowAvatarPicker(!showAvatarPicker); }}
                     style={{
                       marginTop: '0.6rem', width: '100%', padding: '0.5rem',
-                      background: showAvatarPicker ? 'rgba(201,168,76,0.15)' : 'rgba(201,168,76,0.06)',
-                      border: '1px solid rgba(201,168,76,0.2)', borderRadius: '10px',
+                      background: showAvatarPicker ? 'rgba(79,159,98,0.22)' : 'rgba(79,159,98,0.12)',
+                      border: '1px solid rgba(168,216,162,0.3)', borderRadius: '10px',
                       color: 'var(--wa-gold)', cursor: 'pointer', fontSize: '0.78rem',
                       fontWeight: 500, transition: 'all 0.2s', textAlign: 'center',
                     }}
@@ -306,8 +306,8 @@ export const Header: React.FC<HeaderProps> = ({
                       onClick={(e) => e.stopPropagation()}
                       style={{
                         marginTop: '0.5rem', padding: '0.8rem',
-                        background: 'rgba(201,168,76,0.06)', borderRadius: '12px',
-                        border: '1px solid rgba(201,168,76,0.2)',
+                        background: 'rgba(79,159,98,0.12)', borderRadius: '12px',
+                        border: '1px solid rgba(168,216,162,0.3)',
                       }}
                     >
                       <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.6)', marginBottom: '0.6rem', textAlign: 'center', fontWeight: 600 }}>
@@ -330,7 +330,7 @@ export const Header: React.FC<HeaderProps> = ({
                               }}
                               style={{
                                 padding: '0.6rem 0.3rem', borderRadius: '12px',
-                                background: isSelected ? 'rgba(201,168,76,0.25)' : 'rgba(255,255,255,0.04)',
+                                background: isSelected ? 'rgba(79,159,98,0.28)' : 'rgba(255,255,255,0.04)',
                                 border: isSelected ? '2px solid var(--wa-gold)' : '2px solid rgba(255,255,255,0.08)',
                                 cursor: 'pointer', fontSize: '1.6rem',
                                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem',

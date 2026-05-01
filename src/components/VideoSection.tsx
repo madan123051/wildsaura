@@ -405,22 +405,21 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
                     </div>
                   )}
 
-                  {/* Comment input or login prompt */}
-                  {visitor ? (
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  {/* Comment input */}
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                       {/* Visitor avatar */}
-                      {visitor.avatarUrl ? (
+                      {visitor?.avatarUrl ? (
                         <img src={visitor.avatarUrl} alt={visitor.displayName} style={{
                           width: 26, height: 26, minWidth: 26, borderRadius: '50%', objectFit: 'cover',
                         }} referrerPolicy="no-referrer" />
                       ) : (
                         <div style={{
                           width: 26, height: 26, minWidth: 26, borderRadius: '50%',
-                          background: visitor.avatarColor || 'var(--wa-gold)',
+                          background: visitor?.avatarColor || '#4f9f62',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           fontSize: '0.65rem', fontWeight: 700, color: '#fff',
                         }}>
-                          {(visitor.displayName || '?')[0].toUpperCase()}
+                          {(visitor?.displayName || 'G')[0].toUpperCase()}
                         </div>
                       )}
                       <div style={{
@@ -455,20 +454,6 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
                         </button>
                       </div>
                     </div>
-                  ) : (
-                    <button
-                      onClick={onVisitorLoginClick}
-                      style={{
-                        background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                        fontSize: '0.72rem', color: 'var(--wa-gold)', fontWeight: 600,
-                        transition: 'opacity 0.2s',
-                      }}
-                      onMouseOver={(e) => { e.currentTarget.style.opacity = '0.8'; }}
-                      onMouseOut={(e) => { e.currentTarget.style.opacity = '1'; }}
-                    >
-                      Login to comment
-                    </button>
-                  )}
                 </div>
               </div>
             );
