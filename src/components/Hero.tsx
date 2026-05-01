@@ -9,7 +9,7 @@ interface HeroProps {
 
 const DEFAULT_HERO = '/photos/tiger-hero.jpg';
 
-export const Hero: React.FC<HeroProps> = ({ onExplore, logoUrl, heroImages }) => {
+export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages }) => {
   const images = heroImages && heroImages.length > 0 ? heroImages : [DEFAULT_HERO];
   const [currentIndex, setCurrentIndex] = useState(0);
   const [fade, setFade] = useState(true);
@@ -69,10 +69,6 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, logoUrl, heroImages }) =>
       {/* Content */}
       <div className="wa-container" style={{ position: 'relative', paddingTop: '6rem', paddingBottom: '4rem' }}>
         <div style={{ maxWidth: '600px' }}>
-          <h1 className="font-playfair animate-fade-in-up anim-delay-200" style={{ fontSize: 'clamp(2.4rem, 8vw, 5rem)', fontWeight: 700, lineHeight: 1.1, marginBottom: '1.5rem', color: '#f8fafc', textShadow: '0 4px 20px rgba(0,0,0,0.55)' }}>
-            <span style={{ display: 'block', fontStyle: 'italic', fontWeight: 400, fontSize: '0.65em', opacity: 0.9 }}>
-              Explore Nepal Through
-            </span>
             WildSaura connects photographers, nature lovers, and a mission to protect animals. Every photo you explore or purchase helps make a difference.
           </p>
           <div className="animate-fade-in-up anim-delay-600" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
