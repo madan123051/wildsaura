@@ -114,8 +114,9 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, on
               <span style={{ fontSize: '0.75rem' }}>{photo.likeCount}</span>
             </button>
             <button
-              onClick={gated(onShare)}
+              onClick={(e) => { e.stopPropagation(); onShare(); }}
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.8)' }}
+              title="Share photo"
             >
               <Share2 size={15} />
             </button>
