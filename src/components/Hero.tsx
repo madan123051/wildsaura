@@ -9,7 +9,7 @@ interface HeroProps {
 
 const DEFAULT_HERO = '/photos/tiger-hero.jpg';
 
-export const Hero: React.FC<HeroProps> = ({ onExplore, logoUrl, heroImages }) => {
+export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages }) => {
   const images = heroImages && heroImages.length > 0 ? heroImages : [DEFAULT_HERO];
   const [currentIndex, setCurrentIndex] = useState(0);
   const [fade, setFade] = useState(true);
@@ -70,6 +70,7 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, logoUrl, heroImages }) =>
       <div className="wa-container" style={{ position: 'relative', paddingTop: '6rem', paddingBottom: '4rem' }}>
         <div style={{ maxWidth: '600px' }}>
           <h1 className="font-playfair animate-fade-in-up anim-delay-200" style={{ fontSize: 'clamp(2.5rem, 8vw, 5rem)', fontWeight: 700, lineHeight: 1.1, marginBottom: '1.5rem' }}>
+
               Explore Nepal Through
             </span>
             <span className="text-gold-gradient">Photography. Support Animal Rescue.</span>
