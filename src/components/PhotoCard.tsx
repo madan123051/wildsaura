@@ -12,12 +12,8 @@ interface PhotoCardProps {
   onLoginRequired: () => void;
 }
 
-export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, onShare, onDownload, isLoggedIn, onLoginRequired }) => {
-  const gated = (action: () => void) => (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!isLoggedIn) { onLoginRequired(); return; }
-    action();
-  };
+export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, onShare, onDownload, isLoggedIn: _isLoggedIn, onLoginRequired: _onLoginRequired }) => {
+  const gated = (action: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); action(); };
 
   return (
     <div
@@ -114,8 +110,9 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, on
               <span style={{ fontSize: '0.75rem' }}>{photo.likeCount}</span>
             </button>
             <button
-              onClick={gated(onShare)}
+              onClick={(e) => { e.stopPropagation(); onShare(); }}
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.8)' }}
+              title="Share photo"
             >
               <Share2 size={15} />
             </button>

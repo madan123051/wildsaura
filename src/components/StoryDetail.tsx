@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Heart, Clock, Eye, User, Share2, Trash2 } from 'lucide-react';
+import { ArrowLeft, Heart, Clock, Eye, Share2, Trash2 } from 'lucide-react';
 import { Story, Visitor, Comment } from '../types';
 
 interface StoryDetailProps {
@@ -17,7 +17,7 @@ interface StoryDetailProps {
 const estimateReadTime = (content: string): number => Math.max(1, Math.ceil(content.split(/\s+/).length / 200));
 
 export const StoryDetail: React.FC<StoryDetailProps> = ({
-  story, onBack, onLike, visitor, comments, onAddComment, onVisitorLoginClick, isAdmin, onDeleteComment,
+  story, onBack, onLike, visitor, comments, onAddComment, onVisitorLoginClick: _onVisitorLoginClick, isAdmin, onDeleteComment,
 }) => {
   const [commentText, setCommentText] = useState('');
   const [shareToast, setShareToast] = useState(false);
@@ -46,6 +46,14 @@ export const StoryDetail: React.FC<StoryDetailProps> = ({
     if (!trimmed) return;
     onAddComment(trimmed);
     setCommentText('');
+  };
+
+  const shareUrl = window.location.origin + '/story/' + encodeURIComponent(story.slug);
+  const shareText = story.excerpt || `Read "${story.title}" on WILDS AURA Photography`;
+  const shareLinks = {
+    whatsapp: `https://api.whatsapp.com/send?text=${encodeURIComponent(`${story.title}\n${shareUrl}`)}`,
+    facebook: `https://www.facebook.com/sharer.php?u=${encodeURIComponent(shareUrl)}`,
+    x: `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`,
   };
 
   return (
@@ -158,6 +166,9 @@ export const StoryDetail: React.FC<StoryDetailProps> = ({
             >
               <Share2 size={18} /> Share
             </button>
+            <a href={shareLinks.whatsapp} target="_blank" rel="noopener noreferrer" className="btn-gold-outline" style={{ textDecoration: 'none', padding: '0.5rem 0.9rem' }}>WhatsApp</a>
+            <a href={shareLinks.facebook} target="_blank" rel="noopener noreferrer" className="btn-gold-outline" style={{ textDecoration: 'none', padding: '0.5rem 0.9rem' }}>Facebook</a>
+            <a href={shareLinks.x} target="_blank" rel="noopener noreferrer" className="btn-gold-outline" style={{ textDecoration: 'none', padding: '0.5rem 0.9rem' }}>X</a>
             {/* Share Toast */}
             {shareToast && (
               <div style={{
@@ -229,25 +240,24 @@ export const StoryDetail: React.FC<StoryDetailProps> = ({
               </div>
             )}
 
-            {visitor ? (
-              <div>
+            <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                  {visitor.avatarUrl ? (
+                  {visitor?.avatarUrl ? (
                     <img src={visitor.avatarUrl} alt={visitor.displayName} style={{
                       width: 24, height: 24, borderRadius: '50%', objectFit: 'cover',
                     }} referrerPolicy="no-referrer" />
                   ) : (
                     <div style={{
                       width: 24, height: 24, borderRadius: '50%',
-                      background: visitor.avatarColor,
+                      background: visitor?.avatarColor || '#4f9f62',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontSize: '0.65rem', fontWeight: 700, color: '#000',
                     }}>
-                      {visitor.displayName.charAt(0).toUpperCase()}
+                      {(visitor?.displayName || 'Guest').charAt(0).toUpperCase()}
                     </div>
                   )}
-                  <span style={{ fontSize: '0.75rem', color: 'var(--wa-text-muted)' }}>
-                    Commenting as <strong style={{ color: 'var(--wa-gold)' }}>{visitor.displayName}</strong>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--wa-text-muted)' }}>
+                    Commenting as <strong style={{ color: 'var(--wa-gold)' }}>{visitor?.displayName || 'Guest'}</strong>
                   </span>
                 </div>
                 <textarea
@@ -262,21 +272,6 @@ export const StoryDetail: React.FC<StoryDetailProps> = ({
                   Post Comment
                 </button>
               </div>
-            ) : (
-              <div style={{
-                textAlign: 'center', padding: '1.5rem',
-                borderRadius: '10px', background: 'rgba(255,255,255,0.03)',
-                border: '1px solid var(--wa-border)',
-              }}>
-                <User size={24} style={{ color: 'var(--wa-gold)', marginBottom: '0.5rem' }} />
-                <p style={{ fontSize: '0.8rem', color: 'var(--wa-text-muted)', marginBottom: '0.75rem' }}>
-                  Log in to join the conversation
-                </p>
-                <button onClick={onVisitorLoginClick} className="btn-gold-outline" style={{ padding: '0.5rem 1.5rem', fontSize: '0.8rem' }}>
-                  Login to Comment
-                </button>
-              </div>
-            )}
           </div>
         </div>
       </div>

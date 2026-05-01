@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Heart, Share2, Download, MapPin, User, Tag, Camera, Maximize2, Timer, Zap, Eye, Lock, ImageOff, BookOpen, Trash2, ChevronLeft, ChevronRight, Copy, ExternalLink } from 'lucide-react';
+import { X, Heart, Share2, Download, MapPin, User, Tag, Camera, Maximize2, Timer, Zap, Eye, ImageOff, BookOpen, Trash2, ChevronLeft, ChevronRight, Copy, ExternalLink } from 'lucide-react';
 import { Photo, Comment, Visitor } from '../types';
 
 interface PhotoModalProps {
@@ -163,10 +163,7 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
     setCommentText('');
   };
 
-  const gated = (action: () => void) => () => {
-    if (!visitor) { onVisitorLoginClick(); return; }
-    action();
-  };
+  const gated = (action: () => void) => () => action();
 
   // Nav arrow button style
   const navArrowStyle = (side: 'left' | 'right'): React.CSSProperties => ({
@@ -538,13 +535,18 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
                   </button>
                 </div>
               ) : (
-                <div style={{ textAlign: 'center', padding: '1rem', borderRadius: '8px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--wa-border)' }}>
-                  <Lock size={20} style={{ margin: '0 auto 0.5rem', opacity: 0.4 }} />
-                  <p style={{ fontSize: '0.8rem', color: 'var(--wa-text-muted)', marginBottom: '0.5rem' }}>
-                    Log in to like, comment & download photos
-                  </p>
-                  <button onClick={onVisitorLoginClick} className="btn-gold-outline" style={{ padding: '0.45rem 1.25rem', fontSize: '0.8rem' }}>
-                    Login to Interact
+                <div style={{ borderRadius: '8px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--wa-border)', padding: '0.85rem' }}>
+                  <p style={{ fontSize: '0.72rem', color: 'var(--wa-text-muted)', marginBottom: '0.45rem' }}>Commenting as guest</p>
+                  <textarea
+                    className="wa-input"
+                    placeholder="Write a comment as guest..."
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    rows={3}
+                    style={{ resize: 'none', marginBottom: '0.5rem' }}
+                  />
+                  <button onClick={handlePostComment} className="btn-gold" style={{ width: '100%' }}>
+                    Post Comment
                   </button>
                 </div>
               )}
