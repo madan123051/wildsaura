@@ -136,7 +136,7 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
             height: 560, maxHeight: 'calc(100vh - 100px)',
             borderRadius: '16px', overflow: 'hidden',
             background: 'var(--wa-dark-card)',
-            border: '1px solid rgba(201,168,76,0.25)',
+            border: '1px solid rgba(201,168,76,0.5)',
             boxShadow: '0 8px 48px rgba(0,0,0,0.6)',
             display: 'flex', flexDirection: 'column',
             animation: 'chatSlideUp 0.3s ease',
@@ -181,7 +181,7 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
                     borderRadius: msg.sender === 'user' ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
                     background: msg.sender === 'user'
                       ? 'linear-gradient(135deg, rgba(201,168,76,0.25), rgba(201,168,76,0.15))'
-                      : 'rgba(255,255,255,0.05)',
+                      : 'rgba(255,255,255,0.12)',
                     border: msg.sender === 'user'
                       ? '1px solid rgba(201,168,76,0.3)'
                       : '1px solid var(--wa-border)',
@@ -261,8 +261,8 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
               <div style={{
                 alignSelf: 'flex-start', padding: '0.65rem 0.85rem',
                 borderRadius: '12px 12px 12px 2px',
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid var(--wa-border)',
+                background: 'rgba(255,255,255,0.12)',
+                border: '1px solid rgba(201,168,76,0.35)',
                 fontSize: '0.82rem', color: 'var(--wa-gold)',
                 display: 'flex', alignItems: 'center', gap: '0.5rem',
               }}>
@@ -324,7 +324,7 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
               disabled={isThinking}
               style={{
                 flex: 1, padding: '0.6rem 0.75rem',
-                background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(201,168,76,0.15)',
+                background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(201,168,76,0.35)',
                 borderRadius: '8px', color: 'var(--wa-text)', fontSize: '0.82rem',
                 outline: 'none', boxSizing: 'border-box',
                 opacity: isThinking ? 0.5 : 1,
