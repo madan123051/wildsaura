@@ -109,3 +109,15 @@ export interface AISettings {
   storyProvider: 'gemini' | 'deepseek' | 'chatgpt';
   chatProvider: 'gemini' | 'deepseek' | 'chatgpt';
 }
+
+
+export type GalleryCategory = 'wildlife' | 'birds' | 'landscapes' | 'portraits';
+
+export interface GalleryPhoto {
+  id?: string;
+  title: string;
+  category: GalleryCategory;
+  imageUrl: string;
+  storagePath?: string;
+  createdAt?: any;
+}

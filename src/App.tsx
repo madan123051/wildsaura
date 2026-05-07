@@ -1,9 +1,10 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Photo, Category, FilterTab, Visitor, Story, Comment, Video } from './types';
+import { Photo, Category, FilterTab, Visitor, Story, Comment, Video, GalleryPhoto } from './types';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
 import { CategorySection } from './components/CategorySection';
 import { Gallery } from './components/Gallery';
+import { PhotoGallery } from './components/PhotoGallery';
 import { PhotoModal } from './components/PhotoModal';
 import { AboutSection } from './components/AboutSection';
 import { Footer } from './components/Footer';
@@ -21,6 +22,7 @@ import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './firebase';
 import { addUserLike, removeUserLike, getUserLikes } from './services/userLikesService';
 import { getPhotosFromFirestore, deletePhotoFromFirestore, updatePhotoInFirestore, subscribeToPhotos } from './services/photoService';
+import { subscribeToGalleryPhotos } from './services/galleryService';
 import { getStoriesFromFirestore, addStoryToFirestore, deleteStoryFromFirestore, updateStoryInFirestore, uploadStoryCoverToStorage, subscribeToStories } from './services/storyService';
 import { getVideosFromFirestore, addVideoToFirestore, deleteVideoFromFirestore, updateVideoInFirestore, uploadVideoThumbnailToStorage, uploadVideoToStorage, subscribeToVideos } from './services/videoService';
 import { addCommentToFirestore, deleteCommentFromFirestore, getCommentsForTarget, getAllComments, subscribeToAllComments } from './services/commentService';
@@ -184,6 +186,7 @@ const App: React.FC = () => {
   const [photos, setPhotos] = useState<Photo[]>(SAMPLE_PHOTOS);
   const [stories, setStories] = useState<Story[]>(SAMPLE_STORIES);
   const [videos, setVideos] = useState<Video[]>([]);
+  const [galleryPhotos, setGalleryPhotos] = useState<GalleryPhoto[]>([]);
   const [selectedStory, setSelectedStory] = useState<Story | null>(null);
   const galleryRef = useRef<HTMLElement | null>(null);
 
@@ -471,6 +474,13 @@ const App: React.FC = () => {
       }
     });
 
+    // ── Real-time GALLERY subscription ─────────────────────────────────
+    const unsubGallery = subscribeToGalleryPhotos((photos) => {
+      setGalleryPhotos(photos);
+    }, (err) => {
+      console.warn('Gallery subscription error:', err);
+    });
+
     // ── Real-time VIDEOS subscription ──────────────────────────────────
     const unsubVideos = subscribeToVideos((firestoreVideos) => {
       const mapped: Video[] = firestoreVideos.map((fv, idx) => ({
@@ -576,6 +586,7 @@ const App: React.FC = () => {
     return () => {
       unsubPhotos();
       unsubStories();
+      unsubGallery();
       unsubVideos();
       unsubComments();
       unsubOnline();
@@ -1451,6 +1462,22 @@ const App: React.FC = () => {
     { key: 'nature', label: 'Nature', imageUrl: siteSettings.categoryImages?.nature || '/photos/photo-nature.jpeg' },
     { key: 'other', label: 'Portraits', imageUrl: siteSettings.categoryImages?.portraits || '/photos/photo-portrait.jpeg' },
   ];
+  const searchablePhotos: Photo[] = [
+    ...photos,
+    ...galleryPhotos.map((photo, index) => ({
+      id: 1000000 + index,
+      title: photo.title,
+      category: photo.category as any,
+      imageUrl: photo.imageUrl,
+      caption: `Photo Gallery · ${photo.category}`,
+      type: 'photo' as const,
+      tags: [photo.category, 'gallery'],
+      likeCount: 0,
+      liked: false,
+      published: true,
+    })),
+  ];
+
 // ── Home View ──
   return (
     <div style={{ minHeight: '100vh', background: 'var(--wa-dark)' }}>
@@ -1502,6 +1529,7 @@ const App: React.FC = () => {
         isLoggedIn={!!visitor}
         onLoginRequired={() => setShowVisitorLogin(true)}
       />
+      <PhotoGallery photos={galleryPhotos} searchQuery={searchQuery} />
       <StoriesSection stories={stories} onStoryClick={handleStoryClick} />
       <VideoSection 
         videos={videos} 
@@ -1563,7 +1591,7 @@ const App: React.FC = () => {
         onClose={() => { setShowSearch(false); setSearchQuery(''); }}
         query={searchQuery}
         onQueryChange={setSearchQuery}
-        photos={photos}
+        photos={searchablePhotos}
         onPhotoClick={openPhoto}
       />
 
