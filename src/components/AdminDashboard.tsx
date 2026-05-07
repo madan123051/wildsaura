@@ -1702,7 +1702,7 @@ const GALLERY_CATEGORY_OPTIONS: Array<{ value: GalleryCategory; label: string }>
 // ── Canvas compression ────────────────────────────────────────────────────────
 // Compresses any image to max ~2.5 MB, max dimension 2400px.
 // Tries WebP first; falls back to JPEG (for iOS Safari which may not support WebP canvas).
-async function compressToWebP(file: File, maxSizeMB = 2.5): Promise<File> {
+async function compressToWebP(file: File, maxSizeMB = 2.5): Promise<Blob> {
   const maxBytes = maxSizeMB * 1024 * 1024;
   // Skip if already small enough (any format)
   if (file.size <= maxBytes) return file;
@@ -1734,7 +1734,7 @@ async function compressToWebP(file: File, maxSizeMB = 2.5): Promise<File> {
 
       const tryFormat = (formatIndex: number, quality: number) => {
         if (formatIndex >= formats.length) { resolve(file); return; } // give up, upload original
-        const { mime, ext } = formats[formatIndex];
+        const { mime } = formats[formatIndex];
         canvas.toBlob(
           (blob) => {
             if (!blob || blob.size === 0) {
@@ -1743,7 +1743,7 @@ async function compressToWebP(file: File, maxSizeMB = 2.5): Promise<File> {
               return;
             }
             if (blob.size <= maxBytes || quality <= 0.45) {
-              resolve(new File([blob], file.name.replace(/\.[^.]+$/, ext), { type: mime }));
+              resolve(blob);
             } else {
               tryFormat(formatIndex, Math.round((quality - 0.1) * 100) / 100);
             }
@@ -1787,8 +1787,11 @@ const GalleryManagement: React.FC = () => {
       for (let index = 0; index < selectedFiles.length; index += 1) {
         const file = selectedFiles[index];
         const baseProgress = Math.round((index / selectedFiles.length) * 100);
+        console.log('[GalleryUpload] Processing selected file', { name: file.name, size: file.size, type: file.type, category, index, total: selectedFiles.length });
         const compressed = await compressToWebP(file);
-        const uploaded = await uploadGalleryPhotoToStorage(compressed, category, (fileProgress) => {
+        console.log('[GalleryUpload] Compression complete', { originalSize: file.size, compressedSize: compressed.size, compressedType: compressed.type || file.type });
+        const uploadFilename = (file.name || `gallery_${Date.now()}`).replace(/\.[^.]+$/, compressed.type === 'image/jpeg' ? '.jpg' : '.webp');
+        const uploaded = await uploadGalleryPhotoToStorage(compressed, category, uploadFilename, (fileProgress) => {
           setProgress(Math.round(baseProgress + (fileProgress / selectedFiles.length)));
         });
         await addGalleryPhotoToFirestore({
@@ -1799,9 +1802,10 @@ const GalleryManagement: React.FC = () => {
         });
       }
       setProgress(100);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Gallery upload failed:', error);
-      alert('Gallery upload failed. Please try again.');
+      const reason = error?.code || error?.message || 'Unknown error';
+      alert(`Gallery upload failed: ${reason}\n\nIf this says "permission-denied" or "unauthorized", update your Firebase Storage & Firestore rules.`);
     } finally {
       setUploading(false);
       setTimeout(() => setProgress(0), 1200);
