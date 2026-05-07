@@ -1703,6 +1703,78 @@ const GALLERY_CATEGORY_OPTIONS: Array<{ value: GalleryCategory; label: string }>
 const isIOSSafari = (): boolean => {
   if (typeof navigator === 'undefined') return false;
   const ua = navigator.userAgent || '';
+  const iOS = /iP(hone|ad|od)/.test(ua);
+  const webkit = /WebKit/i.test(ua);
+  const isCriOS = /CriOS/i.test(ua);
+  const isFxiOS = /FxiOS/i.test(ua);
+  return iOS && webkit && !isCriOS && !isFxiOS;
+};
+
+// ── Canvas compression ────────────────────────────────────────────────────────
+// Compresses any image to max ~2.5 MB, max dimension 2400px.
+// Tries WebP first; falls back to JPEG (for iOS Safari which may not support WebP canvas).
+async function compressToWebP(file: File, maxSizeMB = 2.5): Promise<Blob> {
+  const maxBytes = maxSizeMB * 1024 * 1024;
+  const isSafariIOS = isIOSSafari();
+  console.log('[GalleryUpload] Compression start', { name: file.name, size: file.size, type: file.type, isSafariIOS });
+
+  if (isSafariIOS && file.size > 10 * 1024 * 1024) {
+    console.log('[GalleryUpload] Skipping compression for large iOS Safari file (>10MB) to avoid constructor/runtime issues');
+    return file;
+  }
+
+  // Skip if already small enough (any format)
+  if (file.size <= maxBytes) return file;
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const canvas = document.createElement('canvas');
+      let { width, height } = img;
+      const MAX_DIM = 2400;
+      if (width > MAX_DIM || height > MAX_DIM) {
+        const scale = MAX_DIM / Math.max(width, height);
+        width = Math.round(width * scale);
+        height = Math.round(height * scale);
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { resolve(file); return; }  // fallback: upload original
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Try WebP, then JPEG as fallback (iOS Safari may not support WebP canvas)
+      const formats: Array<{ mime: string }> = [
+        { mime: 'image/webp' },
+        { mime: 'image/jpeg' },
+      ];
+
+      const tryFormat = (formatIndex: number, quality: number) => {
+        if (formatIndex >= formats.length) { resolve(file); return; } // give up, upload original
+        const { mime } = formats[formatIndex];
+        canvas.toBlob(
+          (blob) => {
+            if (!blob || blob.size === 0) {
+              // This format not supported — try next
+              tryFormat(formatIndex + 1, 0.85);
+              return;
+            }
+            if (blob.size <= maxBytes || quality <= 0.45) {
+              resolve(blob);
+            } else {
+              tryFormat(formatIndex, Math.round((quality - 0.1) * 100) / 100);
+            }
+          },
+          mime,
+          quality
+        );
+      };
+
+const isIOSSafari = (): boolean => {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
   const isIOS = /iP(ad|hone|od)/.test(ua) || ((navigator.platform === 'MacIntel') && navigator.maxTouchPoints > 1);
   const isSafari = /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua);
   return isIOS && isSafari;
@@ -1793,12 +1865,22 @@ const GalleryManagement: React.FC = () => {
     try {
       for (let index = 0; index < selectedFiles.length; index += 1) {
         const file = selectedFiles[index];
+        console.log('[GalleryUpload] Processing selected file', {
+          index: index + 1,
+          total: selectedFiles.length,
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          category,
+        });
         const baseProgress = Math.round((index / selectedFiles.length) * 100);
-        console.log('[GalleryUpload] Processing selected file', { name: file.name, size: file.size, type: file.type, category, index, total: selectedFiles.length });
-        const processed = await preprocessGalleryImage(file);
-        console.log('[GalleryUpload] Preprocess complete', { originalSize: file.size, processedSize: processed.size, processedType: processed.type || 'image/webp' });
-        const uploadFilename = (file.name || `gallery_${Date.now()}`).replace(/\.[^.]+$/, '.webp');
-        const uploaded = await uploadGalleryPhotoToStorage(processed, category, uploadFilename, (fileProgress) => {
+        const compressed = await compressToWebP(file);
+        console.log('[GalleryUpload] Compression result', {
+          originalSize: file.size,
+          compressedSize: compressed.size,
+          compressedType: compressed.type,
+        });
+        const uploaded = await uploadGalleryPhotoToStorage(compressed, category, (fileProgress) => {
           setProgress(Math.round(baseProgress + (fileProgress / selectedFiles.length)));
         });
         await addGalleryPhotoToFirestore({
