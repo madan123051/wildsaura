@@ -56,7 +56,7 @@ export const Footer: React.FC<FooterProps> = ({ logoUrl, onTermsClick }) => {
               <button
                 onClick={onTermsClick}
                 className="nav-link"
-                style={{ fontSize: '0.65rem', letterSpacing: '0.12em' }}
+                style={{ fontSize: '0.65rem', letterSpacing: '0.12em', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
               >
                 Terms & Conditions
               </button>

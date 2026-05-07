@@ -207,6 +207,11 @@ const App: React.FC = () => {
     try { const s = localStorage.getItem('wa_notifications'); return s ? JSON.parse(s) : []; } catch { return []; }
   });
   const [showNotifPanel, setShowNotifPanel] = useState(false);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [isPullRefreshing, setIsPullRefreshing] = useState(false);
+  const pullStartYRef = useRef<number | null>(null);
+  const pullDistanceRef = useRef(0);
+  const isPullingRef = useRef(false);
   const FREE_DOWNLOADS = 2;
   const onlineCleanupRef = useRef<(() => void) | null>(null);
   const getGuestIdentity = useCallback(() => {
@@ -617,6 +622,58 @@ const App: React.FC = () => {
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, [photos, stories]);
+
+  useEffect(() => {
+    const maxPull = 140;
+    const triggerPull = 120;
+    const visualPull = 60;
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (isPullRefreshing || view !== 'home') return;
+      if (window.scrollY > 0) return;
+      pullStartYRef.current = e.touches[0]?.clientY ?? null;
+      isPullingRef.current = true;
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (!isPullingRef.current || pullStartYRef.current === null || isPullRefreshing || view !== 'home') return;
+      const currentY = e.touches[0]?.clientY ?? 0;
+      const delta = Math.max(0, currentY - pullStartYRef.current);
+      const damped = Math.min(maxPull, delta * 0.6);
+      pullDistanceRef.current = damped;
+      setPullDistance(damped);
+      if (window.scrollY === 0 && damped > visualPull) {
+        e.preventDefault();
+      }
+    };
+
+    const onTouchEnd = () => {
+      if (!isPullingRef.current) return;
+      const shouldRefresh = pullDistanceRef.current >= triggerPull && view === 'home';
+      isPullingRef.current = false;
+      pullStartYRef.current = null;
+      pullDistanceRef.current = 0;
+
+      if (shouldRefresh) {
+        setIsPullRefreshing(true);
+        setPullDistance(triggerPull);
+        window.setTimeout(() => window.location.reload(), 450);
+      } else {
+        setPullDistance(0);
+      }
+    };
+
+    window.addEventListener('touchstart', onTouchStart, { passive: true });
+    window.addEventListener('touchmove', onTouchMove, { passive: false });
+    window.addEventListener('touchend', onTouchEnd, { passive: true });
+    window.addEventListener('touchcancel', onTouchEnd, { passive: true });
+    return () => {
+      window.removeEventListener('touchstart', onTouchStart);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
+      window.removeEventListener('touchcancel', onTouchEnd);
+    };
+  }, [isPullRefreshing, view]);
 
   const scrollToGallery = useCallback(() => {
     galleryRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -1360,6 +1417,21 @@ const App: React.FC = () => {
         onAdminClick={() => { setView('admin-dashboard'); window.history.pushState({}, '', '/admin'); }}
       />
       <div className="wa-container" style={{ paddingTop: '8rem', paddingBottom: '5rem', maxWidth: 900 }}>
+        <button
+          onClick={() => { setView('home'); window.history.pushState({}, '', '/'); window.scrollTo(0, 0); }}
+          style={{
+            background: 'rgba(201,168,76,0.15)',
+            border: '1px solid rgba(201,168,76,0.35)',
+            color: 'var(--wa-gold)',
+            borderRadius: 8,
+            padding: '0.55rem 0.85rem',
+            marginBottom: '1rem',
+            cursor: 'pointer',
+            fontWeight: 600,
+          }}
+        >
+          ← Back to Home
+        </button>
         <h1 style={{ fontSize: '2.5rem', color: 'var(--wa-text)', marginBottom: '1rem' }}>{title}</h1>
         <p style={{ fontSize: '1.1rem', lineHeight: 1.8, color: 'var(--wa-muted)' }}>{text}</p>
         {cta && <p style={{ marginTop: '1.5rem', fontWeight: 700, color: 'var(--wa-accent)' }}>{cta}</p>}
@@ -1382,6 +1454,25 @@ const App: React.FC = () => {
 // ── Home View ──
   return (
     <div style={{ minHeight: '100vh', background: 'var(--wa-dark)' }}>
+      {(pullDistance > 0 || isPullRefreshing) && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 120,
+            height: `${Math.max(64, pullDistance)}px`,
+            display: 'flex',
+            alignItems: 'flex-end',
+            justifyContent: 'center',
+            pointerEvents: 'none',
+            background: 'linear-gradient(to bottom, rgba(12,30,22,0.9), rgba(12,30,22,0))',
+          }}
+        >
+          <div style={{ marginBottom: '10px', fontSize: '2rem', animation: 'spin 0.9s linear infinite' }}>🦁</div>
+        </div>
+      )}
       <Header
         onScrollToGallery={scrollToGallery}
         logoUrl={logoUrl}

@@ -234,7 +234,7 @@ export const Header: React.FC<HeaderProps> = ({
                               setEditingName(false);
                             }}
                             style={{ background: 'var(--wa-gold)', border: 'none', borderRadius: 4, color: '#000', fontSize: '0.65rem', padding: '0.2rem 0.4rem', cursor: 'pointer', fontWeight: 600 }}
-                          >✓</button>
+                          >Save</button>
                           <button
                             onClick={(e) => { e.stopPropagation(); setEditingName(false); }}
                             style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 4, color: '#fff', fontSize: '0.65rem', padding: '0.2rem 0.4rem', cursor: 'pointer' }}
