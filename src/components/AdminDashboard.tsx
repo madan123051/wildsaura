@@ -1699,65 +1699,87 @@ const GALLERY_CATEGORY_OPTIONS: Array<{ value: GalleryCategory; label: string }>
   { value: 'others', label: 'Others' },
 ];
 
+
+const isIOSSafari = (): boolean => {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  const iOS = /iP(ad|hone|od)/.test(ua) || ((navigator.platform === 'MacIntel') && (navigator.maxTouchPoints || 0) > 1);
+  const safari = /Safari/i.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS|mercury/i.test(ua);
+  return iOS && safari;
+};
+
 // ── Canvas compression ────────────────────────────────────────────────────────
 // Compresses any image to max ~2.5 MB, max dimension 2400px.
 // Tries WebP first; falls back to JPEG (for iOS Safari which may not support WebP canvas).
-async function compressToWebP(file: File, maxSizeMB = 2.5): Promise<File> {
+async function compressToWebP(file: File, maxSizeMB = 2.5): Promise<Blob> {
   const maxBytes = maxSizeMB * 1024 * 1024;
-  // Skip if already small enough (any format)
+  const iosSafari = isIOSSafari();
+
   if (file.size <= maxBytes) return file;
 
-  return new Promise((resolve) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const canvas = document.createElement('canvas');
-      let { width, height } = img;
-      const MAX_DIM = 2400;
-      if (width > MAX_DIM || height > MAX_DIM) {
-        const scale = MAX_DIM / Math.max(width, height);
-        width = Math.round(width * scale);
-        height = Math.round(height * scale);
-      }
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) { resolve(file); return; }  // fallback: upload original
-      ctx.drawImage(img, 0, 0, width, height);
+  if (iosSafari && file.size >= 8 * 1024 * 1024) {
+    console.warn('[GalleryUpload] iOS Safari large file detected; skipping compression fallback to original file', { size: file.size, type: file.type, name: file.name });
+    return file;
+  }
 
-      // Try WebP, then JPEG as fallback (iOS Safari may not support WebP canvas)
-      const formats: Array<{ mime: string; ext: string }> = [
-        { mime: 'image/webp', ext: '.webp' },
-        { mime: 'image/jpeg', ext: '.jpg' },
-      ];
+  try {
+    return await new Promise((resolve) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const canvas = document.createElement('canvas');
+        let { width, height } = img;
+        const MAX_DIM = iosSafari ? 2000 : 2400;
+        if (width > MAX_DIM || height > MAX_DIM) {
+          const scale = MAX_DIM / Math.max(width, height);
+          width = Math.round(width * scale);
+          height = Math.round(height * scale);
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { resolve(file); return; }
+        ctx.drawImage(img, 0, 0, width, height);
 
-      const tryFormat = (formatIndex: number, quality: number) => {
-        if (formatIndex >= formats.length) { resolve(file); return; } // give up, upload original
-        const { mime, ext } = formats[formatIndex];
-        canvas.toBlob(
-          (blob) => {
-            if (!blob || blob.size === 0) {
-              // This format not supported — try next
-              tryFormat(formatIndex + 1, 0.85);
-              return;
-            }
-            if (blob.size <= maxBytes || quality <= 0.45) {
-              resolve(new File([blob], file.name.replace(/\.[^.]+$/, ext), { type: mime }));
-            } else {
-              tryFormat(formatIndex, Math.round((quality - 0.1) * 100) / 100);
-            }
-          },
-          mime,
-          quality
-        );
+        const formats: Array<{ mime: string }> = [
+          { mime: 'image/webp' },
+          { mime: 'image/jpeg' },
+        ];
+
+        const tryFormat = (formatIndex: number, quality: number) => {
+          if (formatIndex >= formats.length) { resolve(file); return; }
+          const { mime } = formats[formatIndex];
+          canvas.toBlob(
+            (blob) => {
+              if (!blob || blob.size === 0) {
+                tryFormat(formatIndex + 1, 0.85);
+                return;
+              }
+              if (blob.size <= maxBytes || quality <= 0.45) {
+                resolve(blob);
+              } else {
+                tryFormat(formatIndex, Math.round((quality - 0.1) * 100) / 100);
+              }
+            },
+            mime,
+            quality
+          );
+        };
+
+        tryFormat(0, iosSafari ? 0.8 : 0.85);
       };
-
-      tryFormat(0, 0.85);
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); }; // fallback: upload original
-    img.src = url;
-  });
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        console.warn('[GalleryUpload] Image decode failed during compression; using original file.');
+        resolve(file);
+      };
+      img.src = url;
+    });
+  } catch (error) {
+    console.warn('[GalleryUpload] Compression threw error; using original file.', error);
+    return file;
+  }
 }
 
 const GalleryManagement: React.FC = () => {
@@ -1787,8 +1809,17 @@ const GalleryManagement: React.FC = () => {
       for (let index = 0; index < selectedFiles.length; index += 1) {
         const file = selectedFiles[index];
         const baseProgress = Math.round((index / selectedFiles.length) * 100);
-        const compressed = await compressToWebP(file);
-        const uploaded = await uploadGalleryPhotoToStorage(compressed, category, (fileProgress) => {
+        console.log('[GalleryUpload] Processing selected file', { name: file.name, size: file.size, type: file.type, category, index, total: selectedFiles.length });
+        let compressed: Blob = file;
+        try {
+          compressed = await compressToWebP(file);
+        } catch (preprocessError) {
+          console.warn('[GalleryUpload] Preprocessing failed; falling back to original file', preprocessError);
+          compressed = file;
+        }
+        console.log('[GalleryUpload] Compression complete', { originalSize: file.size, compressedSize: compressed.size, compressedType: compressed.type || file.type });
+        const uploadFilename = (file.name || `gallery_${Date.now()}`).replace(/\.[^.]+$/, compressed.type === 'image/jpeg' ? '.jpg' : '.webp');
+        const uploaded = await uploadGalleryPhotoToStorage(compressed, category, uploadFilename, (fileProgress) => {
           setProgress(Math.round(baseProgress + (fileProgress / selectedFiles.length)));
         });
         await addGalleryPhotoToFirestore({
@@ -1799,9 +1830,10 @@ const GalleryManagement: React.FC = () => {
         });
       }
       setProgress(100);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Gallery upload failed:', error);
-      alert('Gallery upload failed. Please try again.');
+      const reason = error?.code || error?.message || 'Unknown error';
+      alert(`Gallery upload failed: ${reason}\n\nIf this says "permission-denied" or "unauthorized", update your Firebase Storage & Firestore rules.`);
     } finally {
       setUploading(false);
       setTimeout(() => setProgress(0), 1200);
