@@ -1,6 +1,6 @@
 import { db } from '../firebase';
 import { collection, addDoc, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, serverTimestamp, Unsubscribe } from 'firebase/firestore';
-import { getStorage, deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { deleteObject, getDownloadURL, getStorage, ref, uploadBytes } from 'firebase/storage';
 
 export type GalleryCategory = 'wildlife' | 'birds' | 'landscapes' | 'portraits' | 'others';
 
