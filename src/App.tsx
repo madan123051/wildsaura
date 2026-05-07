@@ -33,6 +33,9 @@ import { NotificationPanel, AppNotification } from './components/NotificationPan
 const logoUrl = '/photos/logo.png';
 const ADMIN_EMAIL = 'madan123050@gmail.com';
 
+
+const safeLower = (value: unknown) => (typeof value === 'string' ? value.toLowerCase().trim() : '');
+
 // ── Sample Photo Data ───────────────────────────────────────────────────────
 const SAMPLE_PHOTOS: Photo[] = [
   {
@@ -406,10 +409,10 @@ const App: React.FC = () => {
       const mapped: Story[] = firestoreStories.map((fs, idx) => ({
         id: Date.now() + idx + 5000,
         firestoreId: fs.id,
-        title: fs.title,
-        slug: fs.slug,
-        excerpt: fs.excerpt,
-        content: fs.content,
+        title: typeof fs.title === 'string' ? fs.title : 'Untitled Story',
+        slug: typeof fs.slug === 'string' ? fs.slug : `story-${Date.now()}-${idx}`,
+        excerpt: typeof fs.excerpt === 'string' ? fs.excerpt : '',
+        content: typeof fs.content === 'string' ? fs.content : '',
         coverImageUrl: fs.coverImageUrl,
         tags: fs.tags || [],
         createdAt: fs.createdAt?.toDate?.()?.toISOString?.()?.split('T')[0] || new Date().toISOString().split('T')[0],
@@ -428,8 +431,11 @@ const App: React.FC = () => {
           }
           return m;
         });
-        const existingTitles = new Set(samples.map(s => s.title.toLowerCase().trim()));
-        const nonDuplicate = updatedFirestore.filter(s => !existingTitles.has(s.title.toLowerCase().trim()));
+        const existingTitles = new Set(samples.map(s => safeLower(s.title)).filter(Boolean));
+        const nonDuplicate = updatedFirestore.filter(s => {
+          const normalizedTitle = safeLower(s.title);
+          return !normalizedTitle || !existingTitles.has(normalizedTitle);
+        });
         const allStories = [...nonDuplicate, ...samples];
 
         // Deep link: auto-open story if pending (only on first snapshot)
@@ -1338,10 +1344,27 @@ const App: React.FC = () => {
   }
 
   const StaticPage = ({ title, text, cta }: { title: string; text: string; cta?: string }) => (
-    <div className="wa-container" style={{ paddingTop: '8rem', paddingBottom: '5rem', maxWidth: 900 }}>
-      <h1 style={{ fontSize: '2.5rem', color: 'var(--wa-primary-dark)', marginBottom: '1rem' }}>{title}</h1>
-      <p style={{ fontSize: '1.1rem', lineHeight: 1.8, color: '#1f2937' }}>{text}</p>
-      {cta && <p style={{ marginTop: '1.5rem', fontWeight: 700, color: 'var(--wa-accent)' }}>{cta}</p>}
+    <div style={{ minHeight: '100vh', background: 'var(--wa-dark)' }}>
+      <Header
+        onScrollToGallery={scrollToGallery}
+        logoUrl={logoUrl}
+        onSearchClick={() => setShowSearch(true)}
+        visitor={visitor}
+        onVisitorLoginClick={() => setShowVisitorLogin(true)}
+        onVisitorLogout={handleVisitorLogout}
+        onVisitorUpdate={handleVisitorUpdate}
+        onStoriesClick={handleStoriesNavClick}
+        notificationCount={unreadNotifCount}
+        onNotificationClick={() => setShowNotifPanel(p => !p)}
+        isAdmin={isAdmin}
+        onAdminClick={() => { setView('admin-dashboard'); window.history.pushState({}, '', '/admin'); }}
+      />
+      <div className="wa-container" style={{ paddingTop: '8rem', paddingBottom: '5rem', maxWidth: 900 }}>
+        <h1 style={{ fontSize: '2.5rem', color: 'var(--wa-text)', marginBottom: '1rem' }}>{title}</h1>
+        <p style={{ fontSize: '1.1rem', lineHeight: 1.8, color: 'var(--wa-muted)' }}>{text}</p>
+        {cta && <p style={{ marginTop: '1.5rem', fontWeight: 700, color: 'var(--wa-accent)' }}>{cta}</p>}
+      </div>
+      <Footer logoUrl={logoUrl} onTermsClick={handleTermsClick} />
     </div>
   );
   if (view === 'marketplace') return <StaticPage title="Buy & Sell Authentic Nepal Photography" text="Support local photographers by purchasing high-quality images. Use them for personal or commercial projects. Option A: Buy Now via Google Form/DM and payment by eSewa or bank. Option B: Stripe or Gumroad links." cta="20% of every purchase supports animal rescue in Nepal." />;
