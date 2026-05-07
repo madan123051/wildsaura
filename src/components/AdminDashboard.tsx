@@ -5,7 +5,7 @@ import {
   Upload, Sparkles, Film, Camera, FileImage, Loader2, Info,
   Settings, Cpu, MessageCircle, Globe, Mail
 } from 'lucide-react';
-import { Photo, Story, Video } from '../types';
+import { Photo, Story, Video, GalleryPhoto, GalleryCategory } from '../types';
 import { analyzePhoto, getAnimalInfo } from '../utils/aiService';
 import { uploadPhotoToStorage, uploadThumbnailToStorage, addPhotoToFirestore, updatePhotoInFirestore } from '../services/photoService';
 import { getAISettings } from '../services/aiSettingsService';
@@ -16,10 +16,11 @@ import { uploadVideoToStorage, uploadVideoThumbnailToStorage } from '../services
 import { compressImageForAI, compressForUpload, generateThumbnail } from '../utils/imageCompressor';
 import { readExifFromFile } from '../utils/exifReader';
 import { subscribeToContactMessages, deleteContactMessage, ContactMessage } from '../services/contactService';
+import { addGalleryPhotoToFirestore, deleteGalleryPhoto, subscribeToGalleryPhotos, uploadGalleryPhotoToStorage } from '../services/galleryService';
 
 
 
-type AdminView = 'dashboard' | 'photos' | 'add' | 'stories' | 'add-story' | 'videos' | 'add-video' | 'comments' | 'messages' | 'ai-settings' | 'site-settings';
+type AdminView = 'dashboard' | 'photos' | 'add' | 'gallery' | 'stories' | 'add-story' | 'videos' | 'add-video' | 'comments' | 'messages' | 'ai-settings' | 'site-settings';
 
 interface AdminDashboardProps {
   logoUrl?: string;
@@ -414,6 +415,7 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
     const hasValidLng = !isNaN(parsedLng) && isFinite(parsedLng);
     
     let finalImageUrl = imageUrl;
+    let thumbnailUrl = '';
     let firestoreId: string | undefined;
     
     try {
@@ -449,7 +451,6 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
       }
       
       // Upload thumbnail alongside main photo (non-blocking — if it fails, no problem)
-      let thumbnailUrl = '';
       if (thumbnailFile) {
         try {
           const thumbName = (uploadedFileName || 'photo').replace(/\.[^.]+$/, '') + '_thumb.webp';
@@ -1688,6 +1689,138 @@ const SiteSettingsForm = () => {
   );
 };
 
+
+// ── Gallery Management ───────────────────────────────────────────────────────
+const GALLERY_CATEGORY_OPTIONS: Array<{ value: GalleryCategory; label: string }> = [
+  { value: 'wildlife', label: 'Wildlife' },
+  { value: 'birds', label: 'Birds' },
+  { value: 'landscapes', label: 'Landscapes' },
+  { value: 'portraits', label: 'Portraits' },
+  { value: 'others', label: 'Others' },
+];
+
+const GalleryManagement: React.FC = () => {
+  const [category, setCategory] = useState<GalleryCategory>('wildlife');
+  const [galleryPhotos, setGalleryPhotos] = useState<GalleryPhoto[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    const unsub = subscribeToGalleryPhotos((photos) => setGalleryPhotos(photos));
+    return () => unsub();
+  }, []);
+
+  const handleFiles = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(event.target.files || []).filter(file => file.type.startsWith('image/'));
+    event.target.value = '';
+    if (selectedFiles.length === 0) return;
+    if (selectedFiles.length > 20) {
+      alert('Please upload maximum 20 photos at once.');
+      return;
+    }
+
+    setUploading(true);
+    setProgress(0);
+    try {
+      for (let index = 0; index < selectedFiles.length; index += 1) {
+        const file = selectedFiles[index];
+        const baseProgress = Math.round((index / selectedFiles.length) * 100);
+        const compressedFile = await compressForUpload(file, (compressionProgress) => {
+          setProgress(Math.round(baseProgress + ((((compressionProgress / 40) * 45) / selectedFiles.length))));
+        });
+        const uploaded = await uploadGalleryPhotoToStorage(compressedFile, category, (fileProgress) => {
+          setProgress(Math.round(baseProgress + (((45 + fileProgress * 0.55) / selectedFiles.length))));
+        });
+        await addGalleryPhotoToFirestore({
+          title: file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' '),
+          category,
+          imageUrl: uploaded.imageUrl,
+          storagePath: uploaded.storagePath,
+          originalSize: file.size,
+          compressedSize: compressedFile.size,
+        });
+      }
+      setProgress(100);
+    } catch (error) {
+      console.error('Gallery upload failed:', error);
+      const message = error instanceof Error ? error.message : 'Unknown upload error';
+      alert(`Gallery upload failed: ${message}. Please try again.`);
+    } finally {
+      setUploading(false);
+      setTimeout(() => setProgress(0), 1200);
+    }
+  };
+
+  const handleDelete = async (photo: GalleryPhoto) => {
+    try {
+      await deleteGalleryPhoto(photo);
+      setDeleteId(null);
+    } catch (error) {
+      console.error('Gallery delete failed:', error);
+      alert('Could not delete this gallery photo.');
+    }
+  };
+
+  return (
+    <div style={{ display: 'grid', gap: '1.5rem' }}>
+      <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.1)', borderRadius: '12px', padding: '1.5rem' }}>
+        <h3 style={{ color: 'var(--wa-light)', fontSize: '1rem', marginBottom: '1rem' }}>Upload Gallery Photos</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 240px) 1fr', gap: '1rem', alignItems: 'end' }}>
+          <div>
+            <label style={labelStyle}>Category</label>
+            <select value={category} onChange={(e) => setCategory(e.target.value as GalleryCategory)} style={inputStyle} disabled={uploading}>
+              {GALLERY_CATEGORY_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={labelStyle}>Photos (up to 20 at once, auto WebP 2MB)</label>
+            <input type="file" accept="image/*" multiple onChange={handleFiles} disabled={uploading} style={inputStyle} />
+          </div>
+        </div>
+        {uploading || progress > 0 ? (
+          <div style={{ marginTop: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem', color: 'rgba(235,230,220,0.65)', fontSize: '0.75rem' }}>
+              <span>{uploading ? 'Uploading to category folder...' : 'Upload complete'}</span>
+              <span>{progress}%</span>
+            </div>
+            <div style={{ height: 8, borderRadius: 999, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+              <div style={{ width: `${progress}%`, height: '100%', borderRadius: 999, background: 'linear-gradient(90deg, var(--wa-gold), #f97316)', transition: 'width 0.2s ease' }} />
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      <div>
+        <h3 style={{ color: 'var(--wa-light)', fontSize: '1rem', marginBottom: '1rem' }}>Gallery Photos ({galleryPhotos.length})</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
+          {galleryPhotos.map((photo) => (
+            <div key={photo.id || photo.imageUrl} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.1)', borderRadius: '12px', overflow: 'hidden' }}>
+              <img src={photo.imageUrl} alt={photo.title} style={{ width: '100%', height: 150, objectFit: 'cover' }} />
+              <div style={{ padding: '0.8rem' }}>
+                <h4 style={{ color: 'var(--wa-light)', fontSize: '0.85rem', marginBottom: '0.35rem' }}>{photo.title}</h4>
+                <span style={{ display: 'inline-block', padding: '0.2rem 0.55rem', borderRadius: '999px', background: 'rgba(201,168,76,0.12)', color: 'var(--wa-gold)', fontSize: '0.62rem', textTransform: 'uppercase' }}>{photo.category}</span>
+                {photo.compressedSize && <p style={{ margin: '0.45rem 0 0', fontSize: '0.65rem', color: 'rgba(235,230,220,0.42)' }}>WebP · {(photo.compressedSize / 1024 / 1024).toFixed(2)}MB</p>}
+                <div style={{ marginTop: '0.75rem' }}>
+                  {deleteId === (photo.id || photo.imageUrl) ? (
+                    <div style={{ display: 'flex', gap: '0.4rem' }}>
+                      <button onClick={() => handleDelete(photo)} style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.18)', color: '#f87171', cursor: 'pointer', fontSize: '0.7rem' }}>Delete</button>
+                      <button onClick={() => setDeleteId(null)} style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: 'rgba(235,230,220,0.6)', cursor: 'pointer', fontSize: '0.7rem' }}>Cancel</button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setDeleteId(photo.id || photo.imageUrl)} style={{ width: '100%', padding: '0.45rem 0.75rem', borderRadius: 6, border: '1px solid rgba(239,68,68,0.18)', background: 'rgba(239,68,68,0.08)', color: 'rgba(248,113,113,0.85)', cursor: 'pointer', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}><Trash2 size={13} /> Delete</button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        {galleryPhotos.length === 0 && <div style={{ textAlign: 'center', padding: '3rem', color: 'rgba(235,230,220,0.3)' }}>No gallery photos uploaded yet.</div>}
+      </div>
+    </div>
+  );
+};
+
 // ── Main Dashboard ───────────────────────────────────────────────────────────
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   logoUrl, photos, onAddPhoto, onUpdatePhoto, onDeletePhoto, onLogout, onViewSite,
@@ -1746,6 +1879,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     if (view === 'dashboard') return 'Dashboard Overview';
     if (view === 'photos') return editingPhoto ? 'Edit Photo' : 'Manage Photos';
     if (view === 'add') return 'Add New Photo';
+    if (view === 'gallery') return 'Gallery Management';
     if (view === 'stories') return editingStory ? 'Edit Story' : 'Manage Stories';
     if (view === 'add-story') return 'Add New Story';
     if (view === 'videos') return editingVideo ? 'Edit Video' : 'Manage Videos';
@@ -1791,6 +1925,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </button>
           <button style={sidebarItemStyle(view === 'add')} onClick={() => { setView('add'); setEditingPhoto(null); }}>
             <Plus size={18} /> Add Photo
+          </button>
+          <button style={sidebarItemStyle(view === 'gallery')} onClick={() => { setView('gallery'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); }}>
+            <FileImage size={18} /> Photo Gallery
           </button>
 
           <div style={{ borderTop: '1px solid rgba(201,168,76,0.08)', margin: '0.5rem 0', paddingTop: '0.5rem' }}>
@@ -1975,6 +2112,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <PhotoForm onSave={handleSaveNew} onCancel={() => setView('photos')} nextId={nextPhotoId} />
             </div>
           )}
+
+          {view === 'gallery' && <GalleryManagement />}
 
           {/* Stories View */}
           {view === 'stories' && !editingStory && (
