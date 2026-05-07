@@ -107,12 +107,14 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
           style={{
             position: 'fixed', bottom: 24, right: 24, zIndex: 45,
             width: 56, height: 56, borderRadius: '50%',
-            background: 'linear-gradient(135deg, var(--wa-gold), var(--wa-gold-light))',
-            border: 'none', cursor: 'pointer',
+            background: 'linear-gradient(135deg, #f4d775, #c9a84c)',
+            border: '2px solid rgba(255,255,255,0.7)', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 4px 24px rgba(201,168,76,0.4)',
+            boxShadow: '0 8px 30px rgba(201,168,76,0.65), 0 0 0 4px rgba(0,0,0,0.35)',
             transition: 'transform 0.3s, box-shadow 0.3s',
             fontSize: '24px',
+            color: '#1a1a1a',
+            fontWeight: 700,
           }}
           onMouseOver={(e) => {
             e.currentTarget.style.transform = 'scale(1.1)';
