@@ -1718,7 +1718,7 @@ const GalleryManagement: React.FC = () => {
       const MAX_W = 2400;
       const url = URL.createObjectURL(file);
       const img: HTMLImageElement = await new Promise((resolve, reject) => {
-        const i = new Image();
+        const i = document.createElement('img');
         i.onload = () => resolve(i);
         i.onerror = () => reject(new Error('Could not decode image'));
         i.decoding = 'async';
