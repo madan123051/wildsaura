@@ -1,6 +1,6 @@
 import { db } from '../firebase';
 import { collection, addDoc, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, serverTimestamp, Unsubscribe } from 'firebase/firestore';
-import { getStorage, deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { deleteObject, getDownloadURL, getStorage, ref, uploadBytes } from 'firebase/storage';
 
 export type GalleryCategory = 'wildlife' | 'birds' | 'landscapes' | 'portraits' | 'others';
 
@@ -24,18 +24,26 @@ export async function uploadGalleryPhotoToStorage(
   onProgress?: (progress: number) => void
 ): Promise<{ imageUrl: string; storagePath: string }> {
   const storage = getStorage();
-  const safeName = sanitizeFilename(filename || 'photo.webp');
-  const storagePath = `gallery/${category}/${Date.now()}_${safeName}`;
+  const fallbackName = `gallery_${Date.now()}.jpg`;
+  const sourceName = (file as File)?.name || fallbackName;
+  const storagePath = `gallery/${category}/${Date.now()}_${sanitizeFilename(sourceName)}`;
   const storageRef = ref(storage, storagePath);
-  const contentType = file.type || 'image/webp';
+  const contentType = file.type || 'image/jpeg';
 
-  console.log('[GalleryUpload] Upload start', { category, filename: safeName, size: file.size, contentType, storagePath });
-  if (onProgress) onProgress(20);
+  console.log('[GalleryUpload] Starting upload', {
+    category,
+    storagePath,
+    contentType,
+    size: file.size,
+    hasFileName: Boolean((file as File)?.name),
+  });
+
+  if (onProgress) onProgress(5);
   await uploadBytes(storageRef, file, { contentType });
-  if (onProgress) onProgress(85);
+  if (onProgress) onProgress(95);
   const imageUrl = await getDownloadURL(storageRef);
   if (onProgress) onProgress(100);
-  console.log('[GalleryUpload] Upload complete', { storagePath });
+  console.log('[GalleryUpload] Upload complete', { storagePath, imageUrl });
   return { imageUrl, storagePath };
 }
 
