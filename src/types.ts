@@ -111,7 +111,7 @@ export interface AISettings {
 }
 
 
-export type GalleryCategory = 'wildlife' | 'birds' | 'landscapes' | 'portraits';
+export type GalleryCategory = 'wildlife' | 'birds' | 'landscapes' | 'portraits' | 'others';
 
 export interface GalleryPhoto {
   id?: string;

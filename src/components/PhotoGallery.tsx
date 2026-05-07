@@ -13,6 +13,7 @@ const CATEGORY_TABS: Array<{ key: 'all' | GalleryCategory; label: string }> = [
   { key: 'birds', label: 'Birds' },
   { key: 'landscapes', label: 'Landscapes' },
   { key: 'portraits', label: 'Portraits' },
+  { key: 'others', label: 'Others' },
 ];
 
 const categoryLabel = (category: GalleryCategory) => CATEGORY_TABS.find(tab => tab.key === category)?.label || category;
@@ -47,7 +48,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
           <div className="section-line" />
           {searchQuery.trim() && (
             <p style={{ marginTop: '0.8rem', color: 'var(--wa-text-muted)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <Search size={15} /> Showing gallery results for “{searchQuery.trim()}”
+              <Search size={15} /> Showing gallery results for "{searchQuery.trim()}"
             </p>
           )}
         </div>
