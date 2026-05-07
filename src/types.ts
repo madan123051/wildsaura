@@ -27,6 +27,20 @@ export interface Photo {
   compressedSize?: number;     // ← NEW: Compressed WebP size in bytes (after compression)
 }
 
+
+export type GalleryCategory = 'wildlife' | 'birds' | 'landscapes' | 'portraits' | 'all';
+
+export interface GalleryPhoto {
+  id: number;
+  firestoreId?: string;
+  title: string;
+  category: GalleryCategory;
+  imageUrl: string;
+  storagePath?: string;
+  fileName?: string;
+  createdAt?: string;
+}
+
 export interface Category {
   key: string;
   label: string;

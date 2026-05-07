@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { Search, X } from 'lucide-react';
-import { Photo } from '../types';
+import { GalleryPhoto, Photo } from '../types';
 
 interface SearchBarProps {
   isOpen: boolean;
@@ -8,10 +8,11 @@ interface SearchBarProps {
   query: string;
   onQueryChange: (q: string) => void;
   photos: Photo[];
+  galleryPhotos?: GalleryPhoto[];
   onPhotoClick: (photo: Photo) => void;
 }
 
-export const SearchBar: React.FC<SearchBarProps> = ({ isOpen, onClose, query, onQueryChange, photos, onPhotoClick }) => {
+export const SearchBar: React.FC<SearchBarProps> = ({ isOpen, onClose, query, onQueryChange, photos, galleryPhotos = [], onPhotoClick }) => {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -33,6 +34,19 @@ export const SearchBar: React.FC<SearchBarProps> = ({ isOpen, onClose, query, on
         );
       })
     : [];
+
+  const filteredGallery = query.trim().length > 0
+    ? galleryPhotos.filter((p) => {
+        const q = query.toLowerCase();
+        return (
+          p.title.toLowerCase().includes(q) ||
+          p.category.toLowerCase().includes(q) ||
+          (p.fileName || '').toLowerCase().includes(q)
+        );
+      })
+    : [];
+
+  const totalResults = filtered.length + filteredGallery.length;
 
   if (!isOpen) return null;
 
@@ -82,7 +96,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ isOpen, onClose, query, on
         {/* Results */}
         {query.trim().length > 0 && (
           <div style={{ maxHeight: '60vh', overflowY: 'auto', borderRadius: '12px' }}>
-            {filtered.length === 0 ? (
+            {totalResults === 0 ? (
               <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--wa-text-muted)' }}>
                 No photos found for "{query}"
               </div>
@@ -90,7 +104,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ isOpen, onClose, query, on
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '0.75rem' }}>
                 {filtered.map((p) => (
                   <div
-                    key={p.id}
+                    key={`photo-${p.id}`}
                     onClick={() => { onPhotoClick(p); onClose(); }}
                     style={{
                       cursor: 'pointer', borderRadius: '10px', overflow: 'hidden',
@@ -113,10 +127,35 @@ export const SearchBar: React.FC<SearchBarProps> = ({ isOpen, onClose, query, on
                     </div>
                   </div>
                 ))}
+                {filteredGallery.map((p) => (
+                  <div
+                    key={`gallery-${p.firestoreId || p.id}`}
+                    onClick={() => { document.getElementById('photo-gallery')?.scrollIntoView({ behavior: 'smooth' }); onClose(); }}
+                    style={{
+                      cursor: 'pointer', borderRadius: '10px', overflow: 'hidden',
+                      background: 'var(--wa-dark-card)', border: '1px solid var(--wa-border)',
+                      transition: 'border-color 0.3s, transform 0.2s',
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.borderColor = 'rgba(201,168,76,0.4)';
+                      e.currentTarget.style.transform = 'scale(1.03)';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--wa-border)';
+                      e.currentTarget.style.transform = 'scale(1)';
+                    }}
+                  >
+                    <img src={p.imageUrl} alt={p.title} style={{ width: '100%', height: 100, objectFit: 'cover' }} />
+                    <div style={{ padding: '0.5rem' }}>
+                      <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--wa-text)', marginBottom: '0.15rem' }}>{p.title}</p>
+                      <p style={{ fontSize: '0.6rem', color: 'var(--wa-gold)', textTransform: 'capitalize' }}>Gallery · {p.category}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
             <p style={{ textAlign: 'center', fontSize: '0.7rem', color: 'var(--wa-text-muted)', marginTop: '1rem' }}>
-              {filtered.length} result{filtered.length !== 1 ? 's' : ''} found
+              {totalResults} result{totalResults !== 1 ? 's' : ''} found
             </p>
           </div>
         )}

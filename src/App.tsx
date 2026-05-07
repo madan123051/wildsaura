@@ -1,9 +1,10 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Photo, Category, FilterTab, Visitor, Story, Comment, Video } from './types';
+import { Photo, Category, FilterTab, Visitor, Story, Comment, Video, GalleryPhoto } from './types';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
 import { CategorySection } from './components/CategorySection';
 import { Gallery } from './components/Gallery';
+import { PhotoGallery } from './components/PhotoGallery';
 import { PhotoModal } from './components/PhotoModal';
 import { AboutSection } from './components/AboutSection';
 import { Footer } from './components/Footer';
@@ -23,6 +24,7 @@ import { addUserLike, removeUserLike, getUserLikes } from './services/userLikesS
 import { getPhotosFromFirestore, deletePhotoFromFirestore, updatePhotoInFirestore, subscribeToPhotos } from './services/photoService';
 import { getStoriesFromFirestore, addStoryToFirestore, deleteStoryFromFirestore, updateStoryInFirestore, uploadStoryCoverToStorage, subscribeToStories } from './services/storyService';
 import { getVideosFromFirestore, addVideoToFirestore, deleteVideoFromFirestore, updateVideoInFirestore, uploadVideoThumbnailToStorage, uploadVideoToStorage, subscribeToVideos } from './services/videoService';
+import { subscribeToGallery } from './services/galleryService';
 import { addCommentToFirestore, deleteCommentFromFirestore, getCommentsForTarget, getAllComments, subscribeToAllComments } from './services/commentService';
 import { saveVisitorToFirestore, getVisitorFromFirestore, updateVisitorDownloadCount, updateVisitorProfile, trackOnlineVisitor, subscribeToOnlineVisitors } from './services/visitorService';
 import { LiveStats } from './components/LiveStats';
@@ -184,6 +186,7 @@ const App: React.FC = () => {
   const [photos, setPhotos] = useState<Photo[]>(SAMPLE_PHOTOS);
   const [stories, setStories] = useState<Story[]>(SAMPLE_STORIES);
   const [videos, setVideos] = useState<Video[]>([]);
+  const [galleryPhotos, setGalleryPhotos] = useState<GalleryPhoto[]>([]);
   const [selectedStory, setSelectedStory] = useState<Story | null>(null);
   const galleryRef = useRef<HTMLElement | null>(null);
 
@@ -507,6 +510,30 @@ const App: React.FC = () => {
       console.warn('Video subscription error:', err);
     });
 
+    // ── Real-time GALLERY subscription ───────────────────────────────
+    const unsubGallery = subscribeToGallery((firestoreGalleryPhotos) => {
+      const mapped: GalleryPhoto[] = firestoreGalleryPhotos.map((fg, idx) => ({
+        id: Date.now() + idx + 12000,
+        firestoreId: fg.id,
+        title: fg.title || fg.fileName || 'Untitled Gallery Photo',
+        category: fg.category,
+        imageUrl: fg.imageUrl,
+        storagePath: fg.storagePath || '',
+        fileName: fg.fileName || '',
+        createdAt: fg.createdAt?.toDate?.()?.toISOString?.() || new Date().toISOString(),
+      }));
+
+      setGalleryPhotos(prev => {
+        const existingMap = new Map(prev.filter(p => p.firestoreId).map(p => [p.firestoreId, p]));
+        return mapped.map(m => {
+          const existing = existingMap.get(m.firestoreId);
+          return existing ? { ...m, id: existing.id } : m;
+        });
+      });
+    }, (err) => {
+      console.warn('Gallery subscription error:', err);
+    });
+
     // ── Real-time COMMENTS subscription (already live!) ────────────────
     const unsubComments = subscribeToAllComments((allComments) => {
       const photoMap: Record<string, Comment[]> = {};
@@ -577,6 +604,7 @@ const App: React.FC = () => {
       unsubPhotos();
       unsubStories();
       unsubVideos();
+      unsubGallery();
       unsubComments();
       unsubOnline();
       unsubSettings();
@@ -1305,6 +1333,7 @@ const App: React.FC = () => {
         onDeleteStory={handleDeleteStory}
         onUpdateStory={handleUpdateStory}
         videos={videos}
+        galleryPhotos={galleryPhotos}
         onAddVideo={handleAddVideo}
         allComments={allFirestoreComments}
         onDeleteComment={handleDeleteComment}
@@ -1341,6 +1370,7 @@ const App: React.FC = () => {
           query={searchQuery}
           onQueryChange={setSearchQuery}
           photos={photos}
+          galleryPhotos={galleryPhotos}
           onPhotoClick={openPhoto}
         />
         <VisitorLogin
@@ -1389,6 +1419,7 @@ const App: React.FC = () => {
           query={searchQuery}
           onQueryChange={setSearchQuery}
           photos={photos}
+          galleryPhotos={galleryPhotos}
           onPhotoClick={(p) => { openPhoto(p); setView('home'); }}
         />
         <VisitorLogin
@@ -1502,6 +1533,7 @@ const App: React.FC = () => {
         isLoggedIn={!!visitor}
         onLoginRequired={() => setShowVisitorLogin(true)}
       />
+      <PhotoGallery photos={galleryPhotos} searchQuery={searchQuery} />
       <StoriesSection stories={stories} onStoryClick={handleStoryClick} />
       <VideoSection 
         videos={videos} 
@@ -1564,6 +1596,7 @@ const App: React.FC = () => {
         query={searchQuery}
         onQueryChange={setSearchQuery}
         photos={photos}
+        galleryPhotos={galleryPhotos}
         onPhotoClick={openPhoto}
       />
 
