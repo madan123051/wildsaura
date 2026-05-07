@@ -2,7 +2,7 @@ import { db, storage } from '../firebase';
 import { collection, addDoc, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, serverTimestamp, Unsubscribe } from 'firebase/firestore';
 import { deleteObject, getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
 
-export type GalleryCategory = 'wildlife' | 'birds' | 'landscapes' | 'portraits' | 'others';
+export type GalleryCategory = 'wildlife' | 'birds' | 'landscapes' | 'portraits';
 
 export interface GalleryPhoto {
   id?: string;
@@ -10,8 +10,6 @@ export interface GalleryPhoto {
   category: GalleryCategory;
   imageUrl: string;
   storagePath?: string;
-  originalSize?: number;
-  compressedSize?: number;
   createdAt?: any;
 }
 
@@ -24,12 +22,11 @@ export async function uploadGalleryPhotoToStorage(
   category: GalleryCategory,
   onProgress?: (progress: number) => void
 ): Promise<{ imageUrl: string; storagePath: string }> {
-  // Store under the existing photos/ prefix so projects with photos/** storage rules keep working.
-  const storagePath = `photos/gallery/${category}/${Date.now()}_${sanitizeFilename(file.name.replace(/\.[^.]+$/, '.webp'))}`;
+  const storagePath = `gallery/${category}/${Date.now()}_${sanitizeFilename(file.name)}`;
   const storageRef = ref(storage, storagePath);
 
   return new Promise((resolve, reject) => {
-    const uploadTask = uploadBytesResumable(storageRef, file, { contentType: file.type || 'image/webp' });
+    const uploadTask = uploadBytesResumable(storageRef, file, { contentType: file.type || 'image/jpeg' });
 
     uploadTask.on(
       'state_changed',

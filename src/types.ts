@@ -111,7 +111,7 @@ export interface AISettings {
 }
 
 
-export type GalleryCategory = 'wildlife' | 'birds' | 'landscapes' | 'portraits' | 'others';
+export type GalleryCategory = 'wildlife' | 'birds' | 'landscapes' | 'portraits';
 
 export interface GalleryPhoto {
   id?: string;
@@ -119,7 +119,5 @@ export interface GalleryPhoto {
   category: GalleryCategory;
   imageUrl: string;
   storagePath?: string;
-  originalSize?: number;
-  compressedSize?: number;
   createdAt?: any;
 }

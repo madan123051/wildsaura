@@ -1696,7 +1696,6 @@ const GALLERY_CATEGORY_OPTIONS: Array<{ value: GalleryCategory; label: string }>
   { value: 'birds', label: 'Birds' },
   { value: 'landscapes', label: 'Landscapes' },
   { value: 'portraits', label: 'Portraits' },
-  { value: 'others', label: 'Others' },
 ];
 
 const GalleryManagement: React.FC = () => {
@@ -1726,26 +1725,20 @@ const GalleryManagement: React.FC = () => {
       for (let index = 0; index < selectedFiles.length; index += 1) {
         const file = selectedFiles[index];
         const baseProgress = Math.round((index / selectedFiles.length) * 100);
-        const compressedFile = await compressForUpload(file, (compressionProgress) => {
-          setProgress(Math.round(baseProgress + ((((compressionProgress / 40) * 45) / selectedFiles.length))));
-        });
-        const uploaded = await uploadGalleryPhotoToStorage(compressedFile, category, (fileProgress) => {
-          setProgress(Math.round(baseProgress + (((45 + fileProgress * 0.55) / selectedFiles.length))));
+        const uploaded = await uploadGalleryPhotoToStorage(file, category, (fileProgress) => {
+          setProgress(Math.round(baseProgress + (fileProgress / selectedFiles.length)));
         });
         await addGalleryPhotoToFirestore({
           title: file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' '),
           category,
           imageUrl: uploaded.imageUrl,
           storagePath: uploaded.storagePath,
-          originalSize: file.size,
-          compressedSize: compressedFile.size,
         });
       }
       setProgress(100);
     } catch (error) {
       console.error('Gallery upload failed:', error);
-      const message = error instanceof Error ? error.message : 'Unknown upload error';
-      alert(`Gallery upload failed: ${message}. Please try again.`);
+      alert('Gallery upload failed. Please try again.');
     } finally {
       setUploading(false);
       setTimeout(() => setProgress(0), 1200);
@@ -1774,7 +1767,7 @@ const GalleryManagement: React.FC = () => {
             </select>
           </div>
           <div>
-            <label style={labelStyle}>Photos (up to 20 at once, auto WebP 2MB)</label>
+            <label style={labelStyle}>Photos (10-20 at once supported)</label>
             <input type="file" accept="image/*" multiple onChange={handleFiles} disabled={uploading} style={inputStyle} />
           </div>
         </div>
@@ -1800,7 +1793,6 @@ const GalleryManagement: React.FC = () => {
               <div style={{ padding: '0.8rem' }}>
                 <h4 style={{ color: 'var(--wa-light)', fontSize: '0.85rem', marginBottom: '0.35rem' }}>{photo.title}</h4>
                 <span style={{ display: 'inline-block', padding: '0.2rem 0.55rem', borderRadius: '999px', background: 'rgba(201,168,76,0.12)', color: 'var(--wa-gold)', fontSize: '0.62rem', textTransform: 'uppercase' }}>{photo.category}</span>
-                {photo.compressedSize && <p style={{ margin: '0.45rem 0 0', fontSize: '0.65rem', color: 'rgba(235,230,220,0.42)' }}>WebP · {(photo.compressedSize / 1024 / 1024).toFixed(2)}MB</p>}
                 <div style={{ marginTop: '0.75rem' }}>
                   {deleteId === (photo.id || photo.imageUrl) ? (
                     <div style={{ display: 'flex', gap: '0.4rem' }}>
