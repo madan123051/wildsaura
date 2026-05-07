@@ -1699,11 +1699,30 @@ const GALLERY_CATEGORY_OPTIONS: Array<{ value: GalleryCategory; label: string }>
   { value: 'others', label: 'Others' },
 ];
 
+
+const isIOSSafari = (): boolean => {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  const iOS = /iP(hone|ad|od)/.test(ua);
+  const webkit = /WebKit/i.test(ua);
+  const isCriOS = /CriOS/i.test(ua);
+  const isFxiOS = /FxiOS/i.test(ua);
+  return iOS && webkit && !isCriOS && !isFxiOS;
+};
+
 // ── Canvas compression ────────────────────────────────────────────────────────
 // Compresses any image to max ~2.5 MB, max dimension 2400px.
 // Tries WebP first; falls back to JPEG (for iOS Safari which may not support WebP canvas).
 async function compressToWebP(file: File, maxSizeMB = 2.5): Promise<Blob> {
   const maxBytes = maxSizeMB * 1024 * 1024;
+  const isSafariIOS = isIOSSafari();
+  console.log('[GalleryUpload] Compression start', { name: file.name, size: file.size, type: file.type, isSafariIOS });
+
+  if (isSafariIOS && file.size > 10 * 1024 * 1024) {
+    console.log('[GalleryUpload] Skipping compression for large iOS Safari file (>10MB) to avoid constructor/runtime issues');
+    return file;
+  }
+
   // Skip if already small enough (any format)
   if (file.size <= maxBytes) return file;
 
@@ -1788,10 +1807,17 @@ const GalleryManagement: React.FC = () => {
         const file = selectedFiles[index];
         const baseProgress = Math.round((index / selectedFiles.length) * 100);
         console.log('[GalleryUpload] Processing selected file', { name: file.name, size: file.size, type: file.type, category, index, total: selectedFiles.length });
-        const compressed = await compressToWebP(file);
-        console.log('[GalleryUpload] Compression complete', { originalSize: file.size, compressedSize: compressed.size, compressedType: compressed.type || file.type });
-        const uploadFilename = (file.name || `gallery_${Date.now()}`).replace(/\.[^.]+$/, compressed.type === 'image/jpeg' ? '.jpg' : '.webp');
-        const uploaded = await uploadGalleryPhotoToStorage(compressed, category, uploadFilename, (fileProgress) => {
+        let uploadBlob: Blob = file;
+        try {
+          uploadBlob = await compressToWebP(file);
+          console.log('[GalleryUpload] Compression complete', { originalSize: file.size, compressedSize: uploadBlob.size, compressedType: uploadBlob.type || file.type });
+        } catch (compressionError) {
+          console.error('[GalleryUpload] Compression failed, falling back to original file', compressionError);
+          uploadBlob = file;
+        }
+        const uploadFilename = (file.name || `gallery_${Date.now()}`).replace(/\.[^.]+$/, uploadBlob.type === 'image/jpeg' ? '.jpg' : (uploadBlob.type === 'image/webp' ? '.webp' : file.name.match(/\.[^.]+$/)?.[0] || '.jpg'));
+        console.log('[GalleryUpload] Upload step', { uploadFilename, uploadSize: uploadBlob.size, uploadType: uploadBlob.type || file.type });
+        const uploaded = await uploadGalleryPhotoToStorage(uploadBlob, category, uploadFilename, (fileProgress) => {
           setProgress(Math.round(baseProgress + (fileProgress / selectedFiles.length)));
         });
         await addGalleryPhotoToFirestore({
