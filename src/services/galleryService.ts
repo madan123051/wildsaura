@@ -2,7 +2,7 @@ import { db, storage } from '../firebase';
 import { collection, addDoc, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, serverTimestamp, Unsubscribe } from 'firebase/firestore';
 import { deleteObject, getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
 
-export type GalleryCategory = 'wildlife' | 'birds' | 'landscapes' | 'portraits';
+export type GalleryCategory = 'wildlife' | 'birds' | 'landscapes' | 'portraits' | 'others';
 
 export interface GalleryPhoto {
   id?: string;
@@ -26,7 +26,7 @@ export async function uploadGalleryPhotoToStorage(
   const storageRef = ref(storage, storagePath);
 
   return new Promise((resolve, reject) => {
-    const uploadTask = uploadBytesResumable(storageRef, file, { contentType: file.type || 'image/jpeg' });
+    const uploadTask = uploadBytesResumable(storageRef, file, { contentType: file.type || 'image/webp' });
 
     uploadTask.on(
       'state_changed',
