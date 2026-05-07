@@ -7,7 +7,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyCXDJrFmn-pzbqys91tj4Fruqn4tl58p9Y",
   authDomain: "wildsaura-1ef8a.firebaseapp.com",
   projectId: "wildsaura-1ef8a",
-  storageBucket: "wildsaura-1ef8a.firebasestorage.app",
+  storageBucket: "wildsaura-1ef8a.appspot.com",
   messagingSenderId: "690017200836",
   appId: "1:690017200836:web:40498b6a5874fb176ff791",
   measurementId: "G-WND911C3FJ"
