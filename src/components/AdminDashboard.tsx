@@ -1799,9 +1799,10 @@ const GalleryManagement: React.FC = () => {
         });
       }
       setProgress(100);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Gallery upload failed:', error);
-      alert('Gallery upload failed. Please try again.');
+      const reason = error?.code || error?.message || 'Unknown error';
+      alert(`Gallery upload failed: ${reason}\n\nIf this says "permission-denied" or "unauthorized", update your Firebase Storage & Firestore rules.`);
     } finally {
       setUploading(false);
       setTimeout(() => setProgress(0), 1200);
