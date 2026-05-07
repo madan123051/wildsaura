@@ -24,7 +24,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ isOpen, onClose, query, on
     ? photos.filter((p) => {
         const q = query.toLowerCase();
         return (
-          p.title.toLowerCase().includes(q) ||
+          (p.title || '').toLowerCase().includes(q) ||
           (p.location || '').toLowerCase().includes(q) ||
           p.category.toLowerCase().includes(q) ||
           (p.caption || '').toLowerCase().includes(q) ||

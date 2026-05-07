@@ -1717,7 +1717,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const nextVideoId = Math.max(0, ...videos.map((v) => v.id)) + 1;
 
   const filteredPhotos = photos.filter((p) =>
-    p.title.toLowerCase().includes(search.toLowerCase()) ||
+    (p.title || '').toLowerCase().includes(search.toLowerCase()) ||
     (p.location || '').toLowerCase().includes(search.toLowerCase())
   );
 

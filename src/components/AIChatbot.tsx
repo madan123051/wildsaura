@@ -66,7 +66,7 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
       // Find matching photos from gallery
       if (response.matchingPhotoTitles && response.matchingPhotoTitles.length > 0) {
         const matched = photos.filter(p =>
-          response.matchingPhotoTitles.some(t => p.title.toLowerCase() === t.toLowerCase())
+          response.matchingPhotoTitles.some(t => (p.title || '').toLowerCase() === String(t || '').toLowerCase())
         );
         setMatchedPhotos(matched);
       } else {
@@ -75,7 +75,7 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
         const tagMatches = photos.filter(p =>
           p.tags?.some(t => t.toLowerCase().includes(q)) ||
           p.animalName?.toLowerCase().includes(q) ||
-          p.title.toLowerCase().includes(q)
+          (p.title || '').toLowerCase().includes(q)
         );
         if (tagMatches.length > 0) {
           setMatchedPhotos(tagMatches);

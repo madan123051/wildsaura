@@ -33,6 +33,8 @@ import { NotificationPanel, AppNotification } from './components/NotificationPan
 const logoUrl = '/photos/logo.png';
 const ADMIN_EMAIL = 'madan123050@gmail.com';
 
+const safeLower = (value: unknown) => (typeof value === 'string' ? value.toLowerCase() : '');
+
 // ── Sample Photo Data ───────────────────────────────────────────────────────
 const SAMPLE_PHOTOS: Photo[] = [
   {
@@ -428,8 +430,8 @@ const App: React.FC = () => {
           }
           return m;
         });
-        const existingTitles = new Set(samples.map(s => s.title.toLowerCase().trim()));
-        const nonDuplicate = updatedFirestore.filter(s => !existingTitles.has(s.title.toLowerCase().trim()));
+        const existingTitles = new Set(samples.map(s => safeLower(s.title).trim()).filter(Boolean));
+        const nonDuplicate = updatedFirestore.filter(s => !existingTitles.has(safeLower(s.title).trim()));
         const allStories = [...nonDuplicate, ...samples];
 
         // Deep link: auto-open story if pending (only on first snapshot)
@@ -1142,7 +1144,7 @@ const App: React.FC = () => {
       let newStory: Story = {
         id: Date.now(),
         title: data.title,
-        slug: data.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+        slug: safeLower(data.title).replace(/[^a-z0-9]+/g, '-'),
         excerpt: data.excerpt,
         content: data.content,
         coverImageUrl: photo.imageUrl,
@@ -1338,10 +1340,27 @@ const App: React.FC = () => {
   }
 
   const StaticPage = ({ title, text, cta }: { title: string; text: string; cta?: string }) => (
-    <div className="wa-container" style={{ paddingTop: '8rem', paddingBottom: '5rem', maxWidth: 900 }}>
-      <h1 style={{ fontSize: '2.5rem', color: 'var(--wa-primary-dark)', marginBottom: '1rem' }}>{title}</h1>
-      <p style={{ fontSize: '1.1rem', lineHeight: 1.8, color: '#1f2937' }}>{text}</p>
-      {cta && <p style={{ marginTop: '1.5rem', fontWeight: 700, color: 'var(--wa-accent)' }}>{cta}</p>}
+    <div style={{ minHeight: '100vh', background: 'var(--wa-dark)' }}>
+      <Header
+        onScrollToGallery={scrollToGallery}
+        logoUrl={logoUrl}
+        onSearchClick={() => setShowSearch(true)}
+        visitor={visitor}
+        onVisitorLoginClick={() => setShowVisitorLogin(true)}
+        onVisitorLogout={handleVisitorLogout}
+        onVisitorUpdate={handleVisitorUpdate}
+        onStoriesClick={handleStoriesNavClick}
+        notificationCount={unreadNotifCount}
+        onNotificationClick={() => setShowNotifPanel(p => !p)}
+        isAdmin={isAdmin}
+        onAdminClick={() => { setView('admin-dashboard'); window.history.pushState({}, '', '/admin'); }}
+      />
+      <div className="wa-container" style={{ paddingTop: '8rem', paddingBottom: '5rem', maxWidth: 900 }}>
+        <h1 style={{ fontSize: '2.5rem', color: 'var(--wa-text)', marginBottom: '1rem' }}>{title}</h1>
+        <p style={{ fontSize: '1.1rem', lineHeight: 1.8, color: 'var(--wa-muted)' }}>{text}</p>
+        {cta && <p style={{ marginTop: '1.5rem', fontWeight: 700, color: 'var(--wa-accent)' }}>{cta}</p>}
+      </div>
+      <Footer logoUrl={logoUrl} onTermsClick={handleTermsClick} />
     </div>
   );
   if (view === 'marketplace') return <StaticPage title="Buy & Sell Authentic Nepal Photography" text="Support local photographers by purchasing high-quality images. Use them for personal or commercial projects. Option A: Buy Now via Google Form/DM and payment by eSewa or bank. Option B: Stripe or Gumroad links." cta="20% of every purchase supports animal rescue in Nepal." />;
