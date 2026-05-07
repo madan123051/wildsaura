@@ -105,25 +105,28 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
         <button
           onClick={() => setIsOpen(true)}
           style={{
-            position: 'fixed', bottom: 24, right: 24, zIndex: 45,
-            width: 56, height: 56, borderRadius: '50%',
-            background: 'linear-gradient(135deg, var(--wa-gold), var(--wa-gold-light))',
-            border: 'none', cursor: 'pointer',
+            position: 'fixed', bottom: 20, right: 20, zIndex: 95,
+            width: 70, height: 70, borderRadius: '50%',
+            background: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.22), rgba(201,168,76,0.92))',
+            border: '2px solid rgba(255,255,255,0.7)', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 4px 24px rgba(201,168,76,0.4)',
+            boxShadow: '0 10px 36px rgba(0,0,0,0.65), 0 0 0 4px rgba(201,168,76,0.35)',
             transition: 'transform 0.3s, box-shadow 0.3s',
-            fontSize: '24px',
+            fontSize: '28px',
+            color: '#1b1200',
           }}
           onMouseOver={(e) => {
             e.currentTarget.style.transform = 'scale(1.1)';
-            e.currentTarget.style.boxShadow = '0 6px 32px rgba(201,168,76,0.6)';
+            e.currentTarget.style.boxShadow = '0 14px 40px rgba(0,0,0,0.75), 0 0 0 6px rgba(201,168,76,0.45)';
           }}
           onMouseOut={(e) => {
             e.currentTarget.style.transform = 'scale(1)';
-            e.currentTarget.style.boxShadow = '0 4px 24px rgba(201,168,76,0.4)';
+            e.currentTarget.style.boxShadow = '0 10px 36px rgba(0,0,0,0.65), 0 0 0 4px rgba(201,168,76,0.35)';
           }}
+          aria-label="Open AI Chatbot"
+          title="Open AI Chatbot"
         >
-          🐾
+          🦁
         </button>
       )}
 
@@ -136,7 +139,7 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
             height: 560, maxHeight: 'calc(100vh - 100px)',
             borderRadius: '16px', overflow: 'hidden',
             background: 'var(--wa-dark-card)',
-            border: '1px solid rgba(201,168,76,0.25)',
+            border: '1px solid rgba(201,168,76,0.5)',
             boxShadow: '0 8px 48px rgba(0,0,0,0.6)',
             display: 'flex', flexDirection: 'column',
             animation: 'chatSlideUp 0.3s ease',
@@ -181,7 +184,7 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
                     borderRadius: msg.sender === 'user' ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
                     background: msg.sender === 'user'
                       ? 'linear-gradient(135deg, rgba(201,168,76,0.25), rgba(201,168,76,0.15))'
-                      : 'rgba(255,255,255,0.05)',
+                      : 'rgba(255,255,255,0.12)',
                     border: msg.sender === 'user'
                       ? '1px solid rgba(201,168,76,0.3)'
                       : '1px solid var(--wa-border)',
@@ -261,8 +264,8 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
               <div style={{
                 alignSelf: 'flex-start', padding: '0.65rem 0.85rem',
                 borderRadius: '12px 12px 12px 2px',
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid var(--wa-border)',
+                background: 'rgba(255,255,255,0.12)',
+                border: '1px solid rgba(201,168,76,0.35)',
                 fontSize: '0.82rem', color: 'var(--wa-gold)',
                 display: 'flex', alignItems: 'center', gap: '0.5rem',
               }}>
@@ -324,7 +327,7 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
               disabled={isThinking}
               style={{
                 flex: 1, padding: '0.6rem 0.75rem',
-                background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(201,168,76,0.15)',
+                background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(201,168,76,0.35)',
                 borderRadius: '8px', color: 'var(--wa-text)', fontSize: '0.82rem',
                 outline: 'none', boxSizing: 'border-box',
                 opacity: isThinking ? 0.5 : 1,
