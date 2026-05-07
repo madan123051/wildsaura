@@ -13,7 +13,6 @@ const CATEGORY_TABS: Array<{ key: 'all' | GalleryCategory; label: string }> = [
   { key: 'birds', label: 'Birds' },
   { key: 'landscapes', label: 'Landscapes' },
   { key: 'portraits', label: 'Portraits' },
-  { key: 'others', label: 'Others' },
 ];
 
 const categoryLabel = (category: GalleryCategory) => CATEGORY_TABS.find(tab => tab.key === category)?.label || category;

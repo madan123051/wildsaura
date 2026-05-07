@@ -415,7 +415,7 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
     const hasValidLng = !isNaN(parsedLng) && isFinite(parsedLng);
     
     let finalImageUrl = imageUrl;
-    let finalThumbnailUrl = initial?.thumbnailUrl || '';
+    let thumbnailUrl = '';
     let firestoreId: string | undefined;
     
     try {
@@ -1696,7 +1696,6 @@ const GALLERY_CATEGORY_OPTIONS: Array<{ value: GalleryCategory; label: string }>
   { value: 'birds', label: 'Birds' },
   { value: 'landscapes', label: 'Landscapes' },
   { value: 'portraits', label: 'Portraits' },
-  { value: 'others', label: 'Others' },
 ];
 
 const GalleryManagement: React.FC = () => {
@@ -1726,29 +1725,20 @@ const GalleryManagement: React.FC = () => {
       for (let index = 0; index < selectedFiles.length; index += 1) {
         const file = selectedFiles[index];
         const baseProgress = Math.round((index / selectedFiles.length) * 100);
-        const batchSlice = 100 / selectedFiles.length;
-        const compressedFile = await compressForUpload(file, (compressionProgress) => {
-          // Compression reports 0-40; use the first half of this file's batch progress.
-          const normalizedCompression = Math.min(compressionProgress, 40) / 40;
-          setProgress(Math.round(baseProgress + (normalizedCompression * batchSlice * 0.5)));
-        });
-        const uploaded = await uploadGalleryPhotoToStorage(compressedFile, category, (fileProgress) => {
-          setProgress(Math.round(baseProgress + (batchSlice * 0.5) + ((fileProgress / 100) * batchSlice * 0.5)));
+        const uploaded = await uploadGalleryPhotoToStorage(file, category, (fileProgress) => {
+          setProgress(Math.round(baseProgress + (fileProgress / selectedFiles.length)));
         });
         await addGalleryPhotoToFirestore({
           title: file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' '),
           category,
           imageUrl: uploaded.imageUrl,
           storagePath: uploaded.storagePath,
-          originalSize: file.size,
-          compressedSize: compressedFile.size,
         });
       }
       setProgress(100);
     } catch (error) {
       console.error('Gallery upload failed:', error);
-      const message = error instanceof Error ? error.message : 'Please try again.';
-      alert(`Gallery upload failed: ${message}`);
+      alert('Gallery upload failed. Please try again.');
     } finally {
       setUploading(false);
       setTimeout(() => setProgress(0), 1200);
@@ -1777,14 +1767,14 @@ const GalleryManagement: React.FC = () => {
             </select>
           </div>
           <div>
-            <label style={labelStyle}>Photos (10-20 at once supported · auto WebP 2MB max)</label>
+            <label style={labelStyle}>Photos (10-20 at once supported)</label>
             <input type="file" accept="image/*" multiple onChange={handleFiles} disabled={uploading} style={inputStyle} />
           </div>
         </div>
         {uploading || progress > 0 ? (
           <div style={{ marginTop: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem', color: 'rgba(235,230,220,0.65)', fontSize: '0.75rem' }}>
-              <span>{uploading ? 'Compressing to WebP and uploading to category folder...' : 'Upload complete'}</span>
+              <span>{uploading ? 'Uploading to category folder...' : 'Upload complete'}</span>
               <span>{progress}%</span>
             </div>
             <div style={{ height: 8, borderRadius: 999, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>

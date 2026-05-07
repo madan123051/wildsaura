@@ -111,17 +111,13 @@ export interface AISettings {
 }
 
 
-export type GalleryCategory = 'wildlife' | 'birds' | 'landscapes' | 'portraits' | 'others';
-export type GalleryFirestoreCollection = 'galleryPhotos' | 'photos';
+export type GalleryCategory = 'wildlife' | 'birds' | 'landscapes' | 'portraits';
 
 export interface GalleryPhoto {
   id?: string;
-  firestoreCollection?: GalleryFirestoreCollection;
   title: string;
   category: GalleryCategory;
   imageUrl: string;
   storagePath?: string;
-  originalSize?: number;
-  compressedSize?: number;
   createdAt?: any;
 }
