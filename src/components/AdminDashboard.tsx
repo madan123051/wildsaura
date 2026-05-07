@@ -1713,6 +1713,53 @@ const GalleryManagement: React.FC = () => {
   }, []);
 
   const handleFiles = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    // ── Inline image processor: resize + © WildSaura watermark + WebP ──
+    const processImage = async (file: File): Promise<{ blob: Blob; filename: string; width: number; height: number; format: 'webp' | 'jpeg'; sizeBytes: number }> => {
+      const MAX_W = 2400;
+      const url = URL.createObjectURL(file);
+      const img: HTMLImageElement = await new Promise((resolve, reject) => {
+        const i = new Image();
+        i.onload = () => resolve(i);
+        i.onerror = () => reject(new Error('Could not decode image'));
+        i.decoding = 'async';
+        i.src = url;
+      });
+      try {
+        const ratio = img.naturalWidth > MAX_W ? MAX_W / img.naturalWidth : 1;
+        const w = Math.round(img.naturalWidth * ratio);
+        const h = Math.round(img.naturalHeight * ratio);
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('Canvas not supported');
+        ctx.imageSmoothingEnabled = true;
+        (ctx as any).imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, w, h);
+        const fontSize = Math.max(16, Math.min(48, Math.round(Math.max(w, h) * 0.022)));
+        ctx.save();
+        ctx.font = `600 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+        ctx.textBaseline = 'bottom';
+        ctx.textAlign = 'right';
+        ctx.globalAlpha = 0.55;
+        ctx.shadowColor = 'rgba(0,0,0,0.6)';
+        ctx.shadowBlur = 4;
+        ctx.shadowOffsetY = 1;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText('© WildSaura', w - 24, h - 24);
+        ctx.restore();
+        const toBlob = (type: string, q: number) => new Promise<Blob | null>(res => { try { canvas.toBlob(b => res(b), type, q); } catch { res(null); } });
+        let blob = await toBlob('image/webp', 0.82);
+        let format: 'webp' | 'jpeg' = 'webp';
+        if (!blob) blob = await toBlob('image/webp', 0.78);
+        if (!blob) { blob = await toBlob('image/jpeg', 0.85); format = 'jpeg'; }
+        if (!blob) throw new Error('Image encoding failed');
+        const baseName = file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9._-]/g, '_');
+        return { blob, filename: `${baseName}.${format}`, width: w, height: h, format, sizeBytes: blob.size };
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    };
+
     const selectedFiles = Array.from(event.target.files || []).filter(file => file.type.startsWith('image/'));
     event.target.value = '';
     if (selectedFiles.length === 0) return;
@@ -1727,11 +1774,7 @@ const GalleryManagement: React.FC = () => {
       for (let index = 0; index < selectedFiles.length; index += 1) {
         const file = selectedFiles[index];
         const baseProgress = Math.round((index / selectedFiles.length) * 100);
-
-        // 1. Process: resize + watermark + WebP encode
-        const processed = await processGalleryImage(file);
-
-        // 2. Upload processed Blob to Firebase Storage
+        const processed = await processImage(file);
         const uploaded = await uploadGalleryBlobToStorage(
           processed.blob,
           processed.filename,
@@ -1740,8 +1783,6 @@ const GalleryManagement: React.FC = () => {
             setProgress(Math.round(baseProgress + (fileProgress / selectedFiles.length)));
           }
         );
-
-        // 3. Save metadata to Firestore
         await addGalleryPhotoToFirestore({
           title: file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' '),
           category,
