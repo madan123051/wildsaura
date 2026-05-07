@@ -1772,11 +1772,71 @@ async function compressToWebP(file: File, maxSizeMB = 2.5): Promise<Blob> {
         );
       };
 
-      tryFormat(0, 0.85);
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); }; // fallback: upload original
-    img.src = url;
-  });
+const isIOSSafari = (): boolean => {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  const isIOS = /iP(ad|hone|od)/.test(ua) || ((navigator.platform === 'MacIntel') && navigator.maxTouchPoints > 1);
+  const isSafari = /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua);
+  return isIOS && isSafari;
+};
+
+const loadImageFromFile = (file: File): Promise<HTMLImageElement> => new Promise((resolve, reject) => {
+  const img = new Image();
+  const objectUrl = URL.createObjectURL(file);
+  img.onload = () => { URL.revokeObjectURL(objectUrl); resolve(img); };
+  img.onerror = (e) => { URL.revokeObjectURL(objectUrl); reject(e); };
+  img.src = objectUrl;
+});
+
+async function preprocessGalleryImage(file: File): Promise<Blob> {
+  const safariMode = isIOSSafari();
+  const MAX_DIM = safariMode ? 2000 : 2400;
+  const TARGET_MAX_BYTES = safariMode ? 2.6 * 1024 * 1024 : 3 * 1024 * 1024;
+
+  console.log('[GalleryUpload] Preprocess start', { name: file.name, size: file.size, type: file.type, safariMode });
+
+  try {
+    const img = await loadImageFromFile(file);
+    const scale = Math.min(1, MAX_DIM / Math.max(img.naturalWidth, img.naturalHeight));
+    const outW = Math.max(1, Math.round(img.naturalWidth * scale));
+    const outH = Math.max(1, Math.round(img.naturalHeight * scale));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = outW;
+    canvas.height = outH;
+    const ctx = canvas.getContext('2d', { alpha: false });
+    if (!ctx) throw new Error('Canvas context unavailable');
+
+    ctx.drawImage(img, 0, 0, outW, outH);
+
+    const pad = Math.max(16, Math.round(Math.min(outW, outH) * 0.01));
+    const fontSize = Math.max(14, Math.round(Math.min(outW, outH) * 0.022));
+    ctx.save();
+    ctx.globalAlpha = 0.55;
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'bottom';
+    ctx.font = `600 ${fontSize}px Inter, Arial, sans-serif`;
+    ctx.fillText('© WildSaura', outW - Math.max(24, pad), outH - Math.max(24, pad));
+    ctx.restore();
+
+    const qualities = safariMode ? [0.8, 0.76, 0.72, 0.68] : [0.85, 0.82, 0.78, 0.74];
+    for (const quality of qualities) {
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/webp', quality));
+      if (!blob) {
+        console.warn('[GalleryUpload] WebP conversion failed for quality', quality);
+        continue;
+      }
+      console.log('[GalleryUpload] WebP generated', { quality, size: blob.size, width: outW, height: outH });
+      if (blob.size <= TARGET_MAX_BYTES || quality === qualities[qualities.length - 1]) {
+        return blob;
+      }
+    }
+    throw new Error('WebP conversion failed for all quality levels');
+  } catch (error) {
+    console.error('[GalleryUpload] Preprocess failed', error);
+    throw new Error('Image preprocessing failed before upload.');
+  }
 }
 
 const GalleryManagement: React.FC = () => {
