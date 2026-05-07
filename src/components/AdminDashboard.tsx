@@ -1699,13 +1699,15 @@ const GALLERY_CATEGORY_OPTIONS: Array<{ value: GalleryCategory; label: string }>
   { value: 'others', label: 'Others' },
 ];
 
-// ── WebP canvas compression ───────────────────────────────────────────────────
-// Compresses any image file to WebP, max ~2.5 MB, max dimension 2400px.
+// ── Canvas compression ────────────────────────────────────────────────────────
+// Compresses any image to max ~2.5 MB, max dimension 2400px.
+// Tries WebP first; falls back to JPEG (for iOS Safari which may not support WebP canvas).
 async function compressToWebP(file: File, maxSizeMB = 2.5): Promise<File> {
   const maxBytes = maxSizeMB * 1024 * 1024;
-  if (file.size <= maxBytes && file.type === 'image/webp') return file;
+  // Skip if already small enough (any format)
+  if (file.size <= maxBytes) return file;
 
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.onload = () => {
@@ -1721,32 +1723,39 @@ async function compressToWebP(file: File, maxSizeMB = 2.5): Promise<File> {
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext('2d');
-      if (!ctx) { reject(new Error('Canvas context unavailable')); return; }
+      if (!ctx) { resolve(file); return; }  // fallback: upload original
       ctx.drawImage(img, 0, 0, width, height);
 
-      let quality = 0.85;
-      const tryCompress = () => {
+      // Try WebP, then JPEG as fallback (iOS Safari may not support WebP canvas)
+      const formats: Array<{ mime: string; ext: string }> = [
+        { mime: 'image/webp', ext: '.webp' },
+        { mime: 'image/jpeg', ext: '.jpg' },
+      ];
+
+      const tryFormat = (formatIndex: number, quality: number) => {
+        if (formatIndex >= formats.length) { resolve(file); return; } // give up, upload original
+        const { mime, ext } = formats[formatIndex];
         canvas.toBlob(
           (blob) => {
-            if (!blob) { reject(new Error('Canvas toBlob failed')); return; }
+            if (!blob || blob.size === 0) {
+              // This format not supported — try next
+              tryFormat(formatIndex + 1, 0.85);
+              return;
+            }
             if (blob.size <= maxBytes || quality <= 0.45) {
-              resolve(new File(
-                [blob],
-                file.name.replace(/\.[^.]+$/, '.webp'),
-                { type: 'image/webp' }
-              ));
+              resolve(new File([blob], file.name.replace(/\.[^.]+$/, ext), { type: mime }));
             } else {
-              quality = Math.round((quality - 0.1) * 100) / 100;
-              tryCompress();
+              tryFormat(formatIndex, Math.round((quality - 0.1) * 100) / 100);
             }
           },
-          'image/webp',
+          mime,
           quality
         );
       };
-      tryCompress();
+
+      tryFormat(0, 0.85);
     };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image load failed')); };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); }; // fallback: upload original
     img.src = url;
   });
 }
