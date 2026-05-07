@@ -415,6 +415,7 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
     const hasValidLng = !isNaN(parsedLng) && isFinite(parsedLng);
     
     let finalImageUrl = imageUrl;
+    let thumbnailUrl = '';
     let firestoreId: string | undefined;
     
     try {
@@ -450,7 +451,6 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
       }
       
       // Upload thumbnail alongside main photo (non-blocking — if it fails, no problem)
-      let thumbnailUrl = '';
       if (thumbnailFile) {
         try {
           const thumbName = (uploadedFileName || 'photo').replace(/\.[^.]+$/, '') + '_thumb.webp';
