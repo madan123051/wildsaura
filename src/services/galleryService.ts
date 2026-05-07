@@ -20,6 +20,7 @@ const sanitizeFilename = (filename: string) => filename.replace(/[^a-zA-Z0-9._-]
 export async function uploadGalleryPhotoToStorage(
   file: Blob,
   category: GalleryCategory,
+  filename: string,
   onProgress?: (progress: number) => void
 ): Promise<{ imageUrl: string; storagePath: string }> {
   const storage = getStorage();

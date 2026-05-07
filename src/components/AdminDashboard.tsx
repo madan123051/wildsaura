@@ -1699,11 +1699,30 @@ const GALLERY_CATEGORY_OPTIONS: Array<{ value: GalleryCategory; label: string }>
   { value: 'others', label: 'Others' },
 ];
 
+
+const isIOSSafari = (): boolean => {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  const iOS = /iP(hone|ad|od)/.test(ua);
+  const webkit = /WebKit/i.test(ua);
+  const isCriOS = /CriOS/i.test(ua);
+  const isFxiOS = /FxiOS/i.test(ua);
+  return iOS && webkit && !isCriOS && !isFxiOS;
+};
+
 // ── Canvas compression ────────────────────────────────────────────────────────
 // Compresses any image to max ~2.5 MB, max dimension 2400px.
 // Tries WebP first; falls back to JPEG (for iOS Safari which may not support WebP canvas).
 async function compressToWebP(file: File, maxSizeMB = 2.5): Promise<Blob> {
   const maxBytes = maxSizeMB * 1024 * 1024;
+  const isSafariIOS = isIOSSafari();
+  console.log('[GalleryUpload] Compression start', { name: file.name, size: file.size, type: file.type, isSafariIOS });
+
+  if (isSafariIOS && file.size > 10 * 1024 * 1024) {
+    console.log('[GalleryUpload] Skipping compression for large iOS Safari file (>10MB) to avoid constructor/runtime issues');
+    return file;
+  }
+
   // Skip if already small enough (any format)
   if (file.size <= maxBytes) return file;
 
