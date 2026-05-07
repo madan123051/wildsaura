@@ -1696,7 +1696,60 @@ const GALLERY_CATEGORY_OPTIONS: Array<{ value: GalleryCategory; label: string }>
   { value: 'birds', label: 'Birds' },
   { value: 'landscapes', label: 'Landscapes' },
   { value: 'portraits', label: 'Portraits' },
+  { value: 'others', label: 'Others' },
 ];
+
+// ── WebP canvas compression ───────────────────────────────────────────────────
+// Compresses any image file to WebP, max ~2.5 MB, max dimension 2400px.
+async function compressToWebP(file: File, maxSizeMB = 2.5): Promise<File> {
+  const maxBytes = maxSizeMB * 1024 * 1024;
+  if (file.size <= maxBytes && file.type === 'image/webp') return file;
+
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const canvas = document.createElement('canvas');
+      let { width, height } = img;
+      const MAX_DIM = 2400;
+      if (width > MAX_DIM || height > MAX_DIM) {
+        const scale = MAX_DIM / Math.max(width, height);
+        width = Math.round(width * scale);
+        height = Math.round(height * scale);
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { reject(new Error('Canvas context unavailable')); return; }
+      ctx.drawImage(img, 0, 0, width, height);
+
+      let quality = 0.85;
+      const tryCompress = () => {
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) { reject(new Error('Canvas toBlob failed')); return; }
+            if (blob.size <= maxBytes || quality <= 0.45) {
+              resolve(new File(
+                [blob],
+                file.name.replace(/\.[^.]+$/, '.webp'),
+                { type: 'image/webp' }
+              ));
+            } else {
+              quality = Math.round((quality - 0.1) * 100) / 100;
+              tryCompress();
+            }
+          },
+          'image/webp',
+          quality
+        );
+      };
+      tryCompress();
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image load failed')); };
+    img.src = url;
+  });
+}
 
 const GalleryManagement: React.FC = () => {
   const [category, setCategory] = useState<GalleryCategory>('wildlife');
@@ -1725,7 +1778,8 @@ const GalleryManagement: React.FC = () => {
       for (let index = 0; index < selectedFiles.length; index += 1) {
         const file = selectedFiles[index];
         const baseProgress = Math.round((index / selectedFiles.length) * 100);
-        const uploaded = await uploadGalleryPhotoToStorage(file, category, (fileProgress) => {
+        const compressed = await compressToWebP(file);
+        const uploaded = await uploadGalleryPhotoToStorage(compressed, category, (fileProgress) => {
           setProgress(Math.round(baseProgress + (fileProgress / selectedFiles.length)));
         });
         await addGalleryPhotoToFirestore({
