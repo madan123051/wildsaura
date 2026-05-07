@@ -1702,7 +1702,7 @@ const GALLERY_CATEGORY_OPTIONS: Array<{ value: GalleryCategory; label: string }>
 // ── Canvas compression ────────────────────────────────────────────────────────
 // Compresses any image to max ~2.5 MB, max dimension 2400px.
 // Tries WebP first; falls back to JPEG (for iOS Safari which may not support WebP canvas).
-async function compressToWebP(file: File, maxSizeMB = 2.5): Promise<File> {
+async function compressToWebP(file: File, maxSizeMB = 2.5): Promise<Blob> {
   const maxBytes = maxSizeMB * 1024 * 1024;
   // Skip if already small enough (any format)
   if (file.size <= maxBytes) return file;
@@ -1727,14 +1727,14 @@ async function compressToWebP(file: File, maxSizeMB = 2.5): Promise<File> {
       ctx.drawImage(img, 0, 0, width, height);
 
       // Try WebP, then JPEG as fallback (iOS Safari may not support WebP canvas)
-      const formats: Array<{ mime: string; ext: string }> = [
-        { mime: 'image/webp', ext: '.webp' },
-        { mime: 'image/jpeg', ext: '.jpg' },
+      const formats: Array<{ mime: string }> = [
+        { mime: 'image/webp' },
+        { mime: 'image/jpeg' },
       ];
 
       const tryFormat = (formatIndex: number, quality: number) => {
         if (formatIndex >= formats.length) { resolve(file); return; } // give up, upload original
-        const { mime, ext } = formats[formatIndex];
+        const { mime } = formats[formatIndex];
         canvas.toBlob(
           (blob) => {
             if (!blob || blob.size === 0) {
@@ -1743,7 +1743,7 @@ async function compressToWebP(file: File, maxSizeMB = 2.5): Promise<File> {
               return;
             }
             if (blob.size <= maxBytes || quality <= 0.45) {
-              resolve(new File([blob], file.name.replace(/\.[^.]+$/, ext), { type: mime }));
+              resolve(blob);
             } else {
               tryFormat(formatIndex, Math.round((quality - 0.1) * 100) / 100);
             }
@@ -1786,8 +1786,21 @@ const GalleryManagement: React.FC = () => {
     try {
       for (let index = 0; index < selectedFiles.length; index += 1) {
         const file = selectedFiles[index];
+        console.log('[GalleryUpload] Processing selected file', {
+          index: index + 1,
+          total: selectedFiles.length,
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          category,
+        });
         const baseProgress = Math.round((index / selectedFiles.length) * 100);
         const compressed = await compressToWebP(file);
+        console.log('[GalleryUpload] Compression result', {
+          originalSize: file.size,
+          compressedSize: compressed.size,
+          compressedType: compressed.type,
+        });
         const uploaded = await uploadGalleryPhotoToStorage(compressed, category, (fileProgress) => {
           setProgress(Math.round(baseProgress + (fileProgress / selectedFiles.length)));
         });

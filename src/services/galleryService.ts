@@ -1,6 +1,6 @@
-import { db, storage } from '../firebase';
+import { db } from '../firebase';
 import { collection, addDoc, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, serverTimestamp, Unsubscribe } from 'firebase/firestore';
-import { deleteObject, getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
+import { deleteObject, getDownloadURL, getStorage, ref, uploadBytes } from 'firebase/storage';
 
 export type GalleryCategory = 'wildlife' | 'birds' | 'landscapes' | 'portraits' | 'others';
 
@@ -18,33 +18,32 @@ const GALLERY_COLLECTION = 'galleryPhotos';
 const sanitizeFilename = (filename: string) => filename.replace(/[^a-zA-Z0-9._-]/g, '_');
 
 export async function uploadGalleryPhotoToStorage(
-  file: File,
+  file: Blob,
   category: GalleryCategory,
   onProgress?: (progress: number) => void
 ): Promise<{ imageUrl: string; storagePath: string }> {
-  const storagePath = `gallery/${category}/${Date.now()}_${sanitizeFilename(file.name)}`;
+  const storage = getStorage();
+  const fallbackName = `gallery_${Date.now()}.jpg`;
+  const sourceName = (file as File)?.name || fallbackName;
+  const storagePath = `gallery/${category}/${Date.now()}_${sanitizeFilename(sourceName)}`;
   const storageRef = ref(storage, storagePath);
+  const contentType = file.type || 'image/jpeg';
 
-  return new Promise((resolve, reject) => {
-    const uploadTask = uploadBytesResumable(storageRef, file, { contentType: file.type || 'image/webp' });
-
-    uploadTask.on(
-      'state_changed',
-      (snapshot) => {
-        const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-        if (onProgress) onProgress(pct);
-      },
-      reject,
-      async () => {
-        try {
-          const imageUrl = await getDownloadURL(uploadTask.snapshot.ref);
-          resolve({ imageUrl, storagePath });
-        } catch (error) {
-          reject(error);
-        }
-      }
-    );
+  console.log('[GalleryUpload] Starting upload', {
+    category,
+    storagePath,
+    contentType,
+    size: file.size,
+    hasFileName: Boolean((file as File)?.name),
   });
+
+  if (onProgress) onProgress(5);
+  await uploadBytes(storageRef, file, { contentType });
+  if (onProgress) onProgress(95);
+  const imageUrl = await getDownloadURL(storageRef);
+  if (onProgress) onProgress(100);
+  console.log('[GalleryUpload] Upload complete', { storagePath, imageUrl });
+  return { imageUrl, storagePath };
 }
 
 export async function addGalleryPhotoToFirestore(photo: Omit<GalleryPhoto, 'id'>): Promise<string> {
@@ -65,7 +64,7 @@ export async function deleteGalleryPhoto(photo: GalleryPhoto): Promise<void> {
   if (photo.id) await deleteDoc(doc(db, GALLERY_COLLECTION, photo.id));
   if (photo.storagePath) {
     try {
-      await deleteObject(ref(storage, photo.storagePath));
+      await deleteObject(ref(getStorage(), photo.storagePath));
     } catch (error) {
       console.warn('Gallery storage delete failed:', error);
     }
