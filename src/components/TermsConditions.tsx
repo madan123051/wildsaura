@@ -66,7 +66,7 @@ const sections = [
 
 export const TermsConditions: React.FC<TermsConditionsProps> = ({ onBack }) => {
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--wa-dark)', paddingTop: '2rem', paddingBottom: '4rem' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--wa-dark)', paddingTop: '6.5rem', paddingBottom: '4rem' }}>
       <div className="wa-container" style={{ maxWidth: 800 }}>
         {/* Back Button */}
         <button
