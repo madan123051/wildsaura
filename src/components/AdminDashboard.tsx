@@ -17,7 +17,6 @@ import { compressImageForAI, compressForUpload, generateThumbnail } from '../uti
 import { readExifFromFile } from '../utils/exifReader';
 import { subscribeToContactMessages, deleteContactMessage, ContactMessage } from '../services/contactService';
 import { addGalleryPhotoToFirestore, deleteGalleryPhoto, subscribeToGalleryPhotos, uploadGalleryBlobToStorage } from '../services/galleryService';
-import { processGalleryImage } from '../utils/galleryImageProcessor';
 
 
 
