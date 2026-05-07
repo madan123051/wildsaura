@@ -454,7 +454,7 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
       if (thumbnailFile) {
         try {
           const thumbName = (uploadedFileName || 'photo').replace(/\.[^.]+$/, '') + '_thumb.webp';
-          finalThumbnailUrl = await uploadThumbnailToStorage(thumbnailFile, thumbName);
+          thumbnailUrl = await uploadThumbnailToStorage(thumbnailFile, thumbName);
           setUploadProgress(95);
         } catch (thumbErr) {
           console.warn('Thumbnail upload failed (non-critical):', thumbErr);
@@ -464,7 +464,7 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
       // Build Firestore data object (never include undefined values)
       const photoData: Record<string, any> = {
         title, caption: caption || '', category, imageUrl: finalImageUrl,
-        thumbnailUrl: finalThumbnailUrl || '',
+        thumbnailUrl: thumbnailUrl || '',
         location: location || '', tags: finalTags, animalName: animalName || '',
         cameraModel: cameraModel || '', lens: lens || '', aperture: aperture || '',
         shutterSpeed: shutterSpeed || '', iso: iso || '', focalLength: focalLength || '',
@@ -506,7 +506,7 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
     const savedPhoto: any = {
       id: initial?.id || nextId,
       firestoreId,
-      title, category, imageUrl: finalImageUrl, thumbnailUrl: finalThumbnailUrl || '', location, caption,
+      title, category, imageUrl: finalImageUrl, thumbnailUrl: thumbnailUrl || '', location, caption,
       type: mediaType === 'video' ? 'video' : 'photo',
       cameraModel, lens, aperture, shutterSpeed, iso, focalLength,
       tags: finalTags, animalName: animalName || '', wikiSummary: wikiSummary || '',
