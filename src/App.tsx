@@ -33,6 +33,9 @@ import { NotificationPanel, AppNotification } from './components/NotificationPan
 const logoUrl = '/photos/logo.png';
 const ADMIN_EMAIL = 'madan123050@gmail.com';
 
+
+const safeLower = (value: unknown) => (typeof value === 'string' ? value.toLowerCase().trim() : '');
+
 // ── Sample Photo Data ───────────────────────────────────────────────────────
 const SAMPLE_PHOTOS: Photo[] = [
   {
@@ -406,10 +409,10 @@ const App: React.FC = () => {
       const mapped: Story[] = firestoreStories.map((fs, idx) => ({
         id: Date.now() + idx + 5000,
         firestoreId: fs.id,
-        title: fs.title,
-        slug: fs.slug,
-        excerpt: fs.excerpt,
-        content: fs.content,
+        title: typeof fs.title === 'string' ? fs.title : 'Untitled Story',
+        slug: typeof fs.slug === 'string' ? fs.slug : `story-${Date.now()}-${idx}`,
+        excerpt: typeof fs.excerpt === 'string' ? fs.excerpt : '',
+        content: typeof fs.content === 'string' ? fs.content : '',
         coverImageUrl: fs.coverImageUrl,
         tags: fs.tags || [],
         createdAt: fs.createdAt?.toDate?.()?.toISOString?.()?.split('T')[0] || new Date().toISOString().split('T')[0],
@@ -428,8 +431,11 @@ const App: React.FC = () => {
           }
           return m;
         });
-        const existingTitles = new Set(samples.map(s => s.title.toLowerCase().trim()));
-        const nonDuplicate = updatedFirestore.filter(s => !existingTitles.has(s.title.toLowerCase().trim()));
+        const existingTitles = new Set(samples.map(s => safeLower(s.title)).filter(Boolean));
+        const nonDuplicate = updatedFirestore.filter(s => {
+          const normalizedTitle = safeLower(s.title);
+          return !normalizedTitle || !existingTitles.has(normalizedTitle);
+        });
         const allStories = [...nonDuplicate, ...samples];
 
         // Deep link: auto-open story if pending (only on first snapshot)
