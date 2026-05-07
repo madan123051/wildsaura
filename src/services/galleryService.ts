@@ -1,6 +1,6 @@
-import { db } from '../firebase';
+import { db, storage } from '../firebase';
 import { collection, addDoc, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, serverTimestamp, Unsubscribe } from 'firebase/firestore';
-import { deleteObject, getDownloadURL, getStorage, ref, uploadBytes } from 'firebase/storage';
+import { deleteObject, getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
 
 export type GalleryCategory = 'wildlife' | 'birds' | 'landscapes' | 'portraits' | 'others';
 
@@ -10,41 +10,52 @@ export interface GalleryPhoto {
   category: GalleryCategory;
   imageUrl: string;
   storagePath?: string;
+  width?: number;
+  height?: number;
+  format?: 'webp' | 'jpeg';
+  sizeBytes?: number;
   createdAt?: any;
 }
 
 const GALLERY_COLLECTION = 'galleryPhotos';
 
-const sanitizeFilename = (filename: string) => filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+const sanitize = (s: string) => s.replace(/[^a-zA-Z0-9._-]/g, '_');
 
-export async function uploadGalleryPhotoToStorage(
-  file: Blob,
-  category: GalleryCategory,
+/** Upload a processed Blob (WebP/JPEG) to Firebase Storage with progress + 90s timeout. */
+export async function uploadGalleryBlobToStorage(
+  blob: Blob,
   filename: string,
+  category: GalleryCategory,
   onProgress?: (progress: number) => void
 ): Promise<{ imageUrl: string; storagePath: string }> {
-  const storage = getStorage();
-  const fallbackName = `gallery_${Date.now()}.jpg`;
-  const sourceName = (file as File)?.name || fallbackName;
-  const storagePath = `gallery/${category}/${Date.now()}_${sanitizeFilename(sourceName)}`;
+  const storagePath = `gallery/${category}/${Date.now()}_${sanitize(filename)}`;
   const storageRef = ref(storage, storagePath);
-  const contentType = file.type || 'image/jpeg';
+  const contentType = blob.type || 'image/webp';
 
-  console.log('[GalleryUpload] Starting upload', {
-    category,
-    storagePath,
-    contentType,
-    size: file.size,
-    hasFileName: Boolean((file as File)?.name),
+  return new Promise((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      try { uploadTask.cancel(); } catch {}
+      reject(new Error('Upload timed out after 90 seconds. Check your connection and try again.'));
+    }, 90000);
+
+    const uploadTask = uploadBytesResumable(storageRef, blob, { contentType });
+
+    uploadTask.on(
+      'state_changed',
+      (snapshot) => {
+        const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+        if (onProgress) onProgress(pct);
+      },
+      (error) => { clearTimeout(timeoutId); reject(error); },
+      async () => {
+        clearTimeout(timeoutId);
+        try {
+          const imageUrl = await getDownloadURL(uploadTask.snapshot.ref);
+          resolve({ imageUrl, storagePath });
+        } catch (e) { reject(e); }
+      }
+    );
   });
-
-  if (onProgress) onProgress(5);
-  await uploadBytes(storageRef, file, { contentType });
-  if (onProgress) onProgress(95);
-  const imageUrl = await getDownloadURL(storageRef);
-  if (onProgress) onProgress(100);
-  console.log('[GalleryUpload] Upload complete', { storagePath, imageUrl });
-  return { imageUrl, storagePath };
 }
 
 export async function addGalleryPhotoToFirestore(photo: Omit<GalleryPhoto, 'id'>): Promise<string> {
@@ -64,11 +75,8 @@ export async function getGalleryPhotosFromFirestore(): Promise<GalleryPhoto[]> {
 export async function deleteGalleryPhoto(photo: GalleryPhoto): Promise<void> {
   if (photo.id) await deleteDoc(doc(db, GALLERY_COLLECTION, photo.id));
   if (photo.storagePath) {
-    try {
-      await deleteObject(ref(getStorage(), photo.storagePath));
-    } catch (error) {
-      console.warn('Gallery storage delete failed:', error);
-    }
+    try { await deleteObject(ref(storage, photo.storagePath)); }
+    catch (error) { console.warn('Gallery storage delete failed:', error); }
   }
 }
 
