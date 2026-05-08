@@ -1891,11 +1891,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [videoDeleteConfirm, setVideoDeleteConfirm] = useState<number | null>(null);
   const [contactMessages, setContactMessages] = React.useState<ContactMessage[]>([]);
   const [msgDeleteConfirm, setMsgDeleteConfirm] = React.useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = React.useState(() => typeof window !== 'undefined' ? window.innerWidth >= 768 : true);
+  const [isMobile, setIsMobile] = React.useState(() => typeof window !== 'undefined' ? window.innerWidth < 768 : false);
 
   React.useEffect(() => {
     const unsub = subscribeToContactMessages((msgs) => setContactMessages(msgs));
     return () => unsub();
   }, []);
+
+  React.useEffect(() => {
+    const onResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (!mobile) setSidebarOpen(true);
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  const closeSidebarOnMobile = () => { if (isMobile) setSidebarOpen(false); };
 
   const totalLikes = photos.reduce((sum, p) => sum + p.likeCount, 0);
   const nextPhotoId = Math.max(0, ...photos.map((p) => p.id)) + 1;
@@ -1946,12 +1960,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--wa-dark)' }}>
+      {/* Mobile sidebar backdrop */}
+      {isMobile && sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+            zIndex: 99, backdropFilter: 'blur(2px)',
+          }}
+        />
+      )}
+
       {/* Sidebar */}
       <aside style={{
-        width: 240, background: 'rgba(0,0,0,0.4)',
-        borderRight: '1px solid rgba(201,168,76,0.08)',
+        width: 240, background: 'rgba(5,12,8,0.97)',
+        borderRight: '1px solid rgba(201,168,76,0.12)',
         display: 'flex', flexDirection: 'column', padding: '1.25rem 0.75rem',
-        position: 'sticky', top: 0, height: '100vh', boxSizing: 'border-box', overflowY: 'auto',
+        position: isMobile ? 'fixed' : 'sticky',
+        top: 0, left: 0,
+        height: '100vh', boxSizing: 'border-box', overflowY: 'auto',
+        zIndex: 100,
+        transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
+        transition: 'transform 0.28s cubic-bezier(0.4,0,0.2,1)',
+        boxShadow: isMobile && sidebarOpen ? '4px 0 24px rgba(0,0,0,0.5)' : 'none',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0 0.5rem', marginBottom: '2rem' }}>
           {logoUrl ? (
@@ -1970,16 +2001,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
 
         <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', flex: 1 }}>
-          <button style={sidebarItemStyle(view === 'dashboard')} onClick={() => { setView('dashboard'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); }}>
+          <button style={sidebarItemStyle(view === 'dashboard')} onClick={() => { setView('dashboard'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); closeSidebarOnMobile(); }}>
             <LayoutDashboard size={18} /> Overview
           </button>
-          <button style={sidebarItemStyle(view === 'photos')} onClick={() => { setView('photos'); setEditingPhoto(null); }}>
+          <button style={sidebarItemStyle(view === 'photos')} onClick={() => { setView('photos'); setEditingPhoto(null); closeSidebarOnMobile(); }}>
             <Image size={18} /> Photos
           </button>
-          <button style={sidebarItemStyle(view === 'add')} onClick={() => { setView('add'); setEditingPhoto(null); }}>
+          <button style={sidebarItemStyle(view === 'add')} onClick={() => { setView('add'); setEditingPhoto(null); closeSidebarOnMobile(); }}>
             <Plus size={18} /> Add Photo
           </button>
-          <button style={sidebarItemStyle(view === 'gallery')} onClick={() => { setView('gallery'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); }}>
+          <button style={sidebarItemStyle(view === 'gallery')} onClick={() => { setView('gallery'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); closeSidebarOnMobile(); }}>
             <FileImage size={18} /> Photo Gallery
           </button>
 
@@ -1987,23 +2018,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <p style={{ fontSize: '0.6rem', color: 'rgba(248,250,252,0.62)', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0 1rem', marginBottom: '0.25rem' }}>Content</p>
           </div>
 
-          <button style={sidebarItemStyle(view === 'stories')} onClick={() => { setView('stories'); setEditingStory(null); }}>
+          <button style={sidebarItemStyle(view === 'stories')} onClick={() => { setView('stories'); setEditingStory(null); closeSidebarOnMobile(); }}>
             <BookOpen size={18} /> Stories
           </button>
-          <button style={sidebarItemStyle(view === 'add-story')} onClick={() => { setView('add-story'); setEditingStory(null); }}>
+          <button style={sidebarItemStyle(view === 'add-story')} onClick={() => { setView('add-story'); setEditingStory(null); closeSidebarOnMobile(); }}>
             <Plus size={18} /> Add Story
           </button>
-          <button style={sidebarItemStyle(view === 'videos')} onClick={() => { setView('videos'); setEditingVideo(null); }}>
+          <button style={sidebarItemStyle(view === 'videos')} onClick={() => { setView('videos'); setEditingVideo(null); closeSidebarOnMobile(); }}>
             <Film size={18} /> Videos
           </button>
-          <button style={sidebarItemStyle(view === 'add-video')} onClick={() => { setView('add-video'); setEditingVideo(null); }}>
+          <button style={sidebarItemStyle(view === 'add-video')} onClick={() => { setView('add-video'); setEditingVideo(null); closeSidebarOnMobile(); }}>
             <Plus size={18} /> Add Video
           </button>
 
           <div style={{ borderTop: '1px solid rgba(201,168,76,0.08)', margin: '0.5rem 0', paddingTop: '0.5rem' }}>
             <p style={{ fontSize: '0.6rem', color: 'rgba(248,250,252,0.62)', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0 1rem', marginBottom: '0.25rem' }}>Social</p>
           </div>
-          <button style={sidebarItemStyle(view === 'comments')} onClick={() => { setView('comments'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); }}>
+          <button style={sidebarItemStyle(view === 'comments')} onClick={() => { setView('comments'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); closeSidebarOnMobile(); }}>
             <MessageCircle size={18} /> Comments
             {allComments.length > 0 && (
               <span style={{
@@ -2012,7 +2043,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               }}>{allComments.length}</span>
             )}
           </button>
-          <button style={sidebarItemStyle(view === 'messages')} onClick={() => { setView('messages'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); }}>
+          <button style={sidebarItemStyle(view === 'messages')} onClick={() => { setView('messages'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); closeSidebarOnMobile(); }}>
             <Mail size={18} /> Messages
             {contactMessages.length > 0 && (
               <span style={{
@@ -2025,10 +2056,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <div style={{ borderTop: '1px solid rgba(201,168,76,0.08)', margin: '0.5rem 0', paddingTop: '0.5rem' }}>
             <p style={{ fontSize: '0.6rem', color: 'rgba(248,250,252,0.62)', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0 1rem', marginBottom: '0.25rem' }}>Settings</p>
           </div>
-          <button style={sidebarItemStyle(view === 'ai-settings')} onClick={() => { setView('ai-settings'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); }}>
+          <button style={sidebarItemStyle(view === 'ai-settings')} onClick={() => { setView('ai-settings'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); closeSidebarOnMobile(); }}>
             <Cpu size={18} /> AI Settings
           </button>
-          <button style={sidebarItemStyle(view === 'site-settings')} onClick={() => { setView('site-settings'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); }}>
+          <button style={sidebarItemStyle(view === 'site-settings')} onClick={() => { setView('site-settings'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); closeSidebarOnMobile(); }}>
             <Globe size={18} /> Site Settings
           </button>
         </nav>
@@ -2047,20 +2078,60 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       </aside>
 
       {/* Main Content */}
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <header style={{
-          padding: '1rem 2rem', borderBottom: '1px solid rgba(201,168,76,0.08)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.2)',
+          padding: '0.75rem 1rem', borderBottom: '1px solid rgba(201,168,76,0.08)',
+          display: 'flex', alignItems: 'center', gap: '0.75rem',
+          justifyContent: 'space-between', background: 'rgba(0,0,0,0.3)',
+          position: 'sticky', top: 0, zIndex: 50,
         }}>
-          <h1 className="font-cinzel" style={{ fontSize: '1.1rem', color: 'var(--wa-light)', fontWeight: 600 }}>{getViewTitle()}</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: 0 }}>
+            {/* Hamburger — mobile only */}
+            <button
+              onClick={() => setSidebarOpen(o => !o)}
+              style={{
+                display: isMobile ? 'flex' : 'none',
+                alignItems: 'center', justifyContent: 'center',
+                width: 36, height: 36, flexShrink: 0,
+                background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.2)',
+                borderRadius: '8px', cursor: 'pointer', color: 'var(--wa-gold)',
+              }}
+              aria-label="Toggle menu"
+            >
+              <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>☰</span>
+            </button>
+
+            {/* ← Dashboard back button (all views except dashboard) */}
+            {view !== 'dashboard' && (
+              <button
+                onClick={() => { setView('dashboard'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '0.3rem', flexShrink: 0,
+                  background: 'rgba(201,168,76,0.1)', border: '1px solid rgba(201,168,76,0.2)',
+                  borderRadius: '8px', cursor: 'pointer', color: 'var(--wa-gold)',
+                  padding: '0.4rem 0.75rem', fontSize: '0.75rem', whiteSpace: 'nowrap',
+                  fontFamily: "'Cinzel', serif", letterSpacing: '0.05em',
+                }}
+              >
+                ← Dashboard
+              </button>
+            )}
+
+            <h1 className="font-cinzel" style={{
+              fontSize: isMobile ? '0.85rem' : '1.1rem',
+              color: 'var(--wa-light)', fontWeight: 600,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>{getViewTitle()}</h1>
+          </div>
+
           <button onClick={onViewSite} style={{
-            padding: '0.45rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem',
+            padding: '0.45rem 0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0,
             background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
             borderRadius: '8px', color: 'rgba(235,230,220,0.6)', cursor: 'pointer', fontSize: '0.75rem',
-          }}><Eye size={14} /> View Site</button>
+          }}><Eye size={14} />{!isMobile && ' View Site'}</button>
         </header>
 
-        <div style={{ padding: '2rem', flex: 1, overflowY: 'auto' }}>
+        <div style={{ padding: isMobile ? '1rem' : '2rem', flex: 1, overflowY: 'auto' }}>
           {/* Dashboard View */}
           {view === 'dashboard' && (
             <>
