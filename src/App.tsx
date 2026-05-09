@@ -31,6 +31,7 @@ import { LiveStats } from './components/LiveStats';
 import { PhotoMap } from './components/PhotoMap';
 import { onSiteSettingsChange, SiteSettings } from './services/siteSettingsService';
 import { NotificationPanel, AppNotification } from './components/NotificationPanel';
+import { updateSeo } from './utils/seo';
 
 const logoUrl = '/photos/logo.png';
 const ADMIN_EMAIL = 'madan123050@gmail.com';
@@ -685,6 +686,40 @@ const App: React.FC = () => {
       window.removeEventListener('touchcancel', onTouchEnd);
     };
   }, [isPullRefreshing, view]);
+
+
+
+  useEffect(() => {
+    if (selectedPhoto) {
+      updateSeo({
+        title: `${selectedPhoto.title} — WILDS AURA Photography`,
+        description: selectedPhoto.caption || 'Wildlife photography on WildSaura',
+        image: selectedPhoto.imageUrl,
+        url: `${window.location.origin}/photo/${encodeURIComponent(selectedPhoto.firestoreId || String(selectedPhoto.id))}`,
+        type: 'article',
+      });
+      return;
+    }
+
+    if (view === 'story-detail' && selectedStory) {
+      updateSeo({
+        title: `${selectedStory.title} — WILDS AURA Stories`,
+        description: selectedStory.excerpt || 'Photography stories on WildSaura',
+        image: selectedStory.coverImageUrl,
+        url: `${window.location.origin}/story/${encodeURIComponent(selectedStory.slug)}`,
+        type: 'article',
+      });
+      return;
+    }
+
+    updateSeo({
+      title: 'WILDS AURA Photography',
+      description: 'Explore wildlife and nature photography with stories from around the world.',
+      image: `${window.location.origin}/photos/logo.png`,
+      url: window.location.href,
+      type: 'website',
+    });
+  }, [selectedPhoto, selectedStory, view]);
 
   const scrollToGallery = useCallback(() => {
     galleryRef.current?.scrollIntoView({ behavior: 'smooth' });
