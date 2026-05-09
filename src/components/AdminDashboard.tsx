@@ -16,7 +16,7 @@ import { uploadVideoToStorage, uploadVideoThumbnailToStorage } from '../services
 import { compressImageForAI, compressForUpload, generateThumbnail } from '../utils/imageCompressor';
 import { readExifFromFile } from '../utils/exifReader';
 import { subscribeToContactMessages, deleteContactMessage, ContactMessage } from '../services/contactService';
-import { addGalleryPhotoToFirestore, deleteGalleryPhoto, subscribeToGalleryPhotos, updateGalleryPhotoTitle, uploadGalleryPhotoToStorage } from '../services/galleryService';
+import { addGalleryPhotoToFirestore, deleteGalleryPhoto, subscribeToGalleryPhotos, updateGalleryPhotoTitle, uploadGalleryBlobToStorage } from '../services/galleryService';
 
 
 
@@ -1802,7 +1802,7 @@ const GalleryManagement: React.FC = () => {
         const file = selectedFiles[index];
         const baseProgress = Math.round((index / selectedFiles.length) * 100);
         const compressed = await compressToWebP(file);
-        const uploaded = await uploadGalleryPhotoToStorage(compressed, category, (fileProgress) => {
+        const uploaded = await uploadGalleryBlobToStorage(compressed, compressed.name, category, (fileProgress) => {
           setProgress(Math.round(baseProgress + (fileProgress / selectedFiles.length)));
         });
         await addGalleryPhotoToFirestore({
