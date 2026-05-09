@@ -16,7 +16,7 @@ import { uploadVideoToStorage, uploadVideoThumbnailToStorage } from '../services
 import { compressImageForAI, compressForUpload, generateThumbnail } from '../utils/imageCompressor';
 import { readExifFromFile } from '../utils/exifReader';
 import { subscribeToContactMessages, deleteContactMessage, ContactMessage } from '../services/contactService';
-import { addGalleryPhotoToFirestore, deleteGalleryPhoto, subscribeToGalleryPhotos, updateGalleryPhotoTitle, uploadGalleryBlobToStorage } from '../services/galleryService';
+import { addGalleryPhotoToFirestore, deleteGalleryPhoto, subscribeToGalleryPhotos, uploadGalleryBlobToStorage } from '../services/galleryService';
 
 
 
@@ -1699,66 +1699,6 @@ const GALLERY_CATEGORY_OPTIONS: Array<{ value: GalleryCategory; label: string }>
   { value: 'others', label: 'Others' },
 ];
 
-// ── Canvas compression ────────────────────────────────────────────────────────
-// Compresses any image to max ~2.5 MB, max dimension 2400px.
-// Tries WebP first; falls back to JPEG (for iOS Safari which may not support WebP canvas).
-async function compressToWebP(file: File, maxSizeMB = 2.5): Promise<File> {
-  const maxBytes = maxSizeMB * 1024 * 1024;
-  // Skip if already small enough (any format)
-  if (file.size <= maxBytes) return file;
-
-  return new Promise((resolve) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const canvas = document.createElement('canvas');
-      let { width, height } = img;
-      const MAX_DIM = 2400;
-      if (width > MAX_DIM || height > MAX_DIM) {
-        const scale = MAX_DIM / Math.max(width, height);
-        width = Math.round(width * scale);
-        height = Math.round(height * scale);
-      }
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) { resolve(file); return; }  // fallback: upload original
-      ctx.drawImage(img, 0, 0, width, height);
-
-      // Try WebP, then JPEG as fallback (iOS Safari may not support WebP canvas)
-      const formats: Array<{ mime: string; ext: string }> = [
-        { mime: 'image/webp', ext: '.webp' },
-        { mime: 'image/jpeg', ext: '.jpg' },
-      ];
-
-      const tryFormat = (formatIndex: number, quality: number) => {
-        if (formatIndex >= formats.length) { resolve(file); return; } // give up, upload original
-        const { mime, ext } = formats[formatIndex];
-        canvas.toBlob(
-          (blob) => {
-            if (!blob || blob.size === 0) {
-              // This format not supported — try next
-              tryFormat(formatIndex + 1, 0.85);
-              return;
-            }
-            if (blob.size <= maxBytes || quality <= 0.45) {
-              resolve(new File([blob], file.name.replace(/\.[^.]+$/, ext), { type: mime }));
-            } else {
-              tryFormat(formatIndex, Math.round((quality - 0.1) * 100) / 100);
-            }
-          },
-          mime,
-          quality
-        );
-      };
-
-      tryFormat(0, 0.85);
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); }; // fallback: upload original
-    img.src = url;
-  });
-}
 
 const GalleryManagement: React.FC = () => {
   const [category, setCategory] = useState<GalleryCategory>('wildlife');
@@ -1766,20 +1706,6 @@ const GalleryManagement: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [renamingId, setRenamingId] = useState<string | null>(null);
-  const [renameValue, setRenameValue] = useState('');
-
-  const handleRenameStart = (photo: GalleryPhoto) => {
-    setRenamingId(photo.id || photo.imageUrl);
-    setRenameValue(photo.title);
-  };
-
-  const handleRenameSave = async (photo: GalleryPhoto) => {
-    const trimmed = renameValue.trim();
-    if (!trimmed || !photo.id) { setRenamingId(null); return; }
-    try { await updateGalleryPhotoTitle(photo.id, trimmed); } catch (e) { console.error(e); }
-    setRenamingId(null);
-  };
 
   React.useEffect(() => {
     const unsub = subscribeToGalleryPhotos((photos) => setGalleryPhotos(photos));
@@ -1787,6 +1713,53 @@ const GalleryManagement: React.FC = () => {
   }, []);
 
   const handleFiles = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    // ── Inline image processor: resize + © WildSaura watermark + WebP ──
+    const processImage = async (file: File): Promise<{ blob: Blob; filename: string; width: number; height: number; format: 'webp' | 'jpeg'; sizeBytes: number }> => {
+      const MAX_W = 2400;
+      const url = URL.createObjectURL(file);
+      const img: HTMLImageElement = await new Promise((resolve, reject) => {
+        const i = document.createElement('img');
+        i.onload = () => resolve(i);
+        i.onerror = () => reject(new Error('Could not decode image'));
+        i.decoding = 'async';
+        i.src = url;
+      });
+      try {
+        const ratio = img.naturalWidth > MAX_W ? MAX_W / img.naturalWidth : 1;
+        const w = Math.round(img.naturalWidth * ratio);
+        const h = Math.round(img.naturalHeight * ratio);
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('Canvas not supported');
+        ctx.imageSmoothingEnabled = true;
+        (ctx as any).imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, w, h);
+        const fontSize = Math.max(16, Math.min(48, Math.round(Math.max(w, h) * 0.022)));
+        ctx.save();
+        ctx.font = `600 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+        ctx.textBaseline = 'bottom';
+        ctx.textAlign = 'right';
+        ctx.globalAlpha = 0.55;
+        ctx.shadowColor = 'rgba(0,0,0,0.6)';
+        ctx.shadowBlur = 4;
+        ctx.shadowOffsetY = 1;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText('© WildSaura', w - 24, h - 24);
+        ctx.restore();
+        const toBlob = (type: string, q: number) => new Promise<Blob | null>(res => { try { canvas.toBlob(b => res(b), type, q); } catch { res(null); } });
+        let blob = await toBlob('image/webp', 0.82);
+        let format: 'webp' | 'jpeg' = 'webp';
+        if (!blob) blob = await toBlob('image/webp', 0.78);
+        if (!blob) { blob = await toBlob('image/jpeg', 0.85); format = 'jpeg'; }
+        if (!blob) throw new Error('Image encoding failed');
+        const baseName = file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9._-]/g, '_');
+        return { blob, filename: `${baseName}.${format}`, width: w, height: h, format, sizeBytes: blob.size };
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    };
+
     const selectedFiles = Array.from(event.target.files || []).filter(file => file.type.startsWith('image/'));
     event.target.value = '';
     if (selectedFiles.length === 0) return;
@@ -1801,21 +1774,32 @@ const GalleryManagement: React.FC = () => {
       for (let index = 0; index < selectedFiles.length; index += 1) {
         const file = selectedFiles[index];
         const baseProgress = Math.round((index / selectedFiles.length) * 100);
-        const compressed = await compressToWebP(file);
-        const uploaded = await uploadGalleryBlobToStorage(compressed, compressed.name, category, (fileProgress) => {
-          setProgress(Math.round(baseProgress + (fileProgress / selectedFiles.length)));
-        });
+        const processed = await processImage(file);
+        const uploaded = await uploadGalleryBlobToStorage(
+          processed.blob,
+          processed.filename,
+          category,
+          (fileProgress) => {
+            setProgress(Math.round(baseProgress + (fileProgress / selectedFiles.length)));
+          }
+        );
         await addGalleryPhotoToFirestore({
           title: file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' '),
           category,
           imageUrl: uploaded.imageUrl,
           storagePath: uploaded.storagePath,
+          width: processed.width,
+          height: processed.height,
+          format: processed.format,
+          sizeBytes: processed.sizeBytes,
         });
       }
       setProgress(100);
     } catch (error) {
-      console.error('Gallery upload failed:', error);
-      alert('Gallery upload failed. Please try again.');
+      const err = error as any;
+      const reason = err?.code || err?.message || 'Unknown error';
+      console.error('Gallery upload failed:', err);
+      alert(`Gallery upload failed: ${reason}`);
     } finally {
       setUploading(false);
       setTimeout(() => setProgress(0), 1200);
@@ -1868,24 +1852,7 @@ const GalleryManagement: React.FC = () => {
             <div key={photo.id || photo.imageUrl} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.1)', borderRadius: '12px', overflow: 'hidden' }}>
               <img src={photo.imageUrl} alt={photo.title} style={{ width: '100%', height: 150, objectFit: 'cover' }} />
               <div style={{ padding: '0.8rem' }}>
-                {renamingId === (photo.id || photo.imageUrl) ? (
-                  <div style={{ display: 'flex', gap: '0.3rem', marginBottom: '0.35rem' }}>
-                    <input
-                      value={renameValue}
-                      onChange={(e) => setRenameValue(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') handleRenameSave(photo); if (e.key === 'Escape') setRenamingId(null); }}
-                      autoFocus
-                      style={{ flex: 1, fontSize: '0.8rem', padding: '0.3rem 0.5rem', borderRadius: 6, border: '1px solid rgba(201,168,76,0.4)', background: 'rgba(255,255,255,0.06)', color: 'var(--wa-light)', outline: 'none' }}
-                    />
-                    <button onClick={() => handleRenameSave(photo)} style={{ padding: '0.3rem 0.55rem', borderRadius: 6, border: 'none', background: 'rgba(201,168,76,0.25)', color: 'var(--wa-gold)', cursor: 'pointer', fontSize: '0.7rem' }}>✓</button>
-                    <button onClick={() => setRenamingId(null)} style={{ padding: '0.3rem 0.55rem', borderRadius: 6, border: 'none', background: 'rgba(255,255,255,0.05)', color: 'rgba(235,230,220,0.5)', cursor: 'pointer', fontSize: '0.7rem' }}>✕</button>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginBottom: '0.35rem' }}>
-                    <h4 style={{ color: 'var(--wa-light)', fontSize: '0.85rem', margin: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{photo.title}</h4>
-                    <button onClick={() => handleRenameStart(photo)} title="Rename" style={{ flexShrink: 0, padding: '0.2rem', borderRadius: 4, border: 'none', background: 'transparent', color: 'rgba(201,168,76,0.6)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}><Pencil size={12} /></button>
-                  </div>
-                )}
+                <h4 style={{ color: 'var(--wa-light)', fontSize: '0.85rem', marginBottom: '0.35rem' }}>{photo.title}</h4>
                 <span style={{ display: 'inline-block', padding: '0.2rem 0.55rem', borderRadius: '999px', background: 'rgba(201,168,76,0.12)', color: 'var(--wa-gold)', fontSize: '0.62rem', textTransform: 'uppercase' }}>{photo.category}</span>
                 <div style={{ marginTop: '0.75rem' }}>
                   {deleteId === (photo.id || photo.imageUrl) ? (
@@ -1924,11 +1891,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [videoDeleteConfirm, setVideoDeleteConfirm] = useState<number | null>(null);
   const [contactMessages, setContactMessages] = React.useState<ContactMessage[]>([]);
   const [msgDeleteConfirm, setMsgDeleteConfirm] = React.useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = React.useState(() => typeof window !== 'undefined' ? window.innerWidth >= 768 : true);
+  const [isMobile, setIsMobile] = React.useState(() => typeof window !== 'undefined' ? window.innerWidth < 768 : false);
 
   React.useEffect(() => {
     const unsub = subscribeToContactMessages((msgs) => setContactMessages(msgs));
     return () => unsub();
   }, []);
+
+  React.useEffect(() => {
+    const onResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (!mobile) setSidebarOpen(true);
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  const closeSidebarOnMobile = () => { if (isMobile) setSidebarOpen(false); };
 
   const totalLikes = photos.reduce((sum, p) => sum + p.likeCount, 0);
   const nextPhotoId = Math.max(0, ...photos.map((p) => p.id)) + 1;
@@ -1979,12 +1960,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--wa-dark)' }}>
+      {/* Mobile sidebar backdrop */}
+      {isMobile && sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+            zIndex: 99, backdropFilter: 'blur(2px)',
+          }}
+        />
+      )}
+
       {/* Sidebar */}
       <aside style={{
-        width: 240, background: 'rgba(0,0,0,0.4)',
-        borderRight: '1px solid rgba(201,168,76,0.08)',
+        width: 240, background: 'rgba(5,12,8,0.97)',
+        borderRight: '1px solid rgba(201,168,76,0.12)',
         display: 'flex', flexDirection: 'column', padding: '1.25rem 0.75rem',
-        position: 'sticky', top: 0, height: '100vh', boxSizing: 'border-box', overflowY: 'auto',
+        position: isMobile ? 'fixed' : 'sticky',
+        top: 0, left: 0,
+        height: '100vh', boxSizing: 'border-box', overflowY: 'auto',
+        zIndex: 100,
+        transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
+        transition: 'transform 0.28s cubic-bezier(0.4,0,0.2,1)',
+        boxShadow: isMobile && sidebarOpen ? '4px 0 24px rgba(0,0,0,0.5)' : 'none',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0 0.5rem', marginBottom: '2rem' }}>
           {logoUrl ? (
@@ -2003,16 +2001,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
 
         <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', flex: 1 }}>
-          <button style={sidebarItemStyle(view === 'dashboard')} onClick={() => { setView('dashboard'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); }}>
+          <button style={sidebarItemStyle(view === 'dashboard')} onClick={() => { setView('dashboard'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); closeSidebarOnMobile(); }}>
             <LayoutDashboard size={18} /> Overview
           </button>
-          <button style={sidebarItemStyle(view === 'photos')} onClick={() => { setView('photos'); setEditingPhoto(null); }}>
+          <button style={sidebarItemStyle(view === 'photos')} onClick={() => { setView('photos'); setEditingPhoto(null); closeSidebarOnMobile(); }}>
             <Image size={18} /> Photos
           </button>
-          <button style={sidebarItemStyle(view === 'add')} onClick={() => { setView('add'); setEditingPhoto(null); }}>
+          <button style={sidebarItemStyle(view === 'add')} onClick={() => { setView('add'); setEditingPhoto(null); closeSidebarOnMobile(); }}>
             <Plus size={18} /> Add Photo
           </button>
-          <button style={sidebarItemStyle(view === 'gallery')} onClick={() => { setView('gallery'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); }}>
+          <button style={sidebarItemStyle(view === 'gallery')} onClick={() => { setView('gallery'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); closeSidebarOnMobile(); }}>
             <FileImage size={18} /> Photo Gallery
           </button>
 
@@ -2020,23 +2018,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <p style={{ fontSize: '0.6rem', color: 'rgba(248,250,252,0.62)', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0 1rem', marginBottom: '0.25rem' }}>Content</p>
           </div>
 
-          <button style={sidebarItemStyle(view === 'stories')} onClick={() => { setView('stories'); setEditingStory(null); }}>
+          <button style={sidebarItemStyle(view === 'stories')} onClick={() => { setView('stories'); setEditingStory(null); closeSidebarOnMobile(); }}>
             <BookOpen size={18} /> Stories
           </button>
-          <button style={sidebarItemStyle(view === 'add-story')} onClick={() => { setView('add-story'); setEditingStory(null); }}>
+          <button style={sidebarItemStyle(view === 'add-story')} onClick={() => { setView('add-story'); setEditingStory(null); closeSidebarOnMobile(); }}>
             <Plus size={18} /> Add Story
           </button>
-          <button style={sidebarItemStyle(view === 'videos')} onClick={() => { setView('videos'); setEditingVideo(null); }}>
+          <button style={sidebarItemStyle(view === 'videos')} onClick={() => { setView('videos'); setEditingVideo(null); closeSidebarOnMobile(); }}>
             <Film size={18} /> Videos
           </button>
-          <button style={sidebarItemStyle(view === 'add-video')} onClick={() => { setView('add-video'); setEditingVideo(null); }}>
+          <button style={sidebarItemStyle(view === 'add-video')} onClick={() => { setView('add-video'); setEditingVideo(null); closeSidebarOnMobile(); }}>
             <Plus size={18} /> Add Video
           </button>
 
           <div style={{ borderTop: '1px solid rgba(201,168,76,0.08)', margin: '0.5rem 0', paddingTop: '0.5rem' }}>
             <p style={{ fontSize: '0.6rem', color: 'rgba(248,250,252,0.62)', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0 1rem', marginBottom: '0.25rem' }}>Social</p>
           </div>
-          <button style={sidebarItemStyle(view === 'comments')} onClick={() => { setView('comments'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); }}>
+          <button style={sidebarItemStyle(view === 'comments')} onClick={() => { setView('comments'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); closeSidebarOnMobile(); }}>
             <MessageCircle size={18} /> Comments
             {allComments.length > 0 && (
               <span style={{
@@ -2045,7 +2043,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               }}>{allComments.length}</span>
             )}
           </button>
-          <button style={sidebarItemStyle(view === 'messages')} onClick={() => { setView('messages'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); }}>
+          <button style={sidebarItemStyle(view === 'messages')} onClick={() => { setView('messages'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); closeSidebarOnMobile(); }}>
             <Mail size={18} /> Messages
             {contactMessages.length > 0 && (
               <span style={{
@@ -2058,10 +2056,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <div style={{ borderTop: '1px solid rgba(201,168,76,0.08)', margin: '0.5rem 0', paddingTop: '0.5rem' }}>
             <p style={{ fontSize: '0.6rem', color: 'rgba(248,250,252,0.62)', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0 1rem', marginBottom: '0.25rem' }}>Settings</p>
           </div>
-          <button style={sidebarItemStyle(view === 'ai-settings')} onClick={() => { setView('ai-settings'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); }}>
+          <button style={sidebarItemStyle(view === 'ai-settings')} onClick={() => { setView('ai-settings'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); closeSidebarOnMobile(); }}>
             <Cpu size={18} /> AI Settings
           </button>
-          <button style={sidebarItemStyle(view === 'site-settings')} onClick={() => { setView('site-settings'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); }}>
+          <button style={sidebarItemStyle(view === 'site-settings')} onClick={() => { setView('site-settings'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); closeSidebarOnMobile(); }}>
             <Globe size={18} /> Site Settings
           </button>
         </nav>
@@ -2080,20 +2078,60 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       </aside>
 
       {/* Main Content */}
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <header style={{
-          padding: '1rem 2rem', borderBottom: '1px solid rgba(201,168,76,0.08)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.2)',
+          padding: '0.75rem 1rem', borderBottom: '1px solid rgba(201,168,76,0.08)',
+          display: 'flex', alignItems: 'center', gap: '0.75rem',
+          justifyContent: 'space-between', background: 'rgba(0,0,0,0.3)',
+          position: 'sticky', top: 0, zIndex: 50,
         }}>
-          <h1 className="font-cinzel" style={{ fontSize: '1.1rem', color: 'var(--wa-light)', fontWeight: 600 }}>{getViewTitle()}</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: 0 }}>
+            {/* Hamburger — mobile only */}
+            <button
+              onClick={() => setSidebarOpen(o => !o)}
+              style={{
+                display: isMobile ? 'flex' : 'none',
+                alignItems: 'center', justifyContent: 'center',
+                width: 36, height: 36, flexShrink: 0,
+                background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.2)',
+                borderRadius: '8px', cursor: 'pointer', color: 'var(--wa-gold)',
+              }}
+              aria-label="Toggle menu"
+            >
+              <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>☰</span>
+            </button>
+
+            {/* ← Dashboard back button (all views except dashboard) */}
+            {view !== 'dashboard' && (
+              <button
+                onClick={() => { setView('dashboard'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '0.3rem', flexShrink: 0,
+                  background: 'rgba(201,168,76,0.1)', border: '1px solid rgba(201,168,76,0.2)',
+                  borderRadius: '8px', cursor: 'pointer', color: 'var(--wa-gold)',
+                  padding: '0.4rem 0.75rem', fontSize: '0.75rem', whiteSpace: 'nowrap',
+                  fontFamily: "'Cinzel', serif", letterSpacing: '0.05em',
+                }}
+              >
+                ← Dashboard
+              </button>
+            )}
+
+            <h1 className="font-cinzel" style={{
+              fontSize: isMobile ? '0.85rem' : '1.1rem',
+              color: 'var(--wa-light)', fontWeight: 600,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>{getViewTitle()}</h1>
+          </div>
+
           <button onClick={onViewSite} style={{
-            padding: '0.45rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem',
+            padding: '0.45rem 0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0,
             background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
             borderRadius: '8px', color: 'rgba(235,230,220,0.6)', cursor: 'pointer', fontSize: '0.75rem',
-          }}><Eye size={14} /> View Site</button>
+          }}><Eye size={14} />{!isMobile && ' View Site'}</button>
         </header>
 
-        <div style={{ padding: '2rem', flex: 1, overflowY: 'auto' }}>
+        <div style={{ padding: isMobile ? '1rem' : '2rem', flex: 1, overflowY: 'auto' }}>
           {/* Dashboard View */}
           {view === 'dashboard' && (
             <>
