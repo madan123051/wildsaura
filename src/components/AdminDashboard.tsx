@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
 import {
-  LayoutDashboard, Image, Plus, Pencil, Trash2, LogOut, Eye, EyeOff,
+  LayoutDashboard, Image, Plus, Pencil, Trash2, LogOut, Eye, EyeOff, CheckSquare, Check,
   MapPin, Heart, BarChart3, TrendingUp, X, Save, Search, BookOpen,
   Upload, Sparkles, Film, Camera, FileImage, Loader2, Info,
   Settings, Cpu, MessageCircle, Globe, Mail
@@ -1709,6 +1709,8 @@ const GalleryManagement: React.FC = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
   const [renaming, setRenaming] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   React.useEffect(() => {
     const unsub = subscribeToGalleryPhotos((photos) => setGalleryPhotos(photos));
@@ -1843,6 +1845,21 @@ const GalleryManagement: React.FC = () => {
     setEditingTitle('');
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!window.confirm(`Delete ${selectedIds.size} photo${selectedIds.size > 1 ? 's' : ''}? This cannot be undone.`)) return;
+    const toDelete = galleryPhotos.filter(p => selectedIds.has(p.id || p.imageUrl));
+    for (const photo of toDelete) {
+      try { await deleteGalleryPhoto(photo); } catch (e) { console.error('Bulk delete failed for', photo.id, e); }
+    }
+    setSelectedIds(new Set());
+    setSelectMode(false);
+  };
+
+  const toggleSelect = (key: string) => {
+    setSelectedIds(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
+  };
+
   return (
     <div style={{ display: 'grid', gap: '1.5rem' }}>
       <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.1)', borderRadius: '12px', padding: '1.5rem' }}>
@@ -1873,10 +1890,58 @@ const GalleryManagement: React.FC = () => {
       </div>
 
       <div>
-        <h3 style={{ color: 'var(--wa-light)', fontSize: '1rem', marginBottom: '1rem' }}>Gallery Photos ({galleryPhotos.length})</h3>
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.6rem', marginBottom: '1rem' }}>
+          <h3 style={{ color: 'var(--wa-light)', fontSize: '1rem', margin: 0, flex: 1 }}>Gallery Photos ({galleryPhotos.length})</h3>
+          {selectMode ? (
+            <>
+              <button
+                onClick={() => {
+                  if (selectedIds.size === galleryPhotos.length) setSelectedIds(new Set());
+                  else setSelectedIds(new Set(galleryPhotos.map(p => p.id || p.imageUrl)));
+                }}
+                style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid rgba(201,168,76,0.25)', background: 'rgba(201,168,76,0.08)', color: 'var(--wa-gold)', cursor: 'pointer', fontSize: '0.72rem' }}
+              >
+                {selectedIds.size === galleryPhotos.length ? 'Deselect All' : 'Select All'}
+              </button>
+              {selectedIds.size > 0 && (
+                <button
+                  onClick={handleBulkDelete}
+                  style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.15)', color: '#f87171', cursor: 'pointer', fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                >
+                  <Trash2 size={12} /> Delete ({selectedIds.size})
+                </button>
+              )}
+              <button
+                onClick={() => { setSelectMode(false); setSelectedIds(new Set()); }}
+                style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: 'rgba(235,230,220,0.6)', cursor: 'pointer', fontSize: '0.72rem' }}
+              >
+                Cancel
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setSelectMode(true)}
+              style={{ padding: '0.35rem 0.75rem', borderRadius: 6, border: '1px solid rgba(201,168,76,0.2)', background: 'rgba(201,168,76,0.07)', color: 'var(--wa-gold)', cursor: 'pointer', fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+            >
+              <CheckSquare size={13} /> Select
+            </button>
+          )}
+        </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
-          {galleryPhotos.map((photo) => (
-            <div key={photo.id || photo.imageUrl} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.1)', borderRadius: '12px', overflow: 'hidden' }}>
+          {galleryPhotos.map((photo) => {
+            const photoKey = photo.id || photo.imageUrl;
+            const isSelected = selectedIds.has(photoKey);
+            return (
+            <div
+              key={photoKey}
+              onClick={selectMode ? () => toggleSelect(photoKey) : undefined}
+              style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${isSelected ? 'rgba(201,168,76,0.6)' : 'rgba(201,168,76,0.1)'}`, borderRadius: '12px', overflow: 'hidden', position: 'relative', cursor: selectMode ? 'pointer' : 'default', boxShadow: isSelected ? '0 0 0 2px rgba(201,168,76,0.3)' : 'none' }}
+            >
+              {selectMode && (
+                <div style={{ position: 'absolute', top: 8, left: 8, zIndex: 2, width: 20, height: 20, borderRadius: 4, border: '2px solid rgba(201,168,76,0.85)', background: isSelected ? 'var(--wa-gold)' : 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {isSelected && <Check size={12} style={{ color: '#000' }} />}
+                </div>
+              )}
               <img src={photo.imageUrl} alt={photo.title} style={{ width: '100%', height: 150, objectFit: 'cover' }} />
               <div style={{ padding: '0.8rem' }}>
                 {editingId === (photo.id || photo.imageUrl) ? (
@@ -1901,25 +1966,30 @@ const GalleryManagement: React.FC = () => {
                 ) : (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.35rem' }}>
                     <h4 style={{ color: 'var(--wa-light)', fontSize: '0.85rem', margin: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{photo.title}</h4>
-                    <button onClick={() => handleRenameStart(photo)} title="Rename photo" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(201,168,76,0.65)', padding: '0.1rem', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                      <Pencil size={12} />
-                    </button>
+                    {!selectMode && (
+                      <button onClick={(e) => { e.stopPropagation(); handleRenameStart(photo); }} title="Rename photo" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(201,168,76,0.65)', padding: '0.1rem', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                        <Pencil size={12} />
+                      </button>
+                    )}
                   </div>
                 )}
                 <span style={{ display: 'inline-block', padding: '0.2rem 0.55rem', borderRadius: '999px', background: 'rgba(201,168,76,0.12)', color: 'var(--wa-gold)', fontSize: '0.62rem', textTransform: 'uppercase' }}>{photo.category}</span>
-                <div style={{ marginTop: '0.75rem' }}>
-                  {deleteId === (photo.id || photo.imageUrl) ? (
-                    <div style={{ display: 'flex', gap: '0.4rem' }}>
-                      <button onClick={() => handleDelete(photo)} style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.18)', color: '#f87171', cursor: 'pointer', fontSize: '0.7rem' }}>Delete</button>
-                      <button onClick={() => setDeleteId(null)} style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: 'rgba(235,230,220,0.6)', cursor: 'pointer', fontSize: '0.7rem' }}>Cancel</button>
-                    </div>
-                  ) : (
-                    <button onClick={() => setDeleteId(photo.id || photo.imageUrl)} style={{ width: '100%', padding: '0.45rem 0.75rem', borderRadius: 6, border: '1px solid rgba(239,68,68,0.18)', background: 'rgba(239,68,68,0.08)', color: 'rgba(248,113,113,0.85)', cursor: 'pointer', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}><Trash2 size={13} /> Delete</button>
-                  )}
-                </div>
+                {!selectMode && (
+                  <div style={{ marginTop: '0.75rem' }}>
+                    {deleteId === photoKey ? (
+                      <div style={{ display: 'flex', gap: '0.4rem' }}>
+                        <button onClick={() => handleDelete(photo)} style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.18)', color: '#f87171', cursor: 'pointer', fontSize: '0.7rem' }}>Delete</button>
+                        <button onClick={() => setDeleteId(null)} style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: 'rgba(235,230,220,0.6)', cursor: 'pointer', fontSize: '0.7rem' }}>Cancel</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setDeleteId(photoKey)} style={{ width: '100%', padding: '0.45rem 0.75rem', borderRadius: 6, border: '1px solid rgba(239,68,68,0.18)', background: 'rgba(239,68,68,0.08)', color: 'rgba(248,113,113,0.85)', cursor: 'pointer', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}><Trash2 size={13} /> Delete</button>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
         {galleryPhotos.length === 0 && <div style={{ textAlign: 'center', padding: '3rem', color: 'rgba(235,230,220,0.3)' }}>No gallery photos uploaded yet.</div>}
       </div>
