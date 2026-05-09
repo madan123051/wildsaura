@@ -1,5 +1,5 @@
 import { db, storage } from '../firebase';
-import { collection, addDoc, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, serverTimestamp, Unsubscribe } from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, serverTimestamp, updateDoc, Unsubscribe } from 'firebase/firestore';
 import { deleteObject, getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
 
 export type GalleryCategory = 'wildlife' | 'birds' | 'landscapes' | 'portraits' | 'others';
@@ -67,6 +67,10 @@ export async function addGalleryPhotoToFirestore(photo: Omit<GalleryPhoto, 'id'>
     createdAt: serverTimestamp(),
   });
   return docRef.id;
+}
+
+export async function updateGalleryPhotoTitle(id: string, title: string): Promise<void> {
+  await updateDoc(doc(db, GALLERY_COLLECTION, id), { title });
 }
 
 export async function getGalleryPhotosFromFirestore(): Promise<GalleryPhoto[]> {
