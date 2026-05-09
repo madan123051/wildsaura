@@ -16,7 +16,7 @@ import { uploadVideoToStorage, uploadVideoThumbnailToStorage } from '../services
 import { compressImageForAI, compressForUpload, generateThumbnail } from '../utils/imageCompressor';
 import { readExifFromFile } from '../utils/exifReader';
 import { subscribeToContactMessages, deleteContactMessage, ContactMessage } from '../services/contactService';
-import { addGalleryPhotoToFirestore, deleteGalleryPhoto, subscribeToGalleryPhotos, uploadGalleryBlobToStorage } from '../services/galleryService';
+import { addGalleryPhotoToFirestore, deleteGalleryPhoto, subscribeToGalleryPhotos, uploadGalleryBlobToStorage, updateGalleryPhotoTitle } from '../services/galleryService';
 
 
 
@@ -1706,6 +1706,9 @@ const GalleryManagement: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState('');
+  const [renaming, setRenaming] = useState(false);
 
   React.useEffect(() => {
     const unsub = subscribeToGalleryPhotos((photos) => setGalleryPhotos(photos));
@@ -1816,6 +1819,30 @@ const GalleryManagement: React.FC = () => {
     }
   };
 
+  const handleRenameStart = (photo: GalleryPhoto) => {
+    setEditingId(photo.id || photo.imageUrl);
+    setEditingTitle(photo.title);
+  };
+
+  const handleRenameSave = async (photo: GalleryPhoto) => {
+    if (!photo.id || !editingTitle.trim()) return;
+    setRenaming(true);
+    try {
+      await updateGalleryPhotoTitle(photo.id, editingTitle.trim());
+      setEditingId(null);
+    } catch (err) {
+      console.error('Rename failed:', err);
+      alert('Could not rename this photo.');
+    } finally {
+      setRenaming(false);
+    }
+  };
+
+  const handleRenameCancel = () => {
+    setEditingId(null);
+    setEditingTitle('');
+  };
+
   return (
     <div style={{ display: 'grid', gap: '1.5rem' }}>
       <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.1)', borderRadius: '12px', padding: '1.5rem' }}>
@@ -1852,7 +1879,33 @@ const GalleryManagement: React.FC = () => {
             <div key={photo.id || photo.imageUrl} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.1)', borderRadius: '12px', overflow: 'hidden' }}>
               <img src={photo.imageUrl} alt={photo.title} style={{ width: '100%', height: 150, objectFit: 'cover' }} />
               <div style={{ padding: '0.8rem' }}>
-                <h4 style={{ color: 'var(--wa-light)', fontSize: '0.85rem', marginBottom: '0.35rem' }}>{photo.title}</h4>
+                {editingId === (photo.id || photo.imageUrl) ? (
+                  <div style={{ marginBottom: '0.35rem' }}>
+                    <input
+                      value={editingTitle}
+                      onChange={(e) => setEditingTitle(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleRenameSave(photo); if (e.key === 'Escape') handleRenameCancel(); }}
+                      style={{ ...inputStyle, fontSize: '0.82rem', padding: '0.3rem 0.5rem', marginBottom: '0.4rem' }}
+                      autoFocus
+                      disabled={renaming}
+                    />
+                    <div style={{ display: 'flex', gap: '0.35rem' }}>
+                      <button onClick={() => handleRenameSave(photo)} disabled={renaming || !editingTitle.trim()} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', padding: '0.3rem 0.6rem', borderRadius: 6, border: '1px solid rgba(201,168,76,0.3)', background: 'rgba(201,168,76,0.12)', color: 'var(--wa-gold)', cursor: 'pointer', fontSize: '0.7rem' }}>
+                        <Save size={11} /> Save
+                      </button>
+                      <button onClick={handleRenameCancel} disabled={renaming} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', padding: '0.3rem 0.6rem', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: 'rgba(235,230,220,0.6)', cursor: 'pointer', fontSize: '0.7rem' }}>
+                        <X size={11} /> Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.35rem' }}>
+                    <h4 style={{ color: 'var(--wa-light)', fontSize: '0.85rem', margin: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{photo.title}</h4>
+                    <button onClick={() => handleRenameStart(photo)} title="Rename photo" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(201,168,76,0.65)', padding: '0.1rem', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                      <Pencil size={12} />
+                    </button>
+                  </div>
+                )}
                 <span style={{ display: 'inline-block', padding: '0.2rem 0.55rem', borderRadius: '999px', background: 'rgba(201,168,76,0.12)', color: 'var(--wa-gold)', fontSize: '0.62rem', textTransform: 'uppercase' }}>{photo.category}</span>
                 <div style={{ marginTop: '0.75rem' }}>
                   {deleteId === (photo.id || photo.imageUrl) ? (
