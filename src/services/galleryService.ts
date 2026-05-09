@@ -28,7 +28,10 @@ export async function uploadGalleryBlobToStorage(
   category: GalleryCategory,
   onProgress?: (progress: number) => void
 ): Promise<{ imageUrl: string; storagePath: string }> {
-  const storagePath = `gallery/${category}/${Date.now()}_${sanitize(filename)}`;
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const storagePath = `gallery/${category}/${year}/${month}/${Date.now()}_${sanitize(filename)}`;
   const storageRef = ref(storage, storagePath);
   const contentType = blob.type || 'image/webp';
 
