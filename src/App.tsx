@@ -31,7 +31,7 @@ import { LiveStats } from './components/LiveStats';
 import { PhotoMap } from './components/PhotoMap';
 import { onSiteSettingsChange, SiteSettings } from './services/siteSettingsService';
 import { NotificationPanel, AppNotification } from './components/NotificationPanel';
-import { updateSeo } from './utils/seo';
+import { updatePhotoMeta, updateStoryMeta, resetMeta } from './utils/seo';
 
 const logoUrl = '/photos/logo.png';
 const ADMIN_EMAIL = 'madan123050@gmail.com';
@@ -687,40 +687,6 @@ const App: React.FC = () => {
     };
   }, [isPullRefreshing, view]);
 
-
-
-  useEffect(() => {
-    if (selectedPhoto) {
-      updateSeo({
-        title: `${selectedPhoto.title} — WILDS AURA Photography`,
-        description: selectedPhoto.caption || 'Wildlife photography on WildSaura',
-        image: selectedPhoto.imageUrl,
-        url: `${window.location.origin}/photo/${encodeURIComponent(selectedPhoto.firestoreId || String(selectedPhoto.id))}`,
-        type: 'article',
-      });
-      return;
-    }
-
-    if (view === 'story-detail' && selectedStory) {
-      updateSeo({
-        title: `${selectedStory.title} — WILDS AURA Stories`,
-        description: selectedStory.excerpt || 'Photography stories on WildSaura',
-        image: selectedStory.coverImageUrl,
-        url: `${window.location.origin}/story/${encodeURIComponent(selectedStory.slug)}`,
-        type: 'article',
-      });
-      return;
-    }
-
-    updateSeo({
-      title: 'WILDS AURA Photography',
-      description: 'Explore wildlife and nature photography with stories from around the world.',
-      image: `${window.location.origin}/photos/logo.png`,
-      url: window.location.href,
-      type: 'website',
-    });
-  }, [selectedPhoto, selectedStory, view]);
-
   const scrollToGallery = useCallback(() => {
     galleryRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
@@ -996,6 +962,16 @@ const App: React.FC = () => {
     setStories((prev) => prev.map((s) => s.id === story.id ? { ...s, viewCount: s.viewCount + 1 } : s));
     setView('story-detail');
     window.history.pushState({}, '', '/story/' + encodeURIComponent(story.slug));
+    updateStoryMeta({
+      title: story.title,
+      excerpt: story.excerpt,
+      content: story.content,
+      coverImageUrl: story.coverImageUrl,
+      tags: story.tags,
+      photographer: story.photographer,
+      slug: story.slug,
+      createdAt: story.createdAt,
+    });
     window.scrollTo(0, 0);
   }, []);
 
@@ -1315,8 +1291,22 @@ const App: React.FC = () => {
     if (photo) {
       const photoId = photo.firestoreId || String(photo.id);
       window.history.pushState({}, '', '/photo/' + encodeURIComponent(photoId));
+      updatePhotoMeta({
+        title: photo.title,
+        caption: photo.caption,
+        imageUrl: photo.imageUrl,
+        thumbnailUrl: photo.thumbnailUrl,
+        category: photo.category,
+        photographer: photo.photographer,
+        location: photo.location,
+        tags: photo.tags,
+        animalName: photo.animalName,
+        firestoreId: photo.firestoreId,
+        id: photo.id,
+      });
     } else {
       window.history.pushState({}, '', '/');
+      resetMeta();
     }
   }, []);
 
@@ -1324,6 +1314,7 @@ const App: React.FC = () => {
   const closePhoto = useCallback(() => {
     setSelectedPhoto(null);
     window.history.pushState({}, '', '/');
+    resetMeta();
   }, []);
 
   // ── Helper: Go back from story to home ───────────────────────────────────
@@ -1331,6 +1322,7 @@ const App: React.FC = () => {
     setView('home');
     setSelectedStory(null);
     window.history.pushState({}, '', '/');
+    resetMeta();
   }, []);
 
   // Admin login removed — admin auto-detected by email
