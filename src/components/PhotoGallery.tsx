@@ -193,108 +193,131 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
     );
   };
 
-  /* ── Folder cards (category view) ────────────────────────────────── */
+  /* ── Folder cards — compact horizontal scroll strip ─────────────── */
   const FolderGrid = () => (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-      gap: '3px',
-    }}>
-      {categorySummary.map((cat, i) => (
-        <button
-          key={cat.key}
-          onClick={() => cat.count > 0 && setOpenCategory(cat.key)}
-          style={{
-            border: 'none', padding: 0,
-            background: '#060f0a',
-            cursor: cat.count > 0 ? 'pointer' : 'not-allowed',
-            overflow: 'hidden',
-            position: 'relative',
-            height: i === 0 ? 340 : 260,
-            opacity: cat.count === 0 ? 0.38 : 1,
-            display: 'block',
-          }}
-          onMouseOver={(e) => {
-            if (cat.count === 0) return;
-            const img = e.currentTarget.querySelector('img') as HTMLImageElement;
-            const bar = e.currentTarget.querySelector('.ng-cat-bar') as HTMLElement;
-            if (img) img.style.transform = 'scale(1.05)';
-            if (bar) bar.style.width = '60px';
-          }}
-          onMouseOut={(e) => {
-            const img = e.currentTarget.querySelector('img') as HTMLImageElement;
-            const bar = e.currentTarget.querySelector('.ng-cat-bar') as HTMLElement;
-            if (img) img.style.transform = 'scale(1)';
-            if (bar) bar.style.width = '32px';
-          }}
-        >
-          {/* Cover image */}
-          {cat.cover ? (
-            <img
-              src={cat.cover}
-              alt={cat.label}
-              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', transition: 'transform 0.55s ease' }}
-            />
-          ) : (
+    <div style={{ paddingBottom: '0.5rem' }}>
+      {/* Horizontal scroll row */}
+      <div style={{
+        display: 'flex',
+        gap: '10px',
+        overflowX: 'auto',
+        padding: '1.5rem 1.25rem 0.75rem',
+        scrollSnapType: 'x mandatory',
+        WebkitOverflowScrolling: 'touch',
+        msOverflowStyle: 'none',
+        scrollbarWidth: 'none',
+      } as React.CSSProperties}>
+        {categorySummary.map((cat) => (
+          <button
+            key={cat.key}
+            onClick={() => cat.count > 0 && setOpenCategory(cat.key)}
+            style={{
+              flex: '0 0 auto',
+              width: 118,
+              height: 148,
+              scrollSnapAlign: 'start',
+              border: 'none',
+              padding: 0,
+              background: '#060f0a',
+              cursor: cat.count > 0 ? 'pointer' : 'not-allowed',
+              overflow: 'hidden',
+              position: 'relative',
+              borderRadius: '7px',
+              opacity: cat.count === 0 ? 0.38 : 1,
+              boxShadow: '0 4px 16px rgba(0,0,0,0.45)',
+              transition: 'transform 0.22s ease, box-shadow 0.22s ease',
+            }}
+            onMouseOver={(e) => {
+              if (cat.count === 0) return;
+              e.currentTarget.style.transform = 'translateY(-3px) scale(1.03)';
+              e.currentTarget.style.boxShadow = `0 8px 24px rgba(0,0,0,0.6), 0 0 0 2px ${NG_YELLOW}`;
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.transform = 'translateY(0) scale(1)';
+              e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.45)';
+            }}
+          >
+            {/* Cover image */}
+            {cat.cover ? (
+              <img
+                src={cat.cover}
+                alt={cat.label}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+              />
+            ) : (
+              <div style={{
+                width: '100%', height: '100%',
+                background: 'linear-gradient(160deg, #0c2018, #071509)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '2.2rem',
+              }}>
+                {cat.emoji}
+              </div>
+            )}
+
+            {/* Bottom gradient */}
             <div style={{
-              width: '100%', height: '100%',
-              background: 'linear-gradient(160deg, #0c2018, #071509)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '3rem',
-            }}>
-              {cat.emoji}
-            </div>
-          )}
-
-          {/* Dramatic bottom gradient overlay */}
-          <div style={{
-            position: 'absolute', inset: 0,
-            background: 'linear-gradient(to top, rgba(3,10,6,0.92) 0%, rgba(3,10,6,0.45) 40%, rgba(0,0,0,0.12) 70%, transparent 100%)',
-          }} />
-
-          {/* NatGeo-style count badge — top right */}
-          <span style={{
-            position: 'absolute', top: 12, right: 12,
-            background: NG_YELLOW,
-            color: '#050d08',
-            fontSize: '0.62rem', fontWeight: 800,
-            fontFamily: 'Cinzel, serif',
-            letterSpacing: '0.08em',
-            padding: '0.22rem 0.6rem',
-            textTransform: 'uppercase',
-          }}>
-            {cat.count} {cat.count === 1 ? 'Photo' : 'Photos'}
-          </span>
-
-          {/* Bottom text */}
-          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '1.1rem 1.1rem 1.2rem' }}>
-            {/* NatGeo accent bar */}
-            <div className="ng-cat-bar" style={{
-              width: 32, height: 3, background: NG_YELLOW,
-              marginBottom: '0.6rem', transition: 'width 0.3s ease',
+              position: 'absolute', inset: 0,
+              background: 'linear-gradient(to top, rgba(3,10,6,0.95) 0%, rgba(3,10,6,0.4) 50%, rgba(0,0,0,0.08) 100%)',
             }} />
-            <div className="font-nepali" style={{
-              color: 'rgba(255,255,255,0.55)', fontSize: '0.72rem',
-              letterSpacing: '0.05em', marginBottom: '0.15rem',
+
+            {/* Photo count badge — top right */}
+            <span style={{
+              position: 'absolute', top: 7, right: 7,
+              background: NG_YELLOW,
+              color: '#050d08',
+              fontSize: '0.5rem', fontWeight: 800,
+              fontFamily: 'Cinzel, serif',
+              letterSpacing: '0.06em',
+              padding: '0.12rem 0.38rem',
+              lineHeight: 1.4,
             }}>
-              {cat.nepali}
+              {cat.count}
+            </span>
+
+            {/* Bottom label */}
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0.55rem 0.65rem 0.65rem' }}>
+              {/* NatGeo accent bar */}
+              <div style={{ width: 20, height: 2, background: NG_YELLOW, marginBottom: '0.32rem' }} />
+
+              {/* Nepali name — sage */}
+              <div className="font-nepali" style={{
+                color: 'rgba(197,217,181,0.72)',
+                fontSize: '0.58rem',
+                lineHeight: 1.2,
+                marginBottom: '0.18rem',
+              }}>
+                {cat.nepali}
+              </div>
+
+              {/* English label — warm parchment */}
+              <div className="font-cinzel" style={{
+                color: '#F2E4C4',
+                fontSize: '0.68rem', fontWeight: 700,
+                letterSpacing: '0.07em', textTransform: 'uppercase',
+                textShadow: '0 1px 6px rgba(0,0,0,0.9)',
+                lineHeight: 1.2,
+              }}>
+                {cat.label}
+              </div>
             </div>
-            <div className="font-cinzel" style={{
-              color: '#fff', fontSize: '1.1rem', fontWeight: 700,
-              letterSpacing: '0.06em', textTransform: 'uppercase',
-              textShadow: '0 2px 8px rgba(0,0,0,0.5)',
-            }}>
-              {cat.label}
-            </div>
-            <div style={{
-              color: 'rgba(255,255,255,0.48)', fontSize: '0.68rem',
-              marginTop: '0.3rem', fontStyle: 'italic',
-            }}>
-              {cat.count === 0 ? 'No photos yet' : cat.tagline}
-            </div>
-          </div>
-        </button>
-      ))}
+          </button>
+        ))}
+      </div>
+
+      {/* Scroll hint dots */}
+      <div style={{
+        display: 'flex', justifyContent: 'center',
+        gap: '5px', padding: '0.6rem 0 0.2rem',
+      }}>
+        {categorySummary.map((cat) => (
+          <div key={cat.key} style={{
+            width: 4, height: 4, borderRadius: '50%',
+            background: cat.count > 0 ? NG_YELLOW : 'rgba(255,255,255,0.12)',
+            opacity: cat.count > 0 ? 0.55 : 0.25,
+          }} />
+        ))}
+      </div>
     </div>
   );
 

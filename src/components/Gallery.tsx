@@ -3,6 +3,8 @@ import { Camera, ChevronDown } from 'lucide-react';
 import { Photo, FilterTab } from '../types';
 import { PhotoCard } from './PhotoCard';
 
+const NG_YELLOW = '#E8C84A';
+
 interface GalleryProps {
   photos: Photo[];
   filterTabs: FilterTab[];
@@ -33,40 +35,40 @@ export const Gallery: React.FC<GalleryProps> = ({
   onLoginRequired,
 }) => {
   const [showAll, setShowAll] = useState(false);
-  const filtered = selectedCategory === 'all' ? photos : photos.filter((p) => p.category === selectedCategory);
-  const published = filtered.filter(p => p.published !== false);
+  // Always show all — category filtering handled by folder view above
+  const published = photos.filter(p => p.published !== false);
   const displayPhotos = showAll ? published : published.slice(0, INITIAL_COUNT);
   const hasMore = published.length > INITIAL_COUNT;
 
   return (
-    <section ref={galleryRef} id="gallery" className="bg-wa-dark" style={{ padding: '4rem 0 5rem' }}>
+    <section ref={galleryRef} id="gallery" className="bg-wa-dark" style={{ padding: '3.5rem 0 5rem' }}>
       <div className="wa-container">
         {/* Section Header */}
-        <div style={{ marginBottom: '2.5rem' }}>
-          <p className="section-subtitle">Portfolio</p>
-          <h2 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            📷 Latest Posts
+        <div style={{ marginBottom: '2rem' }}>
+          {/* NatGeo top rule */}
+          <div style={{ width: 36, height: 3, background: NG_YELLOW, marginBottom: '1rem' }} />
+
+          <p className="section-subtitle" style={{ letterSpacing: '0.32em' }}>
+            — Field Notes
+          </p>
+          <h2 className="section-title" style={{
+            display: 'flex', alignItems: 'baseline', gap: '0.5rem',
+            color: '#F2E4C4',         /* warm parchment instead of cold white */
+          }}>
+            Latest Posts
             <span style={{
-              fontSize: '0.9rem', fontWeight: 400, color: 'var(--wa-text-muted)',
-              marginLeft: '0.25rem',
+              fontSize: '0.78rem', fontWeight: 500,
+              color: NG_YELLOW,
+              letterSpacing: '0.06em',
+              border: `1px solid ${NG_YELLOW}`,
+              padding: '0.1rem 0.55rem',
+              marginLeft: '0.35rem',
+              fontFamily: 'Cinzel, serif',
             }}>
-              ({published.length})
+              {published.length}
             </span>
           </h2>
           <div className="section-line" />
-        </div>
-
-        {/* Filter Tabs */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '2.5rem' }}>
-          {filterTabs.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => { onCategoryChange(tab.key); setShowAll(false); }}
-              className={`filter-tab ${selectedCategory === tab.key ? 'active' : ''}`}
-            >
-              {tab.label}
-            </button>
-          ))}
         </div>
 
         {/* Gallery Grid */}
