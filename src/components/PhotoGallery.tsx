@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Camera, Search, ChevronLeft } from 'lucide-react';
+import { Camera, ChevronLeft, FolderOpen, Folder, Search } from 'lucide-react';
 import { GalleryPhoto, GalleryCategory } from '../types';
 
 interface PhotoGalleryProps {
@@ -7,100 +7,129 @@ interface PhotoGalleryProps {
   searchQuery: string;
 }
 
-const CATEGORY_TABS: Array<{ key: GalleryCategory; label: string; emoji: string }> = [
-  { key: 'wildlife', label: 'Wildlife', emoji: '🦁' },
-  { key: 'birds', label: 'Birds', emoji: '🦅' },
-  { key: 'landscapes', label: 'Landscapes', emoji: '🏔️' },
-  { key: 'portraits', label: 'Portraits', emoji: '📷' },
-  { key: 'others', label: 'Others', emoji: '🌿' },
+const CATEGORY_TABS: Array<{ key: 'all' | GalleryCategory; label: string }> = [
+  { key: 'all', label: 'All' },
+  { key: 'wildlife', label: 'Wildlife' },
+  { key: 'birds', label: 'Birds' },
+  { key: 'landscapes', label: 'Landscapes' },
+  { key: 'portraits', label: 'Portraits' },
+  { key: 'others', label: 'Others' },
 ];
 
-const categoryLabel = (category: GalleryCategory) =>
-  CATEGORY_TABS.find((t) => t.key === category)?.label || category;
+const MONTH_NAMES: Record<string, string> = {
+  '01': 'January', '02': 'February', '03': 'March', '04': 'April',
+  '05': 'May', '06': 'June', '07': 'July', '08': 'August',
+  '09': 'September', '10': 'October', '11': 'November', '12': 'December',
+};
 
-const categoryEmoji = (category: GalleryCategory) =>
-  CATEGORY_TABS.find((t) => t.key === category)?.emoji || '📁';
+const categoryLabel = (cat: GalleryCategory) =>
+  CATEGORY_TABS.find(t => t.key === cat)?.label || cat;
+
+/** Extract year & month from storagePath (new: gallery/cat/year/month/file) or createdAt fallback */
+const extractYearMonth = (photo: GalleryPhoto): { year: string; month: string } => {
+  if (photo.storagePath) {
+    const parts = photo.storagePath.split('/');
+    if (parts.length >= 5 && /^\d{4}$/.test(parts[2]) && /^\d{2}$/.test(parts[3])) {
+      return { year: parts[2], month: parts[3] };
+    }
+  }
+  const date = photo.createdAt?.toDate
+    ? photo.createdAt.toDate()
+    : photo.createdAt instanceof Date
+    ? photo.createdAt
+    : new Date();
+  return {
+    year: date.getFullYear().toString(),
+    month: String(date.getMonth() + 1).padStart(2, '0'),
+  };
+};
+
+type AnnotatedPhoto = GalleryPhoto & { year: string; month: string };
+
+const folderCardStyle: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: '0.6rem',
+  padding: '1.5rem 1rem',
+  border: '1px solid rgba(201,168,76,0.2)',
+  borderRadius: '16px',
+  background: 'rgba(255,255,255,0.03)',
+  cursor: 'pointer',
+  transition: 'all 0.22s ease',
+  textAlign: 'center',
+};
 
 export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery }) => {
-  const [openCategory, setOpenCategory] = useState<GalleryCategory | null>(null);
-  const [openYear, setOpenYear] = useState<string | null>(null);
-  const [openMonth, setOpenMonth] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<'all' | GalleryCategory>('all');
+  const [selectedYear, setSelectedYear] = useState<string | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [activePhoto, setActivePhoto] = useState<GalleryPhoto | null>(null);
+  const [hovered, setHovered] = useState<string | null>(null);
 
-  const MONTH_NAMES: Record<string, string> = { '01':'January','02':'February','03':'March','04':'April','05':'May','06':'June','07':'July','08':'August','09':'September','10':'October','11':'November','12':'December' };
-  const getPhotoYearMonth = (photo: GalleryPhoto): { year: string; month: string } => {
-    if (photo.storagePath) { const parts = photo.storagePath.split('/'); if (parts.length >= 5) return { year: parts[2], month: parts[3] }; }
-    if (photo.createdAt?.toDate) { const d: Date = photo.createdAt.toDate(); return { year: String(d.getFullYear()), month: String(d.getMonth() + 1).padStart(2, '0') }; }
-    return { year: String(new Date().getFullYear()), month: String(new Date().getMonth() + 1).padStart(2, '0') };
+  const handleCategoryChange = (cat: 'all' | GalleryCategory) => {
+    setSelectedCategory(cat);
+    setSelectedYear(null);
+    setSelectedMonth(null);
   };
-  const isSearching = searchQuery.trim().length > 0;
 
-  // Search results across all categories
-  const searchResults = useMemo(() => {
-    if (!isSearching) return [];
+  const handleBack = () => {
+    if (selectedMonth) { setSelectedMonth(null); return; }
+    if (selectedYear) { setSelectedYear(null); return; }
+    setSelectedCategory('all');
+  };
+
+  // Base filter: category + search
+  const categoryFiltered: AnnotatedPhoto[] = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    return photos.filter(
-      (p) =>
-        p.title.toLowerCase().includes(q) ||
-        p.category.toLowerCase().includes(q) ||
-        categoryLabel(p.category).toLowerCase().includes(q)
-    );
-  }, [photos, searchQuery, isSearching]);
+    return photos
+      .filter(p => {
+        const matchesCat = selectedCategory === 'all' || p.category === selectedCategory;
+        const matchesSearch =
+          !q ||
+          p.title.toLowerCase().includes(q) ||
+          p.category.toLowerCase().includes(q) ||
+          categoryLabel(p.category).toLowerCase().includes(q);
+        return matchesCat && matchesSearch;
+      })
+      .map(p => ({ ...p, ...extractYearMonth(p) }));
+  }, [photos, searchQuery, selectedCategory]);
 
-  // Photos in open category
-  const categoryPhotos = useMemo(() => {
-    if (!openCategory) return [];
-    return photos.filter((p) => p.category === openCategory);
-  }, [photos, openCategory]);
+  const years = useMemo(
+    () => [...new Set(categoryFiltered.map(p => p.year))].sort((a, b) => b.localeCompare(a)),
+    [categoryFiltered]
+  );
 
-  // Category folder summary
-  const categorySummary = useMemo(() =>
-    CATEGORY_TABS.map((tab) => {
-      const catPhotos = photos.filter((p) => p.category === tab.key);
-      return { ...tab, count: catPhotos.length, cover: catPhotos[0]?.imageUrl ?? null };
-    }), [photos]);
+  const months = useMemo(() => {
+    if (!selectedYear) return [];
+    const inYear = categoryFiltered.filter(p => p.year === selectedYear);
+    return [...new Set(inYear.map(p => p.month))].sort((a, b) => b.localeCompare(a));
+  }, [categoryFiltered, selectedYear]);
 
-  // ── Photo grid ────────────────────────────────────────────────────────────
-  const PhotoGrid = ({ items }: { items: GalleryPhoto[] }) =>
-    items.length === 0 ? (
-      <div style={{ textAlign: 'center', padding: '5rem 0', border: '1px dashed rgba(201,168,76,0.18)', borderRadius: '18px', background: 'rgba(255,255,255,0.02)' }}>
-        <Camera size={48} style={{ margin: '0 auto 1rem', color: 'var(--wa-gold)', opacity: 0.35 }} />
-        <p className="font-cinzel text-wa-muted" style={{ fontSize: '0.875rem' }}>No photos found.</p>
-      </div>
-    ) : (
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.85rem' }}>
-        {items.map((photo, index) => (
-          <button
-            key={photo.id || photo.imageUrl}
-            onClick={() => setActivePhoto(photo)}
-            style={{
-              border: '1px solid rgba(201,168,76,0.12)',
-              borderRadius: '16px',
-              overflow: 'hidden',
-              padding: 0,
-              background: 'rgba(255,255,255,0.03)',
-              cursor: 'pointer',
-              boxShadow: '0 18px 45px rgba(0,0,0,0.2)',
-              textAlign: 'left',
-            }}
-          >
-            <img
-              src={photo.imageUrl}
-              alt={photo.title}
-              style={{ width: '100%', height: index % 5 === 0 ? 250 : 190, objectFit: 'cover', display: 'block' }}
-            />
-            <span style={{ display: 'block', padding: '0.7rem 0.8rem' }}>
-              <span style={{ display: 'block', color: 'var(--wa-light)', fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.2rem' }}>
-                {photo.title}
-              </span>
-              <span style={{ color: 'var(--wa-gold)', fontSize: '0.65rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                {categoryLabel(photo.category)}
-              </span>
-            </span>
-          </button>
-        ))}
-      </div>
-    );
+  const displayPhotos = useMemo(() => {
+    if (!selectedYear || !selectedMonth) return [];
+    return categoryFiltered.filter(p => p.year === selectedYear && p.month === selectedMonth);
+  }, [categoryFiltered, selectedYear, selectedMonth]);
+
+  const showFlatGrid = selectedCategory === 'all';
+  const showYearFolders = !showFlatGrid && !selectedYear;
+  const showMonthFolders = !showFlatGrid && !!selectedYear && !selectedMonth;
+  const showPhotosGrid = !showFlatGrid && !!selectedYear && !!selectedMonth;
+
+  const breadcrumb = [
+    selectedCategory !== 'all' ? categoryLabel(selectedCategory as GalleryCategory) : null,
+    selectedYear,
+    selectedMonth ? MONTH_NAMES[selectedMonth] : null,
+  ].filter(Boolean) as string[];
+
+  const photoCount = showFlatGrid
+    ? categoryFiltered.length
+    : showYearFolders
+    ? categoryFiltered.length
+    : showMonthFolders
+    ? categoryFiltered.filter(p => p.year === selectedYear).length
+    : displayPhotos.length;
 
   return (
     <section
@@ -115,193 +144,180 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
           <h2 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             🖼️ Photo Gallery
             <span style={{ fontSize: '0.9rem', fontWeight: 400, color: 'var(--wa-text-muted)', marginLeft: '0.25rem' }}>
-              ({photos.length})
+              ({photoCount})
             </span>
           </h2>
           <div className="section-line" />
-          {isSearching && (
+          {searchQuery.trim() && (
             <p style={{ marginTop: '0.8rem', color: 'var(--wa-text-muted)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <Search size={15} /> Showing results for &ldquo;{searchQuery.trim()}&rdquo;
+              <Search size={15} /> Showing results for "{searchQuery.trim()}"
             </p>
           )}
         </div>
 
-        {/* ── Search mode: flat results across all categories ── */}
-        {isSearching ? (
-          <PhotoGrid items={searchResults} />
+        {/* Category tabs */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '2rem' }}>
+          {CATEGORY_TABS.map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => handleCategoryChange(tab.key)}
+              className={`filter-tab ${selectedCategory === tab.key ? 'active' : ''}`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-        ) : openCategory && openYear && openMonth ? (
-          /* ── Month level: breadcrumb + photo grid ── */
-          <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-              <button onClick={() => { setOpenCategory(null); setOpenYear(null); setOpenMonth(null); }}
-                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.25)', color: 'var(--wa-gold)', borderRadius: '8px', padding: '0.35rem 0.75rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>
-                <ChevronLeft size={14} /> All
-              </button>
-              <span style={{ color: 'rgba(201,168,76,0.45)' }}>›</span>
-              <button onClick={() => { setOpenYear(null); setOpenMonth(null); }}
-                style={{ background: 'none', border: 'none', color: 'rgba(201,168,76,0.75)', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, textDecoration: 'underline', padding: 0 }}>
-                {categoryEmoji(openCategory)} {categoryLabel(openCategory)}
-              </button>
-              <span style={{ color: 'rgba(201,168,76,0.45)' }}>›</span>
-              <button onClick={() => setOpenMonth(null)}
-                style={{ background: 'none', border: 'none', color: 'rgba(201,168,76,0.75)', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, textDecoration: 'underline', padding: 0 }}>
-                {openYear}
-              </button>
-              <span style={{ color: 'rgba(201,168,76,0.45)' }}>›</span>
-              <span style={{ color: 'var(--wa-light)', fontWeight: 700 }}>{MONTH_NAMES[openMonth]}</span>
-            </div>
-            <PhotoGrid items={monthPhotos} />
-          </>
-
-        ) : openCategory && openYear ? (
-          /* ── Year level: month folders ── */
-          <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-              <button onClick={() => { setOpenCategory(null); setOpenYear(null); }}
-                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.25)', color: 'var(--wa-gold)', borderRadius: '8px', padding: '0.35rem 0.75rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>
-                <ChevronLeft size={14} /> All
-              </button>
-              <span style={{ color: 'rgba(201,168,76,0.45)' }}>›</span>
-              <button onClick={() => setOpenYear(null)}
-                style={{ background: 'none', border: 'none', color: 'rgba(201,168,76,0.75)', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, textDecoration: 'underline', padding: 0 }}>
-                {categoryEmoji(openCategory)} {categoryLabel(openCategory)}
-              </button>
-              <span style={{ color: 'rgba(201,168,76,0.45)' }}>›</span>
-              <span style={{ color: 'var(--wa-light)', fontWeight: 700 }}>{openYear}</span>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1.1rem' }}>
-              {Array.from(monthMap.entries()).sort((a, b) => b[0].localeCompare(a[0])).map(([month, mPhotos]) => (
-                <button key={month} onClick={() => setOpenMonth(month)}
-                  style={{ border: '1px solid rgba(201,168,76,0.18)', borderRadius: '18px', overflow: 'hidden', padding: 0, background: 'rgba(255,255,255,0.03)', cursor: 'pointer', boxShadow: '0 18px 45px rgba(0,0,0,0.2)', textAlign: 'left', transition: 'transform 0.2s' }}
-                  onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 24px 55px rgba(0,0,0,0.35)'; }}
-                  onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 18px 45px rgba(0,0,0,0.2)'; }}>
-                  <div style={{ position: 'relative', height: 150, overflow: 'hidden' }}>
-                    <img src={mPhotos[0].imageUrl} alt={month} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    <span style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.62)', backdropFilter: 'blur(6px)', color: 'var(--wa-gold)', fontSize: '0.68rem', fontWeight: 700, padding: '0.2rem 0.55rem', borderRadius: '20px', border: '1px solid rgba(201,168,76,0.28)' }}>
-                      {mPhotos.length}
-                    </span>
-                  </div>
-                  <span style={{ display: 'block', padding: '0.8rem 1rem' }}>
-                    <span style={{ display: 'block', color: 'var(--wa-light)', fontSize: '0.92rem', fontWeight: 700 }}>🗓️ {MONTH_NAMES[month]}</span>
-                    <span style={{ color: 'var(--wa-text-muted)', fontSize: '0.72rem', display: 'block' }}>Open →</span>
-                  </span>
-                </button>
-              ))}
-            </div>
-          </>
-
-        ) : openCategory ? (
-          /* ── Category level: year folders ── */
-          <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-              <button onClick={() => setOpenCategory(null)}
-                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.25)', color: 'var(--wa-gold)', borderRadius: '8px', padding: '0.4rem 0.9rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}>
-                <ChevronLeft size={16} /> All Categories
-              </button>
-              <span style={{ color: 'var(--wa-light)', fontWeight: 700, fontSize: '1.05rem' }}>
-                {categoryEmoji(openCategory)} {categoryLabel(openCategory)}
-                <span style={{ color: 'var(--wa-text-muted)', fontWeight: 400, fontSize: '0.88rem', marginLeft: '0.5rem' }}>
-                  ({categoryPhotos.length})
-                </span>
-              </span>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1.1rem' }}>
-              {Array.from(yearMap.entries()).sort((a, b) => b[0].localeCompare(a[0])).map(([year, yPhotos]) => (
-                <button key={year} onClick={() => setOpenYear(year)}
-                  style={{ border: '1px solid rgba(201,168,76,0.18)', borderRadius: '18px', overflow: 'hidden', padding: 0, background: 'rgba(255,255,255,0.03)', cursor: 'pointer', boxShadow: '0 18px 45px rgba(0,0,0,0.2)', textAlign: 'left', transition: 'transform 0.2s' }}
-                  onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 24px 55px rgba(0,0,0,0.35)'; }}
-                  onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 18px 45px rgba(0,0,0,0.2)'; }}>
-                  <div style={{ position: 'relative', height: 150, overflow: 'hidden' }}>
-                    <img src={yPhotos[0].imageUrl} alt={year} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    <span style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.62)', backdropFilter: 'blur(6px)', color: 'var(--wa-gold)', fontSize: '0.68rem', fontWeight: 700, padding: '0.2rem 0.55rem', borderRadius: '20px', border: '1px solid rgba(201,168,76,0.28)' }}>
-                      {yPhotos.length}
-                    </span>
-                  </div>
-                  <span style={{ display: 'block', padding: '0.8rem 1rem' }}>
-                    <span style={{ display: 'block', color: 'var(--wa-light)', fontSize: '0.92rem', fontWeight: 700 }}>📅 {year}</span>
-                    <span style={{ color: 'var(--wa-text-muted)', fontSize: '0.72rem', display: 'block' }}>Open →</span>
-                  </span>
-                </button>
-              ))}
-            </div>
-          </>
-        ) : (        ) : (
-          /* ── Folder view: category cards ── */
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1.1rem' }}>
-            {categorySummary.map((cat) => (
-              <button
-                key={cat.key}
-                onClick={() => cat.count > 0 && setOpenCategory(cat.key)}
-                style={{
-                  border: '1px solid rgba(201,168,76,0.18)',
-                  borderRadius: '18px',
-                  overflow: 'hidden',
-                  padding: 0,
-                  background: 'rgba(255,255,255,0.03)',
-                  cursor: cat.count > 0 ? 'pointer' : 'default',
-                  boxShadow: '0 18px 45px rgba(0,0,0,0.22)',
-                  opacity: cat.count === 0 ? 0.42 : 1,
-                  textAlign: 'left',
-                  transition: 'transform 0.2s, box-shadow 0.2s',
-                }}
-                onMouseOver={(e) => {
-                  if (cat.count > 0) {
-                    (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-3px)';
-                    (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 24px 55px rgba(0,0,0,0.35)';
-                  }
-                }}
-                onMouseOut={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)';
-                  (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 18px 45px rgba(0,0,0,0.22)';
-                }}
-              >
-                {/* Cover photo */}
-                <div style={{ position: 'relative', height: 160, background: 'rgba(201,168,76,0.05)', overflow: 'hidden' }}>
-                  {cat.cover ? (
-                    <img
-                      src={cat.cover}
-                      alt={cat.label}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                    />
-                  ) : (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: '2.8rem' }}>
-                      {cat.emoji}
-                    </div>
-                  )}
-                  {/* Count badge */}
-                  <span style={{
-                    position: 'absolute', top: 8, right: 8,
-                    background: 'rgba(0,0,0,0.62)', backdropFilter: 'blur(6px)',
-                    color: 'var(--wa-gold)', fontSize: '0.68rem', fontWeight: 700,
-                    padding: '0.2rem 0.55rem', borderRadius: '20px',
-                    border: '1px solid rgba(201,168,76,0.28)',
-                  }}>
-                    {cat.count} {cat.count === 1 ? 'photo' : 'photos'}
-                  </span>
-                </div>
-                {/* Label */}
-                <span style={{ display: 'block', padding: '0.8rem 1rem' }}>
-                  <span style={{ display: 'block', color: 'var(--wa-light)', fontSize: '0.92rem', fontWeight: 700 }}>
-                    {cat.emoji} {cat.label}
-                  </span>
-                  <span style={{ color: 'var(--wa-text-muted)', fontSize: '0.72rem', marginTop: '0.2rem', display: 'block' }}>
-                    {cat.count === 0 ? 'No photos yet' : 'Open folder →'}
-                  </span>
-                </span>
-              </button>
-            ))}
+        {/* Breadcrumb / Back navigation */}
+        {breadcrumb.length > 0 && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              marginBottom: '1.5rem',
+              padding: '0.6rem 0.8rem',
+              borderRadius: '10px',
+              background: 'rgba(201,168,76,0.07)',
+              border: '1px solid rgba(201,168,76,0.15)',
+              width: 'fit-content',
+            }}
+          >
+            <button
+              onClick={handleBack}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '0.25rem',
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'var(--wa-gold)', fontSize: '0.82rem', padding: 0,
+              }}
+            >
+              <ChevronLeft size={16} /> Back
+            </button>
+            <span style={{ color: 'rgba(255,255,255,0.2)', margin: '0 0.2rem' }}>|</span>
+            <span style={{ color: 'rgba(235,230,220,0.6)', fontSize: '0.82rem' }}>
+              {breadcrumb.join(' › ')}
+            </span>
           </div>
+        )}
+
+        {/* ── Year folders ── */}
+        {showYearFolders && (
+          <>
+            {years.length === 0 ? (
+              <EmptyState />
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '1rem' }}>
+                {years.map(year => {
+                  const count = categoryFiltered.filter(p => p.year === year).length;
+                  const isHov = hovered === `y-${year}`;
+                  return (
+                    <button
+                      key={year}
+                      onClick={() => setSelectedYear(year)}
+                      onMouseEnter={() => setHovered(`y-${year}`)}
+                      onMouseLeave={() => setHovered(null)}
+                      style={{
+                        ...folderCardStyle,
+                        background: isHov ? 'rgba(201,168,76,0.1)' : 'rgba(255,255,255,0.03)',
+                        borderColor: isHov ? 'rgba(201,168,76,0.5)' : 'rgba(201,168,76,0.2)',
+                        transform: isHov ? 'translateY(-2px)' : 'none',
+                      }}
+                    >
+                      <FolderOpen size={44} color={isHov ? '#c9a84c' : 'rgba(201,168,76,0.65)'} />
+                      <span style={{ color: 'var(--wa-light)', fontWeight: 700, fontSize: '1.1rem' }}>{year}</span>
+                      <span style={{ color: 'var(--wa-text-muted)', fontSize: '0.72rem' }}>{count} photo{count !== 1 ? 's' : ''}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── Month folders ── */}
+        {showMonthFolders && (
+          <>
+            {months.length === 0 ? (
+              <EmptyState />
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '1rem' }}>
+                {months.map(month => {
+                  const count = categoryFiltered.filter(p => p.year === selectedYear && p.month === month).length;
+                  const isHov = hovered === `m-${month}`;
+                  return (
+                    <button
+                      key={month}
+                      onClick={() => setSelectedMonth(month)}
+                      onMouseEnter={() => setHovered(`m-${month}`)}
+                      onMouseLeave={() => setHovered(null)}
+                      style={{
+                        ...folderCardStyle,
+                        background: isHov ? 'rgba(201,168,76,0.1)' : 'rgba(255,255,255,0.03)',
+                        borderColor: isHov ? 'rgba(201,168,76,0.5)' : 'rgba(201,168,76,0.2)',
+                        transform: isHov ? 'translateY(-2px)' : 'none',
+                      }}
+                    >
+                      <Folder size={40} color={isHov ? '#c9a84c' : 'rgba(201,168,76,0.55)'} />
+                      <span style={{ color: 'var(--wa-light)', fontWeight: 600, fontSize: '0.95rem' }}>{MONTH_NAMES[month]}</span>
+                      <span style={{ color: 'var(--wa-gold)', fontSize: '0.72rem', fontWeight: 500 }}>{selectedYear}</span>
+                      <span style={{ color: 'var(--wa-text-muted)', fontSize: '0.7rem' }}>{count} photo{count !== 1 ? 's' : ''}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── Photos grid ── */}
+        {(showPhotosGrid || showFlatGrid) && (
+          <>
+            {(showPhotosGrid ? displayPhotos : categoryFiltered).length === 0 ? (
+              <EmptyState />
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.85rem' }}>
+                {(showPhotosGrid ? displayPhotos : categoryFiltered).map((photo, index) => (
+                  <button
+                    key={photo.id || photo.imageUrl}
+                    onClick={() => setActivePhoto(photo)}
+                    style={{
+                      border: '1px solid rgba(201,168,76,0.12)',
+                      borderRadius: '16px',
+                      overflow: 'hidden',
+                      padding: 0,
+                      background: 'rgba(255,255,255,0.03)',
+                      cursor: 'pointer',
+                      boxShadow: '0 18px 45px rgba(0,0,0,0.2)',
+                    }}
+                  >
+                    <img
+                      src={photo.imageUrl}
+                      alt={photo.title}
+                      style={{ width: '100%', height: index % 5 === 0 ? 250 : 190, objectFit: 'cover', display: 'block' }}
+                    />
+                    <span style={{ display: 'block', padding: '0.7rem 0.8rem', textAlign: 'left' }}>
+                      <span style={{ display: 'block', color: 'var(--wa-light)', fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.2rem' }}>{photo.title}</span>
+                      <span style={{ color: 'var(--wa-gold)', fontSize: '0.65rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{categoryLabel(photo.category)}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
 
-      {/* ── Lightbox ── */}
+      {/* Lightbox */}
       {activePhoto && (
         <div
           onClick={() => setActivePhoto(null)}
-          style={{ position: 'fixed', inset: 0, zIndex: 80, background: 'rgba(0,0,0,0.88)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 80,
+            background: 'rgba(0,0,0,0.88)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem',
+          }}
         >
-          <div onClick={(e) => e.stopPropagation()} style={{ maxWidth: '900px', width: '100%' }}>
+          <div onClick={e => e.stopPropagation()} style={{ maxWidth: '900px', width: '100%' }}>
             <img
               src={activePhoto.imageUrl}
               alt={activePhoto.title}
@@ -322,3 +338,10 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
     </section>
   );
 };
+
+const EmptyState: React.FC = () => (
+  <div style={{ textAlign: 'center', padding: '5rem 0', border: '1px dashed rgba(201,168,76,0.18)', borderRadius: '18px', background: 'rgba(255,255,255,0.02)' }}>
+    <Camera size={48} style={{ margin: '0 auto 1rem', color: 'var(--wa-gold)', opacity: 0.35 }} />
+    <p className="font-cinzel text-wa-muted" style={{ fontSize: '0.875rem' }}>No gallery photos found.</p>
+  </div>
+);

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
 import {
-  LayoutDashboard, Image, Plus, Pencil, Trash2, LogOut, Eye, EyeOff, CheckSquare, Check,
+  LayoutDashboard, Image, Plus, Pencil, Trash2, LogOut, Eye, EyeOff,
   MapPin, Heart, BarChart3, TrendingUp, X, Save, Search, BookOpen,
   Upload, Sparkles, Film, Camera, FileImage, Loader2, Info,
   Settings, Cpu, MessageCircle, Globe, Mail
@@ -16,7 +16,7 @@ import { uploadVideoToStorage, uploadVideoThumbnailToStorage } from '../services
 import { compressImageForAI, compressForUpload, generateThumbnail } from '../utils/imageCompressor';
 import { readExifFromFile } from '../utils/exifReader';
 import { subscribeToContactMessages, deleteContactMessage, ContactMessage } from '../services/contactService';
-import { addGalleryPhotoToFirestore, deleteGalleryPhoto, subscribeToGalleryPhotos, uploadGalleryBlobToStorage, updateGalleryPhotoTitle } from '../services/galleryService';
+import { addGalleryPhotoToFirestore, deleteGalleryPhoto, subscribeToGalleryPhotos, uploadGalleryPhotoToStorage } from '../services/galleryService';
 
 
 
@@ -1700,20 +1700,111 @@ const GALLERY_CATEGORY_OPTIONS: Array<{ value: GalleryCategory; label: string }>
 ];
 
 
-const GalleryManagement: React.FC = () => {
+const isIOSSafari = (): boolean => {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  const iOS = /iP(hone|ad|od)/.test(ua);
+  const webkit = /WebKit/i.test(ua);
+  const isCriOS = /CriOS/i.test(ua);
+  const isFxiOS = /FxiOS/i.test(ua);
+  return iOS && webkit && !isCriOS && !isFxiOS;
+};
+
+// ── canvasToBlob helper ────────────────────────────────────────────────────────
+// Wraps canvas.toBlob in a Promise. Tries WebP first; falls back to JPEG on
+// browsers (like older iOS Safari) that don't support WebP encoding.
+const canvasToBlob = (
+  canvas: HTMLCanvasElement,
+  quality: number
+): Promise<Blob | null> =>
+  new Promise((resolve) => {
+    canvas.toBlob(
+      (blob) => {
+        if (blob && blob.size > 0) { resolve(blob); return; }
+        // WebP not supported — try JPEG as fallback
+        canvas.toBlob(
+          (jpegBlob) => resolve(jpegBlob),
+          'image/jpeg',
+          quality
+        );
+      },
+      'image/webp',
+      quality
+    );
+  });
+
+
+const loadImageFromFile = (file: File): Promise<HTMLImageElement> => new Promise((resolve, reject) => {
+  const img = new Image();
+  const objectUrl = URL.createObjectURL(file);
+  img.onload = () => { URL.revokeObjectURL(objectUrl); resolve(img); };
+  img.onerror = (e) => { URL.revokeObjectURL(objectUrl); reject(e); };
+  img.src = objectUrl;
+});
+
+const preprocessGalleryImage = async (file: File): Promise<Blob> => {
+  const safariMode = isIOSSafari();
+  const MAX_DIM = safariMode ? 2000 : 2400;
+  const TARGET_MAX_BYTES = safariMode ? 2.6 * 1024 * 1024 : 3 * 1024 * 1024;
+
+  console.log('[GalleryUpload] Preprocess start', { name: file.name, size: file.size, type: file.type, safariMode });
+
+  try {
+    const img = await loadImageFromFile(file);
+    const scale = Math.min(1, MAX_DIM / Math.max(img.naturalWidth, img.naturalHeight));
+    const outW = Math.max(1, Math.round(img.naturalWidth * scale));
+    const outH = Math.max(1, Math.round(img.naturalHeight * scale));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = outW;
+    canvas.height = outH;
+    const ctx = canvas.getContext('2d', { alpha: false });
+    if (!ctx) throw new Error('Canvas context unavailable');
+
+    ctx.drawImage(img, 0, 0, outW, outH);
+
+    const pad = Math.max(16, Math.round(Math.min(outW, outH) * 0.01));
+    const fontSize = Math.max(14, Math.round(Math.min(outW, outH) * 0.022));
+    ctx.save();
+    ctx.globalAlpha = 0.55;
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'bottom';
+    ctx.font = `600 ${fontSize}px Inter, Arial, sans-serif`;
+    ctx.fillText('© WildSaura', outW - Math.max(24, pad), outH - Math.max(24, pad));
+    ctx.restore();
+
+    const qualities = safariMode ? [0.8, 0.76, 0.72, 0.68] : [0.85, 0.82, 0.78, 0.74];
+    for (const quality of qualities) {
+      const blob = await canvasToBlob(canvas, quality);
+      if (!blob) {
+        console.warn('[GalleryUpload] WebP conversion failed for quality', quality);
+        continue;
+      }
+      console.log('[GalleryUpload] WebP generated', { quality, size: blob.size, width: outW, height: outH });
+      if (blob.size <= TARGET_MAX_BYTES || quality === qualities[qualities.length - 1]) {
+        return blob;
+      }
+    }
+    throw new Error('WebP conversion failed for all quality levels');
+  } catch (error) {
+    console.error('[GalleryUpload] Preprocess failed', error);
+    throw new Error('Image preprocessing failed before upload.');
+  }
+};
+
+const GalleryManagement: React.FC = (): React.ReactElement => {
   const [category, setCategory] = useState<GalleryCategory>('wildlife');
   const [galleryPhotos, setGalleryPhotos] = useState<GalleryPhoto[]>([]);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingTitle, setEditingTitle] = useState('');
-  const [renaming, setRenaming] = useState(false);
-  const [selectMode, setSelectMode] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [browseCategory, setBrowseCategory] = useState<GalleryCategory | null>(null);
-  const [browseYear, setBrowseYear] = useState<string | null>(null);
-  const [browseMonth, setBrowseMonth] = useState<string | null>(null);
+
+  // Folder navigation state
+  const [viewYear, setViewYear] = useState<string | null>(null);
+  const [viewMonth, setViewMonth] = useState<string | null>(null);
+  const [viewCat, setViewCat] = useState<GalleryCategory | 'all'>('all');
+  const [hoveredFolder, setHoveredFolder] = useState<string | null>(null);
 
   React.useEffect(() => {
     const unsub = subscribeToGalleryPhotos((photos) => setGalleryPhotos(photos));
@@ -1721,53 +1812,6 @@ const GalleryManagement: React.FC = () => {
   }, []);
 
   const handleFiles = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    // ── Inline image processor: resize + © WildSaura watermark + WebP ──
-    const processImage = async (file: File): Promise<{ blob: Blob; filename: string; width: number; height: number; format: 'webp' | 'jpeg'; sizeBytes: number }> => {
-      const MAX_W = 2400;
-      const url = URL.createObjectURL(file);
-      const img: HTMLImageElement = await new Promise((resolve, reject) => {
-        const i = document.createElement('img');
-        i.onload = () => resolve(i);
-        i.onerror = () => reject(new Error('Could not decode image'));
-        i.decoding = 'async';
-        i.src = url;
-      });
-      try {
-        const ratio = img.naturalWidth > MAX_W ? MAX_W / img.naturalWidth : 1;
-        const w = Math.round(img.naturalWidth * ratio);
-        const h = Math.round(img.naturalHeight * ratio);
-        const canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) throw new Error('Canvas not supported');
-        ctx.imageSmoothingEnabled = true;
-        (ctx as any).imageSmoothingQuality = 'high';
-        ctx.drawImage(img, 0, 0, w, h);
-        const fontSize = Math.max(16, Math.min(48, Math.round(Math.max(w, h) * 0.022)));
-        ctx.save();
-        ctx.font = `600 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-        ctx.textBaseline = 'bottom';
-        ctx.textAlign = 'right';
-        ctx.globalAlpha = 0.55;
-        ctx.shadowColor = 'rgba(0,0,0,0.6)';
-        ctx.shadowBlur = 4;
-        ctx.shadowOffsetY = 1;
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText('© WildSaura', w - 24, h - 24);
-        ctx.restore();
-        const toBlob = (type: string, q: number) => new Promise<Blob | null>(res => { try { canvas.toBlob(b => res(b), type, q); } catch { res(null); } });
-        let blob = await toBlob('image/webp', 0.82);
-        let format: 'webp' | 'jpeg' = 'webp';
-        if (!blob) blob = await toBlob('image/webp', 0.78);
-        if (!blob) { blob = await toBlob('image/jpeg', 0.85); format = 'jpeg'; }
-        if (!blob) throw new Error('Image encoding failed');
-        const baseName = file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9._-]/g, '_');
-        return { blob, filename: `${baseName}.${format}`, width: w, height: h, format, sizeBytes: blob.size };
-      } finally {
-        URL.revokeObjectURL(url);
-      }
-    };
-
     const selectedFiles = Array.from(event.target.files || []).filter(file => file.type.startsWith('image/'));
     event.target.value = '';
     if (selectedFiles.length === 0) return;
@@ -1782,32 +1826,22 @@ const GalleryManagement: React.FC = () => {
       for (let index = 0; index < selectedFiles.length; index += 1) {
         const file = selectedFiles[index];
         const baseProgress = Math.round((index / selectedFiles.length) * 100);
-        const processed = await processImage(file);
-        const uploaded = await uploadGalleryBlobToStorage(
-          processed.blob,
-          processed.filename,
-          category,
-          (fileProgress) => {
-            setProgress(Math.round(baseProgress + (fileProgress / selectedFiles.length)));
-          }
-        );
+        const compressed = await preprocessGalleryImage(file);
+        const uploaded = await uploadGalleryPhotoToStorage(compressed, category, file.name, (fileProgress) => {
+          setProgress(Math.round(baseProgress + (fileProgress / selectedFiles.length)));
+        });
         await addGalleryPhotoToFirestore({
           title: file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' '),
           category,
           imageUrl: uploaded.imageUrl,
           storagePath: uploaded.storagePath,
-          width: processed.width,
-          height: processed.height,
-          format: processed.format,
-          sizeBytes: processed.sizeBytes,
         });
       }
       setProgress(100);
-    } catch (error) {
-      const err = error as any;
-      const reason = err?.code || err?.message || 'Unknown error';
-      console.error('Gallery upload failed:', err);
-      alert(`Gallery upload failed: ${reason}`);
+    } catch (error: any) {
+      console.error('Gallery upload failed:', error);
+      const reason = error?.code || error?.message || 'Unknown error';
+      alert(`Gallery upload failed: ${reason}\n\nIf this says "permission-denied" or "unauthorized", update your Firebase Storage & Firestore rules.`);
     } finally {
       setUploading(false);
       setTimeout(() => setProgress(0), 1200);
@@ -1824,55 +1858,82 @@ const GalleryManagement: React.FC = () => {
     }
   };
 
-  const handleRenameStart = (photo: GalleryPhoto) => {
-    setEditingId(photo.id || photo.imageUrl);
-    setEditingTitle(photo.title);
-  };
-
-  const handleRenameSave = async (photo: GalleryPhoto) => {
-    if (!photo.id || !editingTitle.trim()) return;
-    setRenaming(true);
-    try {
-      await updateGalleryPhotoTitle(photo.id, editingTitle.trim());
-      setEditingId(null);
-    } catch (err) {
-      console.error('Rename failed:', err);
-      alert('Could not rename this photo.');
-    } finally {
-      setRenaming(false);
+  // ── Helper: extract year/month from storagePath or createdAt ──
+  const extractYM = (photo: GalleryPhoto): { year: string; month: string } => {
+    if (photo.storagePath) {
+      const parts = photo.storagePath.split('/');
+      if (parts.length >= 5 && /^\d{4}$/.test(parts[2]) && /^\d{2}$/.test(parts[3])) {
+        return { year: parts[2], month: parts[3] };
+      }
     }
+    const date = photo.createdAt?.toDate
+      ? photo.createdAt.toDate()
+      : photo.createdAt instanceof Date
+      ? photo.createdAt
+      : new Date();
+    return {
+      year: date.getFullYear().toString(),
+      month: String(date.getMonth() + 1).padStart(2, '0'),
+    };
   };
 
-  const handleRenameCancel = () => {
-    setEditingId(null);
-    setEditingTitle('');
+  const MONTH_NAMES: Record<string, string> = {
+    '01': 'January', '02': 'February', '03': 'March', '04': 'April',
+    '05': 'May', '06': 'June', '07': 'July', '08': 'August',
+    '09': 'September', '10': 'October', '11': 'November', '12': 'December',
   };
 
-  const handleBulkDelete = async () => {
-    if (selectedIds.size === 0) return;
-    if (!window.confirm(`Delete ${selectedIds.size} photo${selectedIds.size > 1 ? 's' : ''}? This cannot be undone.`)) return;
-    const toDelete = galleryPhotos.filter(p => selectedIds.has(p.id || p.imageUrl));
-    for (const photo of toDelete) {
-      try { await deleteGalleryPhoto(photo); } catch (e) { console.error('Bulk delete failed for', photo.id, e); }
-    }
-    setSelectedIds(new Set());
-    setSelectMode(false);
+  const annotated = React.useMemo(
+    () => galleryPhotos
+      .filter(p => viewCat === 'all' || p.category === viewCat)
+      .map(p => ({ ...p, ...extractYM(p) })),
+    [galleryPhotos, viewCat]
+  );
+
+  const years = React.useMemo(
+    () => [...new Set(annotated.map(p => p.year))].sort((a, b) => b.localeCompare(a)),
+    [annotated]
+  );
+
+  const months = React.useMemo(() => {
+    if (!viewYear) return [];
+    return [...new Set(annotated.filter(p => p.year === viewYear).map(p => p.month))].sort((a, b) => b.localeCompare(a));
+  }, [annotated, viewYear]);
+
+  const photosInFolder = React.useMemo(() => {
+    if (!viewYear || !viewMonth) return [];
+    return annotated.filter(p => p.year === viewYear && p.month === viewMonth);
+  }, [annotated, viewYear, viewMonth]);
+
+  const handleBackFolder = () => {
+    if (viewMonth) { setViewMonth(null); return; }
+    if (viewYear) { setViewYear(null); return; }
   };
 
-  const toggleSelect = (key: string) => {
-    setSelectedIds(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
+  const breadcrumb = [
+    viewCat !== 'all' ? GALLERY_CATEGORY_OPTIONS.find(o => o.value === viewCat)?.label : null,
+    viewYear,
+    viewMonth ? MONTH_NAMES[viewMonth] : null,
+  ].filter(Boolean) as string[];
+
+  const adminFolderCard: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '0.5rem',
+    padding: '1.2rem 0.8rem',
+    border: '1px solid rgba(201,168,76,0.18)',
+    borderRadius: '12px',
+    background: 'rgba(255,255,255,0.03)',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    textAlign: 'center',
   };
-  const MONTH_NAMES: Record<string, string> = { '01':'Jan','02':'Feb','03':'Mar','04':'Apr','05':'May','06':'Jun','07':'Jul','08':'Aug','09':'Sep','10':'Oct','11':'Nov','12':'Dec' };
-  const getPhotoYearMonth = (photo: GalleryPhoto): { year: string; month: string } => {
-    if (photo.storagePath) { const parts = photo.storagePath.split('/'); if (parts.length >= 5) return { year: parts[2], month: parts[3] }; }
-    if (photo.createdAt?.toDate) { const d: Date = photo.createdAt.toDate(); return { year: String(d.getFullYear()), month: String(d.getMonth() + 1).padStart(2, '0') }; }
-    return { year: '2026', month: '05' };
-  };
-  const visiblePhotos = (browseCategory && browseYear && browseMonth)
-    ? galleryPhotos.filter(p => { if (p.category !== browseCategory) return false; const { year, month } = getPhotoYearMonth(p); return year === browseYear && month === browseMonth; })
-    : [];
+
   return (
     <div style={{ display: 'grid', gap: '1.5rem' }}>
+      {/* ── Upload section (unchanged) ── */}
       <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.1)', borderRadius: '12px', padding: '1.5rem' }}>
         <h3 style={{ color: 'var(--wa-light)', fontSize: '1rem', marginBottom: '1rem' }}>Upload Gallery Photos</h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 240px) 1fr', gap: '1rem', alignItems: 'end' }}>
@@ -1900,180 +1961,148 @@ const GalleryManagement: React.FC = () => {
         ) : null}
       </div>
 
-      {/* ── Category/Year/Month Folder Navigation ── */}
+      {/* ── Folder navigation for Gallery Photos ── */}
       <div>
-        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.6rem', marginBottom: '1rem' }}>
-          <h3 style={{ color: 'var(--wa-light)', fontSize: '1rem', margin: 0 }}>Gallery ({galleryPhotos.length})</h3>
-          {/* Breadcrumb */}
-          {browseCategory && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', flex: 1, flexWrap: 'wrap' }}>
-              <span style={{ color: 'rgba(201,168,76,0.4)', fontSize: '0.78rem' }}>›</span>
-              <button onClick={() => { setBrowseYear(null); setBrowseMonth(null); setSelectMode(false); setSelectedIds(new Set()); }}
-                style={{ background: 'none', border: 'none', color: browseYear ? 'rgba(201,168,76,0.7)' : 'var(--wa-gold)', cursor: browseYear ? 'pointer' : 'default', fontSize: '0.78rem', padding: 0, textDecoration: browseYear ? 'underline' : 'none' }}>
-                {GALLERY_CATEGORY_OPTIONS.find(o => o.value === browseCategory)?.label}
+        {/* Header row: title + category filter */}
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem' }}>
+          <h3 style={{ color: 'var(--wa-light)', fontSize: '1rem', margin: 0 }}>
+            Gallery Photos ({galleryPhotos.length})
+          </h3>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginLeft: 'auto' }}>
+            {([['all', 'All'], ...GALLERY_CATEGORY_OPTIONS.map(o => [o.value, o.label])] as [string, string][]).map(([val, label]) => (
+              <button
+                key={val}
+                onClick={() => { setViewCat(val as GalleryCategory | 'all'); setViewYear(null); setViewMonth(null); }}
+                style={{
+                  padding: '0.25rem 0.65rem',
+                  borderRadius: 999,
+                  border: '1px solid',
+                  borderColor: viewCat === val ? 'var(--wa-gold)' : 'rgba(201,168,76,0.2)',
+                  background: viewCat === val ? 'rgba(201,168,76,0.15)' : 'transparent',
+                  color: viewCat === val ? 'var(--wa-gold)' : 'rgba(235,230,220,0.6)',
+                  fontSize: '0.7rem',
+                  cursor: 'pointer',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
+                }}
+              >
+                {label}
               </button>
-              {browseYear && <>
-                <span style={{ color: 'rgba(201,168,76,0.4)', fontSize: '0.78rem' }}>›</span>
-                <button onClick={() => { setBrowseMonth(null); setSelectMode(false); setSelectedIds(new Set()); }}
-                  style={{ background: 'none', border: 'none', color: browseMonth ? 'rgba(201,168,76,0.7)' : 'var(--wa-gold)', cursor: browseMonth ? 'pointer' : 'default', fontSize: '0.78rem', padding: 0, textDecoration: browseMonth ? 'underline' : 'none' }}>
-                  {browseYear}
-                </button>
-              </>}
-              {browseMonth && <>
-                <span style={{ color: 'rgba(201,168,76,0.4)', fontSize: '0.78rem' }}>›</span>
-                <span style={{ color: 'var(--wa-gold)', fontSize: '0.78rem' }}>{MONTH_NAMES[browseMonth]}</span>
-              </>}
-            </div>
-          )}
-          {browseCategory && (
-            <button onClick={() => { if (browseMonth) { setBrowseMonth(null); setSelectMode(false); setSelectedIds(new Set()); } else if (browseYear) setBrowseYear(null); else setBrowseCategory(null); }}
-              style={{ padding: '0.3rem 0.65rem', borderRadius: 6, border: '1px solid rgba(201,168,76,0.25)', background: 'rgba(201,168,76,0.07)', color: 'var(--wa-gold)', cursor: 'pointer', fontSize: '0.72rem' }}>← Back</button>
-          )}
-          {browseCategory && browseYear && browseMonth && (selectMode ? (
-            <>
-              <button onClick={() => { if (selectedIds.size === visiblePhotos.length) setSelectedIds(new Set()); else setSelectedIds(new Set(visiblePhotos.map(p => p.id || p.imageUrl))); }}
-                style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid rgba(201,168,76,0.25)', background: 'rgba(201,168,76,0.08)', color: 'var(--wa-gold)', cursor: 'pointer', fontSize: '0.72rem' }}>
-                {selectedIds.size === visiblePhotos.length ? 'Deselect All' : 'Select All'}
-              </button>
-              {selectedIds.size > 0 && (<button onClick={handleBulkDelete} style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.15)', color: '#f87171', cursor: 'pointer', fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                <Trash2 size={12} /> Delete ({selectedIds.size})
-              </button>)}
-              <button onClick={() => { setSelectMode(false); setSelectedIds(new Set()); }} style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: 'rgba(235,230,220,0.6)', cursor: 'pointer', fontSize: '0.72rem' }}>Cancel</button>
-            </>
-          ) : (<button onClick={() => setSelectMode(true)} style={{ padding: '0.35rem 0.75rem', borderRadius: 6, border: '1px solid rgba(201,168,76,0.2)', background: 'rgba(201,168,76,0.07)', color: 'var(--wa-gold)', cursor: 'pointer', fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-            <CheckSquare size={13} /> Select
-          </button>))}
+            ))}
+          </div>
         </div>
 
-        {/* Category Cards (level 1) */}
-        {!browseCategory && (
-          galleryPhotos.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '3rem', color: 'rgba(235,230,220,0.3)' }}>No gallery photos yet</div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(155px, 1fr))', gap: '1rem' }}>
-              {GALLERY_CATEGORY_OPTIONS.map(option => {
-                const catPhotos = galleryPhotos.filter(p => p.category === option.value);
-                return (
-                  <button key={option.value} onClick={() => { if (catPhotos.length > 0) setBrowseCategory(option.value as GalleryCategory); }}
-                    style={{ border: '1px solid rgba(201,168,76,0.18)', borderRadius: '14px', overflow: 'hidden', padding: 0, background: 'rgba(255,255,255,0.03)', cursor: catPhotos.length > 0 ? 'pointer' : 'default', opacity: catPhotos.length === 0 ? 0.38 : 1, textAlign: 'left' }}>
-                    <div style={{ height: 115, position: 'relative', background: 'rgba(201,168,76,0.05)', overflow: 'hidden' }}>
-                      {catPhotos[0]?.imageUrl
-                        ? <img src={catPhotos[0].imageUrl} alt={option.label} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                        : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: '2.2rem' }}>📁</div>
-                      }
-                      <span style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.62)', backdropFilter: 'blur(4px)', color: 'var(--wa-gold)', fontSize: '0.65rem', fontWeight: 700, padding: '0.18rem 0.45rem', borderRadius: '20px', border: '1px solid rgba(201,168,76,0.28)' }}>{catPhotos.length}</span>
-                    </div>
-                    <span style={{ display: 'block', padding: '0.55rem 0.75rem', color: 'var(--wa-light)', fontSize: '0.82rem', fontWeight: 700 }}>📂 {option.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )
+        {/* Breadcrumb + Back */}
+        {breadcrumb.length > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', padding: '0.5rem 0.8rem', borderRadius: '8px', background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.12)', width: 'fit-content' }}>
+            <button
+              onClick={handleBackFolder}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--wa-gold)', fontSize: '0.78rem', padding: 0 }}
+            >
+              ← Back
+            </button>
+            <span style={{ color: 'rgba(255,255,255,0.2)' }}>|</span>
+            <span style={{ color: 'rgba(235,230,220,0.55)', fontSize: '0.78rem' }}>{breadcrumb.join(' › ')}</span>
+          </div>
         )}
 
-        {/* Year Folders (level 2) */}
-        {browseCategory && !browseYear && (() => {
-          const catPhotos = galleryPhotos.filter(p => p.category === browseCategory);
-          const yearMap = new Map<string, GalleryPhoto[]>();
-          catPhotos.forEach(p => { const { year } = getPhotoYearMonth(p); if (!yearMap.has(year)) yearMap.set(year, []); yearMap.get(year)!.push(p); });
-          return (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(145px, 1fr))', gap: '1rem' }}>
-              {Array.from(yearMap.entries()).sort((a, b) => b[0].localeCompare(a[0])).map(([year, yPhotos]) => (
-                <button key={year} onClick={() => setBrowseYear(year)}
-                  style={{ border: '1px solid rgba(201,168,76,0.18)', borderRadius: '14px', overflow: 'hidden', padding: 0, background: 'rgba(255,255,255,0.03)', cursor: 'pointer', textAlign: 'left' }}>
-                  <div style={{ height: 105, position: 'relative', overflow: 'hidden' }}>
-                    <img src={yPhotos[0].imageUrl} alt={year} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                    <span style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.62)', backdropFilter: 'blur(4px)', color: 'var(--wa-gold)', fontSize: '0.65rem', fontWeight: 700, padding: '0.18rem 0.45rem', borderRadius: '20px', border: '1px solid rgba(201,168,76,0.28)' }}>{yPhotos.length}</span>
-                  </div>
-                  <span style={{ display: 'block', padding: '0.55rem 0.75rem', color: 'var(--wa-light)', fontSize: '0.82rem', fontWeight: 700 }}>📅 {year}</span>
-                </button>
-              ))}
-            </div>
-          );
-        })()}
+        {/* ── Year folders ── */}
+        {!viewYear && (
+          <>
+            {years.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '3rem', color: 'rgba(235,230,220,0.3)' }}>No gallery photos uploaded yet.</div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '0.85rem' }}>
+                {years.map(year => {
+                  const count = annotated.filter(p => p.year === year).length;
+                  const isHov = hoveredFolder === `y-${year}`;
+                  return (
+                    <button
+                      key={year}
+                      onClick={() => setViewYear(year)}
+                      onMouseEnter={() => setHoveredFolder(`y-${year}`)}
+                      onMouseLeave={() => setHoveredFolder(null)}
+                      style={{
+                        ...adminFolderCard,
+                        background: isHov ? 'rgba(201,168,76,0.1)' : 'rgba(255,255,255,0.03)',
+                        borderColor: isHov ? 'rgba(201,168,76,0.45)' : 'rgba(201,168,76,0.18)',
+                      }}
+                    >
+                      <span style={{ fontSize: '2rem' }}>📁</span>
+                      <span style={{ color: 'var(--wa-light)', fontWeight: 700, fontSize: '1rem' }}>{year}</span>
+                      <span style={{ color: 'var(--wa-text-muted)', fontSize: '0.68rem' }}>{count} photo{count !== 1 ? 's' : ''}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
 
-        {/* Month Folders (level 3) */}
-        {browseCategory && browseYear && !browseMonth && (() => {
-          const yPhotos = galleryPhotos.filter(p => { if (p.category !== browseCategory) return false; const { year } = getPhotoYearMonth(p); return year === browseYear; });
-          const monthMap = new Map<string, GalleryPhoto[]>();
-          yPhotos.forEach(p => { const { month } = getPhotoYearMonth(p); if (!monthMap.has(month)) monthMap.set(month, []); monthMap.get(month)!.push(p); });
-          return (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(145px, 1fr))', gap: '1rem' }}>
-              {Array.from(monthMap.entries()).sort((a, b) => b[0].localeCompare(a[0])).map(([month, mPhotos]) => (
-                <button key={month} onClick={() => setBrowseMonth(month)}
-                  style={{ border: '1px solid rgba(201,168,76,0.18)', borderRadius: '14px', overflow: 'hidden', padding: 0, background: 'rgba(255,255,255,0.03)', cursor: 'pointer', textAlign: 'left' }}>
-                  <div style={{ height: 105, position: 'relative', overflow: 'hidden' }}>
-                    <img src={mPhotos[0].imageUrl} alt={month} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                    <span style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.62)', backdropFilter: 'blur(4px)', color: 'var(--wa-gold)', fontSize: '0.65rem', fontWeight: 700, padding: '0.18rem 0.45rem', borderRadius: '20px', border: '1px solid rgba(201,168,76,0.28)' }}>{mPhotos.length}</span>
-                  </div>
-                  <span style={{ display: 'block', padding: '0.55rem 0.75rem', color: 'var(--wa-light)', fontSize: '0.82rem', fontWeight: 700 }}>🗓️ {MONTH_NAMES[month]}</span>
+        {/* ── Month folders ── */}
+        {viewYear && !viewMonth && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '0.85rem' }}>
+            {months.map(month => {
+              const count = annotated.filter(p => p.year === viewYear && p.month === month).length;
+              const isHov = hoveredFolder === `m-${month}`;
+              return (
+                <button
+                  key={month}
+                  onClick={() => setViewMonth(month)}
+                  onMouseEnter={() => setHoveredFolder(`m-${month}`)}
+                  onMouseLeave={() => setHoveredFolder(null)}
+                  style={{
+                    ...adminFolderCard,
+                    background: isHov ? 'rgba(201,168,76,0.1)' : 'rgba(255,255,255,0.03)',
+                    borderColor: isHov ? 'rgba(201,168,76,0.45)' : 'rgba(201,168,76,0.18)',
+                  }}
+                >
+                  <span style={{ fontSize: '1.8rem' }}>🗂️</span>
+                  <span style={{ color: 'var(--wa-light)', fontWeight: 600, fontSize: '0.88rem' }}>{MONTH_NAMES[month]}</span>
+                  <span style={{ color: 'var(--wa-gold)', fontSize: '0.68rem' }}>{viewYear}</span>
+                  <span style={{ color: 'var(--wa-text-muted)', fontSize: '0.68rem' }}>{count} photo{count !== 1 ? 's' : ''}</span>
                 </button>
-              ))}
-            </div>
-          );
-        })()}
+              );
+            })}
+          </div>
+        )}
 
-        {/* Photo Grid (level 4) */}
-        {browseCategory && browseYear && browseMonth && (
-          visiblePhotos.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '3rem', color: 'rgba(235,230,220,0.3)' }}>No photos in this folder.</div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
-              {visiblePhotos.map((photo) => { const photoKey = photo.id || photo.imageUrl; const isSelected = selectedIds.has(photoKey); return (
-                <div key={photoKey} onClick={selectMode ? () => toggleSelect(photoKey) : undefined}
-                  style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${isSelected ? 'rgba(201,168,76,0.6)' : 'rgba(201,168,76,0.1)'}`, borderRadius: '12px', overflow: 'hidden', position: 'relative', cursor: selectMode ? 'pointer' : 'default', boxShadow: isSelected ? '0 0 0 2px rgba(201,168,76,0.3)' : 'none' }}>
-                  {selectMode && (<div style={{ position: 'absolute', top: 8, left: 8, zIndex: 2, width: 20, height: 20, borderRadius: 4, border: '2px solid rgba(201,168,76,0.85)', background: isSelected ? 'var(--wa-gold)' : 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {isSelected && <Check size={12} style={{ color: '#000' }} />}
-                  </div>)}
-                  <img src={photo.imageUrl} alt={photo.title} style={{ width: '100%', height: 150, objectFit: 'cover' }} />
-                  <div style={{ padding: '0.8rem' }}>
-                    {editingId === (photo.id || photo.imageUrl) ? (
-                      <div style={{ marginBottom: '0.35rem' }}>
-                        <input value={editingTitle} onChange={(e) => setEditingTitle(e.target.value)}
-                          onKeyDown={(e) => { if (e.key === 'Enter') handleRenameSave(photo); if (e.key === 'Escape') handleRenameCancel(); }}
-                          style={{ ...inputStyle, fontSize: '0.82rem', padding: '0.3rem 0.5rem', marginBottom: '0.4rem' }}
-                          autoFocus disabled={renaming} />
-                        <div style={{ display: 'flex', gap: '0.35rem' }}>
-                          <button onClick={() => handleRenameSave(photo)} disabled={renaming || !editingTitle.trim()}
-                            style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', padding: '0.3rem 0.6rem', borderRadius: 6, border: '1px solid rgba(201,168,76,0.3)', background: 'rgba(201,168,76,0.12)', color: 'var(--wa-gold)', cursor: 'pointer', fontSize: '0.7rem' }}>
-                            <Save size={11} /> Save
-                          </button>
-                          <button onClick={handleRenameCancel} disabled={renaming}
-                            style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', padding: '0.3rem 0.6rem', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: 'rgba(235,230,220,0.6)', cursor: 'pointer', fontSize: '0.7rem' }}>
-                            <X size={11} /> Cancel
-                          </button>
-                        </div>
+        {/* ── Photos in selected month ── */}
+        {viewYear && viewMonth && (
+          <>
+            {photosInFolder.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '3rem', color: 'rgba(235,230,220,0.3)' }}>No photos in this folder.</div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
+                {photosInFolder.map((photo) => (
+                  <div key={photo.id || photo.imageUrl} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.1)', borderRadius: '12px', overflow: 'hidden' }}>
+                    <img src={photo.imageUrl} alt={photo.title} style={{ width: '100%', height: 150, objectFit: 'cover' }} />
+                    <div style={{ padding: '0.8rem' }}>
+                      <h4 style={{ color: 'var(--wa-light)', fontSize: '0.85rem', marginBottom: '0.35rem' }}>{photo.title}</h4>
+                      <span style={{ display: 'inline-block', padding: '0.2rem 0.55rem', borderRadius: '999px', background: 'rgba(201,168,76,0.12)', color: 'var(--wa-gold)', fontSize: '0.62rem', textTransform: 'uppercase' }}>{photo.category}</span>
+                      <div style={{ marginTop: '0.75rem' }}>
+                        {deleteId === (photo.id || photo.imageUrl) ? (
+                          <div style={{ display: 'flex', gap: '0.4rem' }}>
+                            <button onClick={() => handleDelete(photo)} style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.18)', color: '#f87171', cursor: 'pointer', fontSize: '0.7rem' }}>Delete</button>
+                            <button onClick={() => setDeleteId(null)} style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: 'rgba(235,230,220,0.6)', cursor: 'pointer', fontSize: '0.7rem' }}>Cancel</button>
+                          </div>
+                        ) : (
+                          <button onClick={() => setDeleteId(photo.id || photo.imageUrl)} style={{ width: '100%', padding: '0.45rem 0.75rem', borderRadius: 6, border: '1px solid rgba(239,68,68,0.18)', background: 'rgba(239,68,68,0.08)', color: 'rgba(248,113,113,0.85)', cursor: 'pointer', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}><Trash2 size={13} /> Delete</button>
+                        )}
                       </div>
-                    ) : (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.35rem' }}>
-                        <h4 style={{ color: 'var(--wa-light)', fontSize: '0.85rem', margin: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{photo.title}</h4>
-                        {!selectMode && (<button onClick={(e) => { e.stopPropagation(); handleRenameStart(photo); }} title="Rename"
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(201,168,76,0.65)', padding: 0, display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                          <Pencil size={12} />
-                        </button>)}
-                      </div>
-                    )}
-                    <span style={{ display: 'inline-block', padding: '0.2rem 0.55rem', borderRadius: '999px', background: 'rgba(201,168,76,0.12)', color: 'var(--wa-gold)', fontSize: '0.62rem', textTransform: 'uppercase' }}>{photo.category}</span>
-                    {!selectMode && (<div style={{ marginTop: '0.75rem' }}>
-                      {deleteId === photoKey ? (
-                        <div style={{ display: 'flex', gap: '0.4rem' }}>
-                          <button onClick={() => handleDelete(photo)} style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.18)', color: '#f87171', cursor: 'pointer', fontSize: '0.7rem' }}>Delete</button>
-                          <button onClick={() => setDeleteId(null)} style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: 'rgba(235,230,220,0.6)', cursor: 'pointer', fontSize: '0.7rem' }}>Cancel</button>
-                        </div>
-                      ) : (
-                        <button onClick={() => setDeleteId(photoKey)} style={{ width: '100%', padding: '0.45rem 0.75rem', borderRadius: 6, border: '1px solid rgba(239,68,68,0.18)', background: 'rgba(239,68,68,0.08)', color: 'rgba(248,113,113,0.85)', cursor: 'pointer', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}><Trash2 size={13} /> Delete</button>
-                      )}
-                    </div>)}
+                    </div>
                   </div>
-                </div>
-              ); })}
-            </div>
-          )
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
   );
 };
+
+
 
 // ── Main Dashboard ───────────────────────────────────────────────────────────
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
@@ -2092,25 +2121,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [videoDeleteConfirm, setVideoDeleteConfirm] = useState<number | null>(null);
   const [contactMessages, setContactMessages] = React.useState<ContactMessage[]>([]);
   const [msgDeleteConfirm, setMsgDeleteConfirm] = React.useState<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = React.useState(() => typeof window !== 'undefined' ? window.innerWidth >= 768 : true);
-  const [isMobile, setIsMobile] = React.useState(() => typeof window !== 'undefined' ? window.innerWidth < 768 : false);
 
   React.useEffect(() => {
     const unsub = subscribeToContactMessages((msgs) => setContactMessages(msgs));
     return () => unsub();
   }, []);
-
-  React.useEffect(() => {
-    const onResize = () => {
-      const mobile = window.innerWidth < 768;
-      setIsMobile(mobile);
-      if (!mobile) setSidebarOpen(true);
-    };
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
-
-  const closeSidebarOnMobile = () => { if (isMobile) setSidebarOpen(false); };
 
   const totalLikes = photos.reduce((sum, p) => sum + p.likeCount, 0);
   const nextPhotoId = Math.max(0, ...photos.map((p) => p.id)) + 1;
@@ -2161,29 +2176,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--wa-dark)' }}>
-      {/* Mobile sidebar backdrop */}
-      {isMobile && sidebarOpen && (
-        <div
-          onClick={() => setSidebarOpen(false)}
-          style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
-            zIndex: 99, backdropFilter: 'blur(2px)',
-          }}
-        />
-      )}
-
       {/* Sidebar */}
       <aside style={{
-        width: 240, background: 'rgba(5,12,8,0.97)',
-        borderRight: '1px solid rgba(201,168,76,0.12)',
+        width: 240, background: 'rgba(0,0,0,0.4)',
+        borderRight: '1px solid rgba(201,168,76,0.08)',
         display: 'flex', flexDirection: 'column', padding: '1.25rem 0.75rem',
-        position: isMobile ? 'fixed' : 'sticky',
-        top: 0, left: 0,
-        height: '100vh', boxSizing: 'border-box', overflowY: 'auto',
-        zIndex: 100,
-        transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
-        transition: 'transform 0.28s cubic-bezier(0.4,0,0.2,1)',
-        boxShadow: isMobile && sidebarOpen ? '4px 0 24px rgba(0,0,0,0.5)' : 'none',
+        position: 'sticky', top: 0, height: '100vh', boxSizing: 'border-box', overflowY: 'auto',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0 0.5rem', marginBottom: '2rem' }}>
           {logoUrl ? (
@@ -2202,16 +2200,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
 
         <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', flex: 1 }}>
-          <button style={sidebarItemStyle(view === 'dashboard')} onClick={() => { setView('dashboard'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); closeSidebarOnMobile(); }}>
+          <button style={sidebarItemStyle(view === 'dashboard')} onClick={() => { setView('dashboard'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); }}>
             <LayoutDashboard size={18} /> Overview
           </button>
-          <button style={sidebarItemStyle(view === 'photos')} onClick={() => { setView('photos'); setEditingPhoto(null); closeSidebarOnMobile(); }}>
+          <button style={sidebarItemStyle(view === 'photos')} onClick={() => { setView('photos'); setEditingPhoto(null); }}>
             <Image size={18} /> Photos
           </button>
-          <button style={sidebarItemStyle(view === 'add')} onClick={() => { setView('add'); setEditingPhoto(null); closeSidebarOnMobile(); }}>
+          <button style={sidebarItemStyle(view === 'add')} onClick={() => { setView('add'); setEditingPhoto(null); }}>
             <Plus size={18} /> Add Photo
           </button>
-          <button style={sidebarItemStyle(view === 'gallery')} onClick={() => { setView('gallery'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); closeSidebarOnMobile(); }}>
+          <button style={sidebarItemStyle(view === 'gallery')} onClick={() => { setView('gallery'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); }}>
             <FileImage size={18} /> Photo Gallery
           </button>
 
@@ -2219,23 +2217,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <p style={{ fontSize: '0.6rem', color: 'rgba(248,250,252,0.62)', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0 1rem', marginBottom: '0.25rem' }}>Content</p>
           </div>
 
-          <button style={sidebarItemStyle(view === 'stories')} onClick={() => { setView('stories'); setEditingStory(null); closeSidebarOnMobile(); }}>
+          <button style={sidebarItemStyle(view === 'stories')} onClick={() => { setView('stories'); setEditingStory(null); }}>
             <BookOpen size={18} /> Stories
           </button>
-          <button style={sidebarItemStyle(view === 'add-story')} onClick={() => { setView('add-story'); setEditingStory(null); closeSidebarOnMobile(); }}>
+          <button style={sidebarItemStyle(view === 'add-story')} onClick={() => { setView('add-story'); setEditingStory(null); }}>
             <Plus size={18} /> Add Story
           </button>
-          <button style={sidebarItemStyle(view === 'videos')} onClick={() => { setView('videos'); setEditingVideo(null); closeSidebarOnMobile(); }}>
+          <button style={sidebarItemStyle(view === 'videos')} onClick={() => { setView('videos'); setEditingVideo(null); }}>
             <Film size={18} /> Videos
           </button>
-          <button style={sidebarItemStyle(view === 'add-video')} onClick={() => { setView('add-video'); setEditingVideo(null); closeSidebarOnMobile(); }}>
+          <button style={sidebarItemStyle(view === 'add-video')} onClick={() => { setView('add-video'); setEditingVideo(null); }}>
             <Plus size={18} /> Add Video
           </button>
 
           <div style={{ borderTop: '1px solid rgba(201,168,76,0.08)', margin: '0.5rem 0', paddingTop: '0.5rem' }}>
             <p style={{ fontSize: '0.6rem', color: 'rgba(248,250,252,0.62)', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0 1rem', marginBottom: '0.25rem' }}>Social</p>
           </div>
-          <button style={sidebarItemStyle(view === 'comments')} onClick={() => { setView('comments'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); closeSidebarOnMobile(); }}>
+          <button style={sidebarItemStyle(view === 'comments')} onClick={() => { setView('comments'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); }}>
             <MessageCircle size={18} /> Comments
             {allComments.length > 0 && (
               <span style={{
@@ -2244,7 +2242,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               }}>{allComments.length}</span>
             )}
           </button>
-          <button style={sidebarItemStyle(view === 'messages')} onClick={() => { setView('messages'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); closeSidebarOnMobile(); }}>
+          <button style={sidebarItemStyle(view === 'messages')} onClick={() => { setView('messages'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); }}>
             <Mail size={18} /> Messages
             {contactMessages.length > 0 && (
               <span style={{
@@ -2257,10 +2255,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <div style={{ borderTop: '1px solid rgba(201,168,76,0.08)', margin: '0.5rem 0', paddingTop: '0.5rem' }}>
             <p style={{ fontSize: '0.6rem', color: 'rgba(248,250,252,0.62)', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0 1rem', marginBottom: '0.25rem' }}>Settings</p>
           </div>
-          <button style={sidebarItemStyle(view === 'ai-settings')} onClick={() => { setView('ai-settings'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); closeSidebarOnMobile(); }}>
+          <button style={sidebarItemStyle(view === 'ai-settings')} onClick={() => { setView('ai-settings'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); }}>
             <Cpu size={18} /> AI Settings
           </button>
-          <button style={sidebarItemStyle(view === 'site-settings')} onClick={() => { setView('site-settings'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); closeSidebarOnMobile(); }}>
+          <button style={sidebarItemStyle(view === 'site-settings')} onClick={() => { setView('site-settings'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); }}>
             <Globe size={18} /> Site Settings
           </button>
         </nav>
@@ -2279,60 +2277,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       </aside>
 
       {/* Main Content */}
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         <header style={{
-          padding: '0.75rem 1rem', borderBottom: '1px solid rgba(201,168,76,0.08)',
-          display: 'flex', alignItems: 'center', gap: '0.75rem',
-          justifyContent: 'space-between', background: 'rgba(0,0,0,0.3)',
-          position: 'sticky', top: 0, zIndex: 50,
+          padding: '1rem 2rem', borderBottom: '1px solid rgba(201,168,76,0.08)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.2)',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: 0 }}>
-            {/* Hamburger — mobile only */}
-            <button
-              onClick={() => setSidebarOpen(o => !o)}
-              style={{
-                display: isMobile ? 'flex' : 'none',
-                alignItems: 'center', justifyContent: 'center',
-                width: 36, height: 36, flexShrink: 0,
-                background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.2)',
-                borderRadius: '8px', cursor: 'pointer', color: 'var(--wa-gold)',
-              }}
-              aria-label="Toggle menu"
-            >
-              <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>☰</span>
-            </button>
-
-            {/* ← Dashboard back button (all views except dashboard) */}
-            {view !== 'dashboard' && (
-              <button
-                onClick={() => { setView('dashboard'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); }}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '0.3rem', flexShrink: 0,
-                  background: 'rgba(201,168,76,0.1)', border: '1px solid rgba(201,168,76,0.2)',
-                  borderRadius: '8px', cursor: 'pointer', color: 'var(--wa-gold)',
-                  padding: '0.4rem 0.75rem', fontSize: '0.75rem', whiteSpace: 'nowrap',
-                  fontFamily: "'Cinzel', serif", letterSpacing: '0.05em',
-                }}
-              >
-                ← Dashboard
-              </button>
-            )}
-
-            <h1 className="font-cinzel" style={{
-              fontSize: isMobile ? '0.85rem' : '1.1rem',
-              color: 'var(--wa-light)', fontWeight: 600,
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            }}>{getViewTitle()}</h1>
-          </div>
-
+          <h1 className="font-cinzel" style={{ fontSize: '1.1rem', color: 'var(--wa-light)', fontWeight: 600 }}>{getViewTitle()}</h1>
           <button onClick={onViewSite} style={{
-            padding: '0.45rem 0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0,
+            padding: '0.45rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem',
             background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
             borderRadius: '8px', color: 'rgba(235,230,220,0.6)', cursor: 'pointer', fontSize: '0.75rem',
-          }}><Eye size={14} />{!isMobile && ' View Site'}</button>
+          }}><Eye size={14} /> View Site</button>
         </header>
 
-        <div style={{ padding: isMobile ? '1rem' : '2rem', flex: 1, overflowY: 'auto' }}>
+        <div style={{ padding: '2rem', flex: 1, overflowY: 'auto' }}>
           {/* Dashboard View */}
           {view === 'dashboard' && (
             <>
