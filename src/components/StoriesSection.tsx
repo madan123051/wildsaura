@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { Clock, Eye, Heart, ChevronDown, Calendar } from 'lucide-react';
+import { Clock, Eye, Heart, ChevronDown } from 'lucide-react';
 import { Story } from '../types';
-import { formatDate } from '../utils/dateFormatter';
 
 interface StoriesSectionProps {
   stories: Story[];
@@ -110,15 +109,6 @@ export const StoriesSection: React.FC<StoriesSectionProps> = ({ stories, onStory
                 }}>
                   {story.excerpt}
                 </p>
-
-                {/* ← NEW: Show publish date */}
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: '0.3rem',
-                  fontSize: '0.75rem', color: 'rgba(201,168,76,0.7)',
-                  marginBottom: '0.75rem',
-                }}>
-                  <Calendar size={13} /> Published {formatDate(story.createdAt)}
-                </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--wa-text-muted)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>

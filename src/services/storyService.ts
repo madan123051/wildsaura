@@ -13,11 +13,9 @@ export interface FirestoreStory {
   createdAt?: any;
   viewCount: number;
   likeCount: number;
-  projectId?: string;  // ← NEW: Filter stories by project
 }
 
 const STORIES_COLLECTION = 'stories';
-const PROJECT_ID = 'wildsaura'; // ← NEW: Identify this project
 
 export async function uploadStoryCoverToStorage(dataUrl: string, filename: string): Promise<string> {
   const storageRef = ref(storage, `story-covers/${Date.now()}_${filename}`);
@@ -28,7 +26,6 @@ export async function uploadStoryCoverToStorage(dataUrl: string, filename: strin
 export async function addStoryToFirestore(story: Omit<FirestoreStory, 'id'>): Promise<string> {
   const docRef = await addDoc(collection(db, STORIES_COLLECTION), {
     ...story,
-    projectId: PROJECT_ID,  // ← NEW: Tag with project ID
     createdAt: serverTimestamp(),
   });
   return docRef.id;
@@ -36,7 +33,6 @@ export async function addStoryToFirestore(story: Omit<FirestoreStory, 'id'>): Pr
 
 export async function getStoriesFromFirestore(): Promise<FirestoreStory[]> {
   try {
-    // ← FIXED: Fetch all stories, filter in-memory for backward compatibility
     const q = query(collection(db, STORIES_COLLECTION), orderBy('createdAt', 'desc'));
     const snapshot = await getDocs(q);
     
@@ -61,7 +57,7 @@ export async function updateStoryInFirestore(docId: string, data: Partial<Firest
 }
 
 /**
- * Real-time subscription to all stories (filtered by projectId).
+ * Real-time subscription to all stories.
  * Fires onUpdate whenever any story document changes (add/edit/delete).
  * Returns an unsubscribe function.
  */
