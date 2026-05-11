@@ -1,7 +1,7 @@
 import { db, storage } from '../firebase';
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
-import { compressForUpload } from './imageCompressor';
+import { compressForUpload } from '../utils/imageCompressor';
 
 export type GalleryCategory = 'Wildlife' | 'Birds' | 'Landscapes' | 'Portraits' | 'Others';
 
