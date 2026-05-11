@@ -1,10 +1,10 @@
 import { db, storage } from '../firebase';
-import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, serverTimestamp, onSnapshot, Unsubscribe, where } from 'firebase/firestore';
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, serverTimestamp, onSnapshot, Unsubscribe } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 /**
  * ═══════════════════════════════════════════════════════════════════════
- *  WILDSAURA — Video Service v2.0 (Resumable Upload + Project Filter)
+ *  WILDSAURA — Video Service v2.0 (Resumable Upload)
  * ═══════════════════════════════════════════════════════════════════════
  *
  *  🔧 FIXED: Switched from uploadString to uploadBytesResumable
@@ -15,7 +15,6 @@ import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
  *  ✅ Progress callback for UI feedback
  *  ✅ 3-minute timeout for large videos
  *  ✅ Thumbnail also uses resumable upload
- *  ✅ NEW: projectId filter (only show wildsaura videos)
  */
 
 export interface FirestoreVideo {
@@ -30,15 +29,13 @@ export interface FirestoreVideo {
   createdAt?: any;
   viewCount: number;
   likeCount: number;
-  originalSize?: number;       // Original video file size in bytes
-  aspectRatio?: string;        // Video aspect ratio e.g. '16:9', '9:16', '1:1'
-  videoWidth?: number;         // Original video width in pixels
-  videoHeight?: number;        // Original video height in pixels
-  projectId?: string;          // ← NEW: Filter videos by project
+  originalSize?: number;       // ← NEW: Original video file size in bytes
+  aspectRatio?: string;        // ← NEW: Video aspect ratio e.g. '16:9', '9:16', '1:1'
+  videoWidth?: number;         // ← NEW: Original video width in pixels
+  videoHeight?: number;        // ← NEW: Original video height in pixels
 }
 
 const VIDEOS_COLLECTION = 'videos';
-const PROJECT_ID = 'wildsaura'; // ← NEW: Identify this project
 
 /** Convert a data URL to a Blob (legacy support) */
 function dataUrlToBlob(dataUrl: string): Blob {
@@ -172,7 +169,6 @@ export async function uploadVideoToStorage(
 export async function addVideoToFirestore(video: Omit<FirestoreVideo, 'id'>): Promise<string> {
   const docRef = await addDoc(collection(db, VIDEOS_COLLECTION), {
     ...video,
-    projectId: PROJECT_ID,  // ← NEW: Tag with project ID
     createdAt: serverTimestamp(),
   });
   return docRef.id;
@@ -180,27 +176,13 @@ export async function addVideoToFirestore(video: Omit<FirestoreVideo, 'id'>): Pr
 
 export async function getVideosFromFirestore(): Promise<FirestoreVideo[]> {
   try {
-    // ← NEW: Filter by projectId (wildsaura) OR no projectId (backward compat)
-    const q = query(
-      collection(db, VIDEOS_COLLECTION),
-      where('projectId', '==', PROJECT_ID),
-      orderBy('createdAt', 'desc')
-    );
+    const q = query(collection(db, VIDEOS_COLLECTION), orderBy('createdAt', 'desc'));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as FirestoreVideo));
   } catch (err) {
     try {
-      // Fallback: no filter, ordered by createdAt
-      const q = query(collection(db, VIDEOS_COLLECTION), orderBy('createdAt', 'desc'));
-      const snapshot = await getDocs(q);
-      return snapshot.docs.map(d => {
-        const data = d.data() as FirestoreVideo;
-        // ← NEW: Only include videos with matching projectId or no projectId (old data)
-        if (!data.projectId || data.projectId === PROJECT_ID) {
-          return { id: d.id, ...data } as FirestoreVideo;
-        }
-        return null;
-      }).filter(Boolean) as FirestoreVideo[];
+      const snapshot = await getDocs(collection(db, VIDEOS_COLLECTION));
+      return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as FirestoreVideo));
     } catch {
       console.warn('Firestore videos fetch failed:', err);
       return [];
@@ -217,7 +199,7 @@ export async function updateVideoInFirestore(docId: string, data: Partial<Firest
 }
 
 /**
- * Real-time subscription to all videos (filtered by projectId).
+ * Real-time subscription to all videos.
  * Fires onUpdate whenever any video document changes (add/edit/delete).
  * Returns an unsubscribe function.
  */
@@ -225,40 +207,15 @@ export function subscribeToVideos(
   onUpdate: (videos: FirestoreVideo[]) => void,
   onError?: (error: Error) => void
 ): Unsubscribe {
-  try {
-    const q = query(
-      collection(db, VIDEOS_COLLECTION),
-      where('projectId', '==', PROJECT_ID),
-      orderBy('createdAt', 'desc')
-    );
-    return onSnapshot(q,
-      (snapshot) => {
-        const videos = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as FirestoreVideo));
-        onUpdate(videos);
-      },
-      (error) => {
-        console.error('Video subscription error:', error);
-        if (onError) onError(error);
-      }
-    );
-  } catch (error) {
-    // Fallback: subscribe without filter
-    const q = query(collection(db, VIDEOS_COLLECTION), orderBy('createdAt', 'desc'));
-    return onSnapshot(q,
-      (snapshot) => {
-        const videos = snapshot.docs.map(d => {
-          const data = d.data() as FirestoreVideo;
-          if (!data.projectId || data.projectId === PROJECT_ID) {
-            return { id: d.id, ...data } as FirestoreVideo;
-          }
-          return null;
-        }).filter(Boolean) as FirestoreVideo[];
-        onUpdate(videos);
-      },
-      (error) => {
-        console.error('Video subscription error:', error);
-        if (onError) onError(error);
-      }
-    );
-  }
+  const q = query(collection(db, VIDEOS_COLLECTION), orderBy('createdAt', 'desc'));
+  return onSnapshot(q,
+    (snapshot) => {
+      const videos = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as FirestoreVideo));
+      onUpdate(videos);
+    },
+    (error) => {
+      console.error('Video subscription error:', error);
+      if (onError) onError(error);
+    }
+  );
 }

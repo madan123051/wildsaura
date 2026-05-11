@@ -71,7 +71,6 @@ export interface Story {
   likeCount: number;
   liked: boolean;
   photographer?: string;
-  projectId?: string;  // ← NEW: Project filter
 }
 
 export interface Video {
@@ -89,11 +88,10 @@ export interface Video {
   likeCount: number;
   liked: boolean;
   photographer?: string;
-  originalSize?: number;       // Original video file size in bytes
-  aspectRatio?: string;        // Video aspect ratio e.g. '16:9', '9:16', '1:1', '4:5'
-  videoWidth?: number;         // Original video width in pixels
-  videoHeight?: number;        // Original video height in pixels
-  projectId?: string;          // ← NEW: Project filter
+  originalSize?: number;       // ← NEW: Original video file size in bytes
+  aspectRatio?: string;        // ← NEW: Video aspect ratio e.g. '16:9', '9:16', '1:1', '4:5'
+  videoWidth?: number;         // ← NEW: Original video width in pixels
+  videoHeight?: number;        // ← NEW: Original video height in pixels
 }
 
 export interface ChatMessage {
