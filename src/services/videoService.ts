@@ -1,172 +1,27 @@
 import { db, storage } from '../firebase';
-import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, serverTimestamp, onSnapshot, Unsubscribe, where } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-
-/**
- * ═══════════════════════════════════════════════════════════════════════
- *  WILDSAURA — Video Service v2.0 (Resumable Upload + Project Filter)
- * ═══════════════════════════════════════════════════════════════════════
- *
- *  🔧 FIXED: Switched from uploadString to uploadBytesResumable
- *    - uploadString hangs/crashes on videos > 5MB (data URL too large)
- *    - uploadBytesResumable: reliable, shows progress, auto-retry
- *
- *  ✅ Accepts File/Blob directly (no more data URL conversion)
- *  ✅ Progress callback for UI feedback
- *  ✅ 3-minute timeout for large videos
- *  ✅ Thumbnail also uses resumable upload
- *  ✅ NEW: projectId filter (only show wildsaura videos)
- */
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, serverTimestamp, onSnapshot, Unsubscribe } from 'firebase/firestore';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 
 export interface FirestoreVideo {
   id?: string;
   title: string;
   description: string;
   videoUrl: string;
-  thumbnailUrl: string;
+  duration?: number;
   tags: string[];
-  location?: string;
-  duration?: string;
   createdAt?: any;
   viewCount: number;
   likeCount: number;
-  originalSize?: number;       // Original video file size in bytes
-  aspectRatio?: string;        // Video aspect ratio e.g. '16:9', '9:16', '1:1'
-  videoWidth?: number;         // Original video width in pixels
-  videoHeight?: number;        // Original video height in pixels
-  projectId?: string;          // ← NEW: Filter videos by project
+  projectId?: string;  // ← NEW: Filter videos by project
 }
 
 const VIDEOS_COLLECTION = 'videos';
 const PROJECT_ID = 'wildsaura'; // ← NEW: Identify this project
 
-/** Convert a data URL to a Blob (legacy support) */
-function dataUrlToBlob(dataUrl: string): Blob {
-  const [header, base64] = dataUrl.split(',');
-  const mime = header.match(/:(.*?);/)?.[1] || 'video/mp4';
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return new Blob([bytes], { type: mime });
-}
-
-/**
- * 🎬 Upload video thumbnail to Firebase Storage.
- * Uses resumable upload (replaced uploadString).
- */
-export async function uploadVideoThumbnailToStorage(
-  input: File | Blob | string,
-  filename: string,
-  onProgress?: (progress: number) => void
-): Promise<string> {
-  const storageRef = ref(storage, `video-thumbnails/${Date.now()}_${filename}`);
-
-  let blob: Blob;
-  if (typeof input === 'string') {
-    blob = dataUrlToBlob(input);
-  } else {
-    blob = input;
-  }
-
-  const contentType = blob.type || 'image/webp';
-  console.log(`🖼️ Uploading video thumbnail: ${(blob.size / 1024).toFixed(0)}KB (${contentType})`);
-
-  return new Promise<string>((resolve, reject) => {
-    const timeoutId = setTimeout(() => {
-      uploadTask.cancel();
-      reject(new Error('Thumbnail upload timed out after 30 seconds.'));
-    }, 30000);
-
-    const uploadTask = uploadBytesResumable(storageRef, blob, { contentType });
-
-    uploadTask.on(
-      'state_changed',
-      (snapshot) => {
-        const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-        if (onProgress) onProgress(pct);
-      },
-      (error) => {
-        clearTimeout(timeoutId);
-        console.error('🖼️ Thumbnail upload error:', error);
-        reject(error);
-      },
-      async () => {
-        clearTimeout(timeoutId);
-        try {
-          const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
-          console.log('🖼️ Thumbnail upload complete!');
-          resolve(downloadUrl);
-        } catch (err) {
-          reject(err);
-        }
-      }
-    );
-  });
-}
-
-/**
- * 🎬 Upload video file to Firebase Storage.
- * Uses resumable upload for reliability on large video files.
- *
- * @param input    File/Blob (preferred) or data URL string (legacy)
- * @param filename Destination filename
- * @param onProgress Optional callback: receives 0–100 integer
- */
-export async function uploadVideoToStorage(
-  input: File | Blob | string,
-  filename: string,
-  onProgress?: (progress: number) => void
-): Promise<string> {
+export async function uploadVideoToStorage(dataUrl: string, filename: string): Promise<string> {
   const storageRef = ref(storage, `videos/${Date.now()}_${filename}`);
-
-  let blob: Blob;
-  if (typeof input === 'string') {
-    console.log('🎬 Converting data URL to Blob for resumable upload...');
-    blob = dataUrlToBlob(input);
-  } else {
-    blob = input;
-  }
-
-  const contentType = blob.type || 'video/mp4';
-  const sizeMB = (blob.size / 1024 / 1024).toFixed(2);
-  console.log(`🎬 Starting resumable video upload: ${sizeMB}MB (${contentType})`);
-
-  return new Promise<string>((resolve, reject) => {
-    // 3-minute timeout for large video files
-    const timeoutId = setTimeout(() => {
-      uploadTask.cancel();
-      reject(new Error('Video upload timed out after 3 minutes. File may be too large or connection too slow.'));
-    }, 180000);
-
-    const uploadTask = uploadBytesResumable(storageRef, blob, { contentType });
-
-    uploadTask.on(
-      'state_changed',
-      (snapshot) => {
-        const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-        if (onProgress) onProgress(pct);
-        if (pct % 20 === 0) {
-          console.log(`🎬 Upload progress: ${pct}% (${(snapshot.bytesTransferred / 1024 / 1024).toFixed(1)}MB / ${sizeMB}MB)`);
-        }
-      },
-      (error) => {
-        clearTimeout(timeoutId);
-        console.error('🎬 Video upload error:', error);
-        reject(error);
-      },
-      async () => {
-        clearTimeout(timeoutId);
-        try {
-          const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
-          if (onProgress) onProgress(100);
-          console.log('🎬 ✅ Video upload complete!');
-          resolve(downloadUrl);
-        } catch (err) {
-          reject(err);
-        }
-      }
-    );
-  });
+  await uploadString(storageRef, dataUrl, 'data_url');
+  return await getDownloadURL(storageRef);
 }
 
 export async function addVideoToFirestore(video: Omit<FirestoreVideo, 'id'>): Promise<string> {
@@ -180,31 +35,19 @@ export async function addVideoToFirestore(video: Omit<FirestoreVideo, 'id'>): Pr
 
 export async function getVideosFromFirestore(): Promise<FirestoreVideo[]> {
   try {
-    // ← NEW: Filter by projectId (wildsaura) OR no projectId (backward compat)
-    const q = query(
-      collection(db, VIDEOS_COLLECTION),
-      where('projectId', '==', PROJECT_ID),
-      orderBy('createdAt', 'desc')
-    );
+    // ← FIXED: Fetch all videos, filter in-memory for backward compatibility
+    const q = query(collection(db, VIDEOS_COLLECTION), orderBy('createdAt', 'desc'));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as FirestoreVideo));
+    
+    return snapshot.docs
+      .map(d => ({ id: d.id, ...d.data() } as FirestoreVideo))
+      .filter(video => {
+        // Show videos with no projectId (old data) OR matching projectId (new data)
+        return !video.projectId || video.projectId === PROJECT_ID;
+      });
   } catch (err) {
-    try {
-      // Fallback: no filter, ordered by createdAt
-      const q = query(collection(db, VIDEOS_COLLECTION), orderBy('createdAt', 'desc'));
-      const snapshot = await getDocs(q);
-      return snapshot.docs.map(d => {
-        const data = d.data() as FirestoreVideo;
-        // ← NEW: Only include videos with matching projectId or no projectId (old data)
-        if (!data.projectId || data.projectId === PROJECT_ID) {
-          return { id: d.id, ...data } as FirestoreVideo;
-        }
-        return null;
-      }).filter(Boolean) as FirestoreVideo[];
-    } catch {
-      console.warn('Firestore videos fetch failed:', err);
-      return [];
-    }
+    console.warn('Firestore videos fetch failed:', err);
+    return [];
   }
 }
 
@@ -226,14 +69,17 @@ export function subscribeToVideos(
   onError?: (error: Error) => void
 ): Unsubscribe {
   try {
-    const q = query(
-      collection(db, VIDEOS_COLLECTION),
-      where('projectId', '==', PROJECT_ID),
-      orderBy('createdAt', 'desc')
-    );
+    // ← FIXED: Fetch all, filter in-memory for backward compatibility
+    const q = query(collection(db, VIDEOS_COLLECTION), orderBy('createdAt', 'desc'));
+    
     return onSnapshot(q,
       (snapshot) => {
-        const videos = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as FirestoreVideo));
+        const videos = snapshot.docs
+          .map(d => ({ id: d.id, ...d.data() } as FirestoreVideo))
+          .filter(video => {
+            // Show videos with no projectId (old data) OR matching projectId (new data)
+            return !video.projectId || video.projectId === PROJECT_ID;
+          });
         onUpdate(videos);
       },
       (error) => {
@@ -242,23 +88,7 @@ export function subscribeToVideos(
       }
     );
   } catch (error) {
-    // Fallback: subscribe without filter
-    const q = query(collection(db, VIDEOS_COLLECTION), orderBy('createdAt', 'desc'));
-    return onSnapshot(q,
-      (snapshot) => {
-        const videos = snapshot.docs.map(d => {
-          const data = d.data() as FirestoreVideo;
-          if (!data.projectId || data.projectId === PROJECT_ID) {
-            return { id: d.id, ...data } as FirestoreVideo;
-          }
-          return null;
-        }).filter(Boolean) as FirestoreVideo[];
-        onUpdate(videos);
-      },
-      (error) => {
-        console.error('Video subscription error:', error);
-        if (onError) onError(error);
-      }
-    );
+    console.error('Video subscription setup failed:', error);
+    return () => {}; // Return dummy unsubscribe
   }
 }

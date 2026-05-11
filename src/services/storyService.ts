@@ -1,5 +1,5 @@
 import { db, storage } from '../firebase';
-import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, serverTimestamp, onSnapshot, Unsubscribe, where } from 'firebase/firestore';
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, serverTimestamp, onSnapshot, Unsubscribe } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 
 export interface FirestoreStory {
@@ -36,31 +36,19 @@ export async function addStoryToFirestore(story: Omit<FirestoreStory, 'id'>): Pr
 
 export async function getStoriesFromFirestore(): Promise<FirestoreStory[]> {
   try {
-    // ← NEW: Filter by projectId (wildsaura) OR no projectId (backward compat)
-    const q = query(
-      collection(db, STORIES_COLLECTION),
-      where('projectId', '==', PROJECT_ID),
-      orderBy('createdAt', 'desc')
-    );
+    // ← FIXED: Fetch all stories, filter in-memory for backward compatibility
+    const q = query(collection(db, STORIES_COLLECTION), orderBy('createdAt', 'desc'));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as FirestoreStory));
+    
+    return snapshot.docs
+      .map(d => ({ id: d.id, ...d.data() } as FirestoreStory))
+      .filter(story => {
+        // Show stories with no projectId (old data) OR matching projectId (new data)
+        return !story.projectId || story.projectId === PROJECT_ID;
+      });
   } catch (err) {
-    try {
-      // Fallback: no filter, ordered by createdAt
-      const q = query(collection(db, STORIES_COLLECTION), orderBy('createdAt', 'desc'));
-      const snapshot = await getDocs(q);
-      return snapshot.docs.map(d => {
-        const data = d.data() as FirestoreStory;
-        // ← NEW: Only include stories with matching projectId or no projectId (old data)
-        if (!data.projectId || data.projectId === PROJECT_ID) {
-          return { id: d.id, ...data } as FirestoreStory;
-        }
-        return null;
-      }).filter(Boolean) as FirestoreStory[];
-    } catch {
-      console.warn('Firestore stories fetch failed:', err);
-      return [];
-    }
+    console.warn('Firestore stories fetch failed:', err);
+    return [];
   }
 }
 
@@ -82,14 +70,17 @@ export function subscribeToStories(
   onError?: (error: Error) => void
 ): Unsubscribe {
   try {
-    const q = query(
-      collection(db, STORIES_COLLECTION),
-      where('projectId', '==', PROJECT_ID),
-      orderBy('createdAt', 'desc')
-    );
+    // ← FIXED: Fetch all, filter in-memory for backward compatibility
+    const q = query(collection(db, STORIES_COLLECTION), orderBy('createdAt', 'desc'));
+    
     return onSnapshot(q,
       (snapshot) => {
-        const stories = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as FirestoreStory));
+        const stories = snapshot.docs
+          .map(d => ({ id: d.id, ...d.data() } as FirestoreStory))
+          .filter(story => {
+            // Show stories with no projectId (old data) OR matching projectId (new data)
+            return !story.projectId || story.projectId === PROJECT_ID;
+          });
         onUpdate(stories);
       },
       (error) => {
@@ -98,23 +89,7 @@ export function subscribeToStories(
       }
     );
   } catch (error) {
-    // Fallback: subscribe without filter
-    const q = query(collection(db, STORIES_COLLECTION), orderBy('createdAt', 'desc'));
-    return onSnapshot(q,
-      (snapshot) => {
-        const stories = snapshot.docs.map(d => {
-          const data = d.data() as FirestoreStory;
-          if (!data.projectId || data.projectId === PROJECT_ID) {
-            return { id: d.id, ...data } as FirestoreStory;
-          }
-          return null;
-        }).filter(Boolean) as FirestoreStory[];
-        onUpdate(stories);
-      },
-      (error) => {
-        console.error('Story subscription error:', error);
-        if (onError) onError(error);
-      }
-    );
+    console.error('Story subscription setup failed:', error);
+    return () => {}; // Return dummy unsubscribe
   }
 }
