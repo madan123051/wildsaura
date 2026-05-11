@@ -1379,6 +1379,9 @@ const SiteSettingsForm = () => {
   const [saving, setSaving] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
   const [uploadingSlot, setUploadingSlot] = React.useState<number | null>(null);
+  const [uploadError, setUploadError] = React.useState<string | null>(null);
+  // Auto-covers: first gallery photo per category (used as fallback when no manual override)
+  const [autoCovers, setAutoCovers] = React.useState<Record<string, string>>({});
 
   React.useEffect(() => {
     getSiteSettings().then(settings => {
@@ -1391,9 +1394,40 @@ const SiteSettingsForm = () => {
       if (settings.categoryImages) setCategoryImages(settings.categoryImages);
       setLoading(false);
     }).catch(() => setLoading(false));
+
+    // Subscribe to gallery photos to auto-generate category covers
+    const unsub = subscribeToGalleryPhotos((photos) => {
+      const covers: Record<string, string> = {};
+      // Map gallery category keys to site-settings category keys
+      const catMap: Record<string, string> = {
+        wildlife: 'wildlife',
+        birds: 'landscape', // birds → show as landscape fallback
+        landscapes: 'landscape',
+        nature: 'nature',
+        portraits: 'portraits',
+      };
+      photos.forEach(p => {
+        const key = catMap[p.category];
+        if (key && !covers[key] && p.imageUrl) covers[key] = p.imageUrl;
+      });
+      setAutoCovers(covers);
+    });
+    return () => unsub();
   }, []);
 
+  const formatUploadError = (err: any): string => {
+    const code: string = err?.code || '';
+    const msg: string = err?.message || 'Unknown error';
+    if (code === 'storage/unauthorized') return '❌ Permission denied — Firebase Storage rules not deployed. Run: firebase deploy --only storage';
+    if (code === 'storage/quota-exceeded') return '❌ Storage quota exceeded. Upgrade Firebase plan.';
+    if (code === 'storage/unauthenticated') return '❌ Not authenticated — please log out and log back in.';
+    if (code === 'storage/canceled') return '❌ Upload was cancelled.';
+    if (msg.includes('timed out')) return '❌ Upload timed out — check your internet connection.';
+    return `❌ Upload failed: ${code || msg}`;
+  };
+
   const handleHeroImageUpload = async (index: number, file: File) => {
+    setUploadError(null);
     setUploadingSlot(index);
     try {
       const url = await uploadHeroImage(file, index);
@@ -1403,32 +1437,34 @@ const SiteSettingsForm = () => {
         return updated;
       });
     } catch (err) {
-      console.warn('Hero image upload failed:', err);
-      alert('Upload failed. Please try again.');
+      console.error('Hero image upload failed:', err);
+      setUploadError(formatUploadError(err));
     }
     setUploadingSlot(null);
   };
 
   const handleThumbnailUpload = async (file: File) => {
+    setUploadError(null);
     setUploadingSlot(99);
     try {
       const url = await uploadDefaultThumbnail(file);
       setDefaultThumbnail(url);
     } catch (err) {
-      console.warn('Thumbnail upload failed:', err);
-      alert('Upload failed. Please try again.');
+      console.error('Thumbnail upload failed:', err);
+      setUploadError(formatUploadError(err));
     }
     setUploadingSlot(null);
   };
 
   const handleCategoryImageUpload = async (key: string, file: File) => {
+    setUploadError(null);
     setUploadingSlot(200);
     try {
       const url = await uploadCategoryImage(key, file);
       setCategoryImages(prev => ({ ...prev, [key]: url }));
     } catch (err) {
-      console.warn('Category image upload failed:', err);
-      alert('Upload failed. Please try again.');
+      console.error('Category image upload failed:', err);
+      setUploadError(formatUploadError(err));
     }
     setUploadingSlot(null);
   };
@@ -1450,9 +1486,9 @@ const SiteSettingsForm = () => {
         categoryImages,
       });
       alert('✅ Site settings saved successfully!');
-    } catch (err) {
-      console.warn('Save settings failed:', err);
-      alert('❌ Failed to save settings.');
+    } catch (err: any) {
+      console.error('Save settings failed:', err);
+      alert(`❌ Failed to save settings: ${err?.message || 'Unknown error'}`);
     }
     setSaving(false);
   };
@@ -1464,6 +1500,18 @@ const SiteSettingsForm = () => {
       <h2 style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--wa-gold)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
         <Globe size={22} /> Site Settings
       </h2>
+
+      {/* Upload error banner */}
+      {uploadError && (
+        <div style={{
+          background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)',
+          borderRadius: '8px', padding: '0.75rem 1rem', marginBottom: '1.25rem',
+          color: '#fca5a5', fontSize: '0.8rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem',
+        }}>
+          <span>{uploadError}</span>
+          <button onClick={() => setUploadError(null)} style={{ background: 'none', border: 'none', color: '#fca5a5', cursor: 'pointer', fontSize: '1rem', lineHeight: 1, flexShrink: 0 }}>✕</button>
+        </div>
+      )}
 
       {/* Hero Images Section */}
       <div style={{ marginBottom: '2rem' }}>
@@ -1539,76 +1587,102 @@ const SiteSettingsForm = () => {
 
       {/* Category Images Section */}
       <div style={{ marginBottom: '2rem' }}>
-        <h3 style={{ fontSize: '1rem', color: 'var(--wa-light)', marginBottom: '0.75rem', fontWeight: 600 }}>
+        <h3 style={{ fontSize: '1rem', color: 'var(--wa-light)', marginBottom: '0.4rem', fontWeight: 600 }}>
           🏷️ Category Images
         </h3>
         <p style={{ fontSize: '0.75rem', color: 'rgba(235,230,220,0.4)', marginBottom: '1rem' }}>
-          Upload custom images for each category displayed on the homepage.
+          Auto-filled from your gallery photos. Upload a custom image to override.
         </p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
           {([
             { key: 'wildlife', label: 'Wildlife' },
             { key: 'landscape', label: 'Landscapes' },
             { key: 'nature', label: 'Nature' },
             { key: 'portraits', label: 'Portraits' },
-          ] as { key: string; label: string }[]).map((cat) => (
-            <div key={cat.key} style={{
-              border: '2px dashed rgba(201,168,76,0.2)',
-              borderRadius: '12px',
-              overflow: 'hidden',
-              background: 'rgba(0,0,0,0.3)',
-              position: 'relative',
-              aspectRatio: '4/3',
-            }}>
-              {(categoryImages as any)[cat.key] ? (
-                <>
-                  <img src={(categoryImages as any)[cat.key]} alt={cat.label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  <button
-                    onClick={() => setCategoryImages(prev => {
-                      const updated = { ...prev };
-                      delete (updated as any)[cat.key];
-                      return updated;
-                    })}
-                    style={{
-                      position: 'absolute', top: 6, right: 6,
-                      background: 'rgba(239,68,68,0.9)', border: 'none', borderRadius: '50%',
-                      width: 28, height: 28, cursor: 'pointer', color: '#fff',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '0.8rem', fontWeight: 700,
-                    }}
-                  >✕</button>
-                  <div style={{
-                    position: 'absolute', bottom: 0, left: 0, right: 0,
-                    background: 'linear-gradient(transparent, rgba(0,0,0,0.8))',
-                    padding: '0.5rem', fontSize: '0.7rem', color: 'var(--wa-gold)',
-                    textAlign: 'center',
+          ] as { key: string; label: string }[]).map((cat) => {
+            const manualImg = (categoryImages as any)[cat.key];
+            const autoImg = autoCovers[cat.key];
+            const displayImg = manualImg || autoImg;
+            return (
+              <div key={cat.key} style={{
+                border: manualImg ? '2px solid rgba(201,168,76,0.5)' : '2px dashed rgba(201,168,76,0.15)',
+                borderRadius: '10px',
+                overflow: 'hidden',
+                background: 'rgba(0,0,0,0.3)',
+                position: 'relative',
+                aspectRatio: '4/3',
+              }}>
+                {displayImg ? (
+                  <>
+                    <img src={displayImg} alt={cat.label} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: manualImg ? 1 : 0.7 }} />
+                    {/* Auto-label or manual override label */}
+                    <div style={{
+                      position: 'absolute', top: 6, left: 6,
+                      background: manualImg ? 'rgba(201,168,76,0.9)' : 'rgba(0,0,0,0.6)',
+                      borderRadius: '4px', padding: '2px 6px',
+                      fontSize: '0.6rem', color: manualImg ? '#000' : 'rgba(255,255,255,0.7)',
+                      fontWeight: 700, letterSpacing: '0.05em',
+                    }}>
+                      {manualImg ? 'CUSTOM' : 'AUTO'}
+                    </div>
+                    {/* Remove custom override button */}
+                    {manualImg && (
+                      <button
+                        onClick={() => setCategoryImages(prev => {
+                          const updated = { ...prev };
+                          delete (updated as any)[cat.key];
+                          return updated;
+                        })}
+                        style={{
+                          position: 'absolute', top: 6, right: 6,
+                          background: 'rgba(239,68,68,0.9)', border: 'none', borderRadius: '50%',
+                          width: 26, height: 26, cursor: 'pointer', color: '#fff',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: '0.75rem', fontWeight: 700,
+                        }}
+                      >✕</button>
+                    )}
+                    {/* Upload override button at bottom */}
+                    <label style={{
+                      position: 'absolute', bottom: 0, left: 0, right: 0,
+                      background: 'linear-gradient(transparent, rgba(0,0,0,0.85))',
+                      padding: '1.2rem 0.5rem 0.5rem',
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      cursor: 'pointer',
+                    }}>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--wa-gold)', fontWeight: 600 }}>{cat.label}</span>
+                      <span style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.5)', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                        {uploadingSlot === 200 ? <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} /> : <Upload size={12} />}
+                        Override
+                      </span>
+                      <input type="file" accept="image/*" style={{ display: 'none' }}
+                        onChange={(e) => { const file = e.target.files?.[0]; if (file) handleCategoryImageUpload(cat.key, file); }}
+                      />
+                    </label>
+                  </>
+                ) : (
+                  <label style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    width: '100%', height: '100%', cursor: 'pointer',
+                    color: 'rgba(235,230,220,0.3)', fontSize: '0.75rem', minHeight: '100px',
                   }}>
-                    {cat.label}
-                  </div>
-                </>
-              ) : (
-                <label style={{
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                  width: '100%', height: '100%', cursor: 'pointer',
-                  color: 'rgba(235,230,220,0.3)', fontSize: '0.75rem',
-                  minHeight: '120px',
-                }}>
-                  <Upload size={24} style={{ marginBottom: '0.3rem' }} />
-                  <span>{cat.label}</span>
-                  <span style={{ fontSize: '0.65rem', opacity: 0.6 }}>Click to upload</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    style={{ display: 'none' }}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleCategoryImageUpload(cat.key, file);
-                    }}
-                  />
-                </label>
-              )}
-            </div>
-          ))}
+                    {uploadingSlot === 200 ? (
+                      <Loader2 size={22} style={{ animation: 'spin 1s linear infinite' }} />
+                    ) : (
+                      <>
+                        <Upload size={22} style={{ marginBottom: '0.3rem' }} />
+                        <span style={{ fontWeight: 600 }}>{cat.label}</span>
+                        <span style={{ fontSize: '0.62rem', opacity: 0.5 }}>No gallery photos yet</span>
+                      </>
+                    )}
+                    <input type="file" accept="image/*" style={{ display: 'none' }}
+                      onChange={(e) => { const file = e.target.files?.[0]; if (file) handleCategoryImageUpload(cat.key, file); }}
+                    />
+                  </label>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 

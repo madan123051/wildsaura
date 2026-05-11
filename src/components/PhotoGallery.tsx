@@ -226,7 +226,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
               ))}
             </div>
           </>
-        ) : (        ) : (
+        ) : (
           /* ── Folder view: category cards ── */
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1.1rem' }}>
             {categorySummary.map((cat) => (

@@ -126,10 +126,11 @@ function compressToWebP(
 
 /**
  * Upload a Blob to Firebase Storage using a resumable upload.
- * Stores under site-settings/ path which is now allowed in storage.rules.
+ * Stores under gallery/site-settings/ path — covered by the existing
+ * `match /gallery/{allPaths=**}` rule which is already deployed.
  */
 function uploadSiteAsset(filename: string, blob: Blob): Promise<string> {
-  const storageRef = ref(storage, `site-settings/${filename}`);
+  const storageRef = ref(storage, `gallery/site-settings/${filename}`);
   const contentType = blob.type || 'image/webp';
 
   return new Promise<string>((resolve, reject) => {
