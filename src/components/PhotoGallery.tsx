@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Camera, Search, ChevronLeft } from 'lucide-react';
 import { GalleryPhoto, GalleryCategory } from '../types';
+import { formatPhotoDate } from '../utils/dateFormatter'; // NEW: Import date formatter
 
 interface PhotoGalleryProps {
   photos: GalleryPhoto[];
@@ -136,6 +137,12 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
               <span style={{ color: 'var(--wa-gold)', fontSize: '0.65rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                 {categoryLabel(photo.category)}
               </span>
+              {/* NEW: Display upload date */}
+              {photo.createdAt && (
+                <span style={{ color: 'var(--wa-text-muted)', fontSize: '0.6rem', display: 'block', marginTop: '0.35rem' }}>
+                  📅 {formatPhotoDate(photo.createdAt)}
+                </span>
+              )}
             </span>
           </button>
         ))}
@@ -353,6 +360,12 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
                 <p style={{ color: 'var(--wa-gold)', margin: '0.25rem 0 0', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.08em' }}>
                   {categoryLabel(activePhoto.category)}
                 </p>
+                {/* NEW: Show upload date in lightbox */}
+                {activePhoto.createdAt && (
+                  <p style={{ color: 'var(--wa-text-muted)', margin: '0.3rem 0 0', fontSize: '0.75rem' }}>
+                    📅 Uploaded {formatPhotoDate(activePhoto.createdAt)}
+                  </p>
+                )}
               </div>
               <button className="filter-tab active" onClick={() => setActivePhoto(null)}>Close</button>
             </div>

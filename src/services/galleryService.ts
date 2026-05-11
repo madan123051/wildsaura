@@ -1,5 +1,5 @@
 import { db, storage } from '../firebase';
-import { collection, addDoc, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, serverTimestamp, updateDoc, Unsubscribe } from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, serverTimestamp, updateDoc, Unsubscribe, where } from 'firebase/firestore';
 import { deleteObject, getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
 
 export type GalleryCategory = 'wildlife' | 'birds' | 'landscapes' | 'portraits' | 'others';
@@ -15,6 +15,7 @@ export interface GalleryPhoto {
   format?: 'webp' | 'jpeg';
   sizeBytes?: number;
   createdAt?: any;
+  projectId?: string; // NEW: 'wildsaura' or other project identifier
 }
 
 const GALLERY_COLLECTION = 'galleryPhotos';
@@ -64,6 +65,7 @@ export async function uploadGalleryBlobToStorage(
 export async function addGalleryPhotoToFirestore(photo: Omit<GalleryPhoto, 'id'>): Promise<string> {
   const docRef = await addDoc(collection(db, GALLERY_COLLECTION), {
     ...photo,
+    projectId: 'wildsaura', // NEW: Tag all new photos with wildsaura project
     createdAt: serverTimestamp(),
   });
   return docRef.id;
@@ -74,9 +76,25 @@ export async function updateGalleryPhotoTitle(id: string, title: string): Promis
 }
 
 export async function getGalleryPhotosFromFirestore(): Promise<GalleryPhoto[]> {
-  const q = query(collection(db, GALLERY_COLLECTION), orderBy('createdAt', 'desc'));
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as GalleryPhoto));
+  // NEW: Filter to only wildsaura photos (with fallback to include old photos without projectId)
+  const q = query(
+    collection(db, GALLERY_COLLECTION),
+    where('projectId', '==', 'wildsaura'),
+    orderBy('createdAt', 'desc')
+  );
+  
+  try {
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as GalleryPhoto));
+  } catch (error) {
+    // Fallback: If projectId filter fails (empty collection or no index), fetch all and filter in memory
+    console.warn('Gallery projectId filter failed, using fallback:', error);
+    const fallbackQ = query(collection(db, GALLERY_COLLECTION), orderBy('createdAt', 'desc'));
+    const snapshot = await getDocs(fallbackQ);
+    return snapshot.docs
+      .map(d => ({ id: d.id, ...d.data() } as GalleryPhoto))
+      .filter(p => !p.projectId || p.projectId === 'wildsaura'); // Include old photos (no projectId) + wildsaura photos
+  }
 }
 
 export async function deleteGalleryPhoto(photo: GalleryPhoto): Promise<void> {
@@ -91,12 +109,34 @@ export function subscribeToGalleryPhotos(
   onUpdate: (photos: GalleryPhoto[]) => void,
   onError?: (error: Error) => void
 ): Unsubscribe {
-  const q = query(collection(db, GALLERY_COLLECTION), orderBy('createdAt', 'desc'));
+  // NEW: Subscribe only to wildsaura photos
+  const q = query(
+    collection(db, GALLERY_COLLECTION),
+    where('projectId', '==', 'wildsaura'),
+    orderBy('createdAt', 'desc')
+  );
+  
   return onSnapshot(q,
-    (snapshot) => onUpdate(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as GalleryPhoto))),
+    (snapshot) => {
+      const photos = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as GalleryPhoto));
+      onUpdate(photos);
+    },
     (error) => {
       console.error('Gallery subscription error:', error);
-      if (onError) onError(error);
+      // Fallback: Listen to all and filter in memory
+      const fallbackQ = query(collection(db, GALLERY_COLLECTION), orderBy('createdAt', 'desc'));
+      return onSnapshot(fallbackQ,
+        (snapshot) => {
+          const photos = snapshot.docs
+            .map(d => ({ id: d.id, ...d.data() } as GalleryPhoto))
+            .filter(p => !p.projectId || p.projectId === 'wildsaura');
+          onUpdate(photos);
+        },
+        (fallbackError) => {
+          console.error('Gallery fallback subscription error:', fallbackError);
+          if (onError) onError(fallbackError);
+        }
+      );
     }
   );
 }
