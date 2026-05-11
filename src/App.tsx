@@ -174,7 +174,7 @@ const App: React.FC = () => {
       if (path === '/about') return 'about';
       if (path === '/contact') return 'contact';
       if (path === '/photos') return 'photos';
-      if (localStorage.getItem('wa_admin_session')) return 'admin-dashboard';
+      // Admin session exists but start from home, not admin dashboard
     }
     return 'home';
   });
@@ -764,9 +764,8 @@ const App: React.FC = () => {
 
   const handleLogin = useCallback(() => {
     setIsAdmin(true);
-    setView('admin-dashboard');
+    setView('home');
     localStorage.setItem('wa_admin_session', 'true');
-    window.history.pushState({}, '', '/admin');
   }, []);
 
   const handleLogout = useCallback(() => {
@@ -1019,12 +1018,11 @@ const App: React.FC = () => {
     }
     setVisitor(merged);
     setShowVisitorLogin(false);
-    // Auto-detect admin by email
+    // Auto-detect admin by email — go to home, not admin dashboard
     if (merged.email && merged.email.toLowerCase() === ADMIN_EMAIL) {
       setIsAdmin(true);
-      setView('admin-dashboard');
+      setView('home');
       localStorage.setItem('wa_admin_session', 'true');
-      window.history.pushState({}, '', '/admin');
     }
     // Welcome notification for first-time visitors
     const welcomeKey = `wa_welcomed_${userKey || merged.displayName}`;
