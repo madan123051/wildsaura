@@ -18,9 +18,22 @@ export interface FirestoreVideo {
 const VIDEOS_COLLECTION = 'videos';
 const PROJECT_ID = 'wildsaura'; // ← NEW: Identify this project
 
-export async function uploadVideoToStorage(dataUrl: string, filename: string): Promise<string> {
+export async function uploadVideoToStorage(file: File, filename: string): Promise<string> {
   const storageRef = ref(storage, `videos/${Date.now()}_${filename}`);
-  await uploadString(storageRef, dataUrl, 'data_url');
+  
+  // For files, we need to upload as a blob
+  const uploadRef = ref(storage, `videos/${Date.now()}_${filename}`);
+  const { uploadBytes } = await import('firebase/storage');
+  await uploadBytes(uploadRef, file);
+  return await getDownloadURL(uploadRef);
+}
+
+export async function uploadVideoThumbnailToStorage(file: File, filename: string): Promise<string> {
+  const storageRef = ref(storage, `video-thumbnails/${Date.now()}_${filename}`);
+  
+  // Upload thumbnail file to storage
+  const { uploadBytes } = await import('firebase/storage');
+  await uploadBytes(storageRef, file);
   return await getDownloadURL(storageRef);
 }
 
