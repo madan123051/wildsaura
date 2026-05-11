@@ -1711,6 +1711,9 @@ const GalleryManagement: React.FC = () => {
   const [renaming, setRenaming] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [browseCategory, setBrowseCategory] = useState<GalleryCategory | null>(null);
+  const [browseYear, setBrowseYear] = useState<string | null>(null);
+  const [browseMonth, setBrowseMonth] = useState<string | null>(null);
 
   React.useEffect(() => {
     const unsub = subscribeToGalleryPhotos((photos) => setGalleryPhotos(photos));
@@ -1859,7 +1862,15 @@ const GalleryManagement: React.FC = () => {
   const toggleSelect = (key: string) => {
     setSelectedIds(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
   };
-
+  const MONTH_NAMES: Record<string, string> = { '01':'Jan','02':'Feb','03':'Mar','04':'Apr','05':'May','06':'Jun','07':'Jul','08':'Aug','09':'Sep','10':'Oct','11':'Nov','12':'Dec' };
+  const getPhotoYearMonth = (photo: GalleryPhoto): { year: string; month: string } => {
+    if (photo.storagePath) { const parts = photo.storagePath.split('/'); if (parts.length >= 5) return { year: parts[2], month: parts[3] }; }
+    if (photo.createdAt?.toDate) { const d: Date = photo.createdAt.toDate(); return { year: String(d.getFullYear()), month: String(d.getMonth() + 1).padStart(2, '0') }; }
+    return { year: '2026', month: '05' };
+  };
+  const visiblePhotos = (browseCategory && browseYear && browseMonth)
+    ? galleryPhotos.filter(p => { if (p.category !== browseCategory) return false; const { year, month } = getPhotoYearMonth(p); return year === browseYear && month === browseMonth; })
+    : [];
   return (
     <div style={{ display: 'grid', gap: '1.5rem' }}>
       <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.1)', borderRadius: '12px', padding: '1.5rem' }}>
@@ -1889,109 +1900,176 @@ const GalleryManagement: React.FC = () => {
         ) : null}
       </div>
 
+      {/* ── Category/Year/Month Folder Navigation ── */}
       <div>
         <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.6rem', marginBottom: '1rem' }}>
-          <h3 style={{ color: 'var(--wa-light)', fontSize: '1rem', margin: 0, flex: 1 }}>Gallery Photos ({galleryPhotos.length})</h3>
-          {selectMode ? (
-            <>
-              <button
-                onClick={() => {
-                  if (selectedIds.size === galleryPhotos.length) setSelectedIds(new Set());
-                  else setSelectedIds(new Set(galleryPhotos.map(p => p.id || p.imageUrl)));
-                }}
-                style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid rgba(201,168,76,0.25)', background: 'rgba(201,168,76,0.08)', color: 'var(--wa-gold)', cursor: 'pointer', fontSize: '0.72rem' }}
-              >
-                {selectedIds.size === galleryPhotos.length ? 'Deselect All' : 'Select All'}
+          <h3 style={{ color: 'var(--wa-light)', fontSize: '1rem', margin: 0 }}>Gallery ({galleryPhotos.length})</h3>
+          {/* Breadcrumb */}
+          {browseCategory && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', flex: 1, flexWrap: 'wrap' }}>
+              <span style={{ color: 'rgba(201,168,76,0.4)', fontSize: '0.78rem' }}>›</span>
+              <button onClick={() => { setBrowseYear(null); setBrowseMonth(null); setSelectMode(false); setSelectedIds(new Set()); }}
+                style={{ background: 'none', border: 'none', color: browseYear ? 'rgba(201,168,76,0.7)' : 'var(--wa-gold)', cursor: browseYear ? 'pointer' : 'default', fontSize: '0.78rem', padding: 0, textDecoration: browseYear ? 'underline' : 'none' }}>
+                {GALLERY_CATEGORY_OPTIONS.find(o => o.value === browseCategory)?.label}
               </button>
-              {selectedIds.size > 0 && (
-                <button
-                  onClick={handleBulkDelete}
-                  style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.15)', color: '#f87171', cursor: 'pointer', fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
-                >
-                  <Trash2 size={12} /> Delete ({selectedIds.size})
+              {browseYear && <>
+                <span style={{ color: 'rgba(201,168,76,0.4)', fontSize: '0.78rem' }}>›</span>
+                <button onClick={() => { setBrowseMonth(null); setSelectMode(false); setSelectedIds(new Set()); }}
+                  style={{ background: 'none', border: 'none', color: browseMonth ? 'rgba(201,168,76,0.7)' : 'var(--wa-gold)', cursor: browseMonth ? 'pointer' : 'default', fontSize: '0.78rem', padding: 0, textDecoration: browseMonth ? 'underline' : 'none' }}>
+                  {browseYear}
                 </button>
-              )}
-              <button
-                onClick={() => { setSelectMode(false); setSelectedIds(new Set()); }}
-                style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: 'rgba(235,230,220,0.6)', cursor: 'pointer', fontSize: '0.72rem' }}
-              >
-                Cancel
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={() => setSelectMode(true)}
-              style={{ padding: '0.35rem 0.75rem', borderRadius: 6, border: '1px solid rgba(201,168,76,0.2)', background: 'rgba(201,168,76,0.07)', color: 'var(--wa-gold)', cursor: 'pointer', fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
-            >
-              <CheckSquare size={13} /> Select
-            </button>
+              </>}
+              {browseMonth && <>
+                <span style={{ color: 'rgba(201,168,76,0.4)', fontSize: '0.78rem' }}>›</span>
+                <span style={{ color: 'var(--wa-gold)', fontSize: '0.78rem' }}>{MONTH_NAMES[browseMonth]}</span>
+              </>}
+            </div>
           )}
+          {browseCategory && (
+            <button onClick={() => { if (browseMonth) { setBrowseMonth(null); setSelectMode(false); setSelectedIds(new Set()); } else if (browseYear) setBrowseYear(null); else setBrowseCategory(null); }}
+              style={{ padding: '0.3rem 0.65rem', borderRadius: 6, border: '1px solid rgba(201,168,76,0.25)', background: 'rgba(201,168,76,0.07)', color: 'var(--wa-gold)', cursor: 'pointer', fontSize: '0.72rem' }}>← Back</button>
+          )}
+          {browseCategory && browseYear && browseMonth && (selectMode ? (
+            <>
+              <button onClick={() => { if (selectedIds.size === visiblePhotos.length) setSelectedIds(new Set()); else setSelectedIds(new Set(visiblePhotos.map(p => p.id || p.imageUrl))); }}
+                style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid rgba(201,168,76,0.25)', background: 'rgba(201,168,76,0.08)', color: 'var(--wa-gold)', cursor: 'pointer', fontSize: '0.72rem' }}>
+                {selectedIds.size === visiblePhotos.length ? 'Deselect All' : 'Select All'}
+              </button>
+              {selectedIds.size > 0 && (<button onClick={handleBulkDelete} style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.15)', color: '#f87171', cursor: 'pointer', fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                <Trash2 size={12} /> Delete ({selectedIds.size})
+              </button>)}
+              <button onClick={() => { setSelectMode(false); setSelectedIds(new Set()); }} style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: 'rgba(235,230,220,0.6)', cursor: 'pointer', fontSize: '0.72rem' }}>Cancel</button>
+            </>
+          ) : (<button onClick={() => setSelectMode(true)} style={{ padding: '0.35rem 0.75rem', borderRadius: 6, border: '1px solid rgba(201,168,76,0.2)', background: 'rgba(201,168,76,0.07)', color: 'var(--wa-gold)', cursor: 'pointer', fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+            <CheckSquare size={13} /> Select
+          </button>))}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
-          {galleryPhotos.map((photo) => {
-            const photoKey = photo.id || photo.imageUrl;
-            const isSelected = selectedIds.has(photoKey);
-            return (
-            <div
-              key={photoKey}
-              onClick={selectMode ? () => toggleSelect(photoKey) : undefined}
-              style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${isSelected ? 'rgba(201,168,76,0.6)' : 'rgba(201,168,76,0.1)'}`, borderRadius: '12px', overflow: 'hidden', position: 'relative', cursor: selectMode ? 'pointer' : 'default', boxShadow: isSelected ? '0 0 0 2px rgba(201,168,76,0.3)' : 'none' }}
-            >
-              {selectMode && (
-                <div style={{ position: 'absolute', top: 8, left: 8, zIndex: 2, width: 20, height: 20, borderRadius: 4, border: '2px solid rgba(201,168,76,0.85)', background: isSelected ? 'var(--wa-gold)' : 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {isSelected && <Check size={12} style={{ color: '#000' }} />}
-                </div>
-              )}
-              <img src={photo.imageUrl} alt={photo.title} style={{ width: '100%', height: 150, objectFit: 'cover' }} />
-              <div style={{ padding: '0.8rem' }}>
-                {editingId === (photo.id || photo.imageUrl) ? (
-                  <div style={{ marginBottom: '0.35rem' }}>
-                    <input
-                      value={editingTitle}
-                      onChange={(e) => setEditingTitle(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') handleRenameSave(photo); if (e.key === 'Escape') handleRenameCancel(); }}
-                      style={{ ...inputStyle, fontSize: '0.82rem', padding: '0.3rem 0.5rem', marginBottom: '0.4rem' }}
-                      autoFocus
-                      disabled={renaming}
-                    />
-                    <div style={{ display: 'flex', gap: '0.35rem' }}>
-                      <button onClick={() => handleRenameSave(photo)} disabled={renaming || !editingTitle.trim()} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', padding: '0.3rem 0.6rem', borderRadius: 6, border: '1px solid rgba(201,168,76,0.3)', background: 'rgba(201,168,76,0.12)', color: 'var(--wa-gold)', cursor: 'pointer', fontSize: '0.7rem' }}>
-                        <Save size={11} /> Save
-                      </button>
-                      <button onClick={handleRenameCancel} disabled={renaming} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', padding: '0.3rem 0.6rem', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: 'rgba(235,230,220,0.6)', cursor: 'pointer', fontSize: '0.7rem' }}>
-                        <X size={11} /> Cancel
-                      </button>
+
+        {/* Category Cards (level 1) */}
+        {!browseCategory && (
+          galleryPhotos.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '3rem', color: 'rgba(235,230,220,0.3)' }}>No gallery photos yet</div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(155px, 1fr))', gap: '1rem' }}>
+              {GALLERY_CATEGORY_OPTIONS.map(option => {
+                const catPhotos = galleryPhotos.filter(p => p.category === option.value);
+                return (
+                  <button key={option.value} onClick={() => { if (catPhotos.length > 0) setBrowseCategory(option.value as GalleryCategory); }}
+                    style={{ border: '1px solid rgba(201,168,76,0.18)', borderRadius: '14px', overflow: 'hidden', padding: 0, background: 'rgba(255,255,255,0.03)', cursor: catPhotos.length > 0 ? 'pointer' : 'default', opacity: catPhotos.length === 0 ? 0.38 : 1, textAlign: 'left' }}>
+                    <div style={{ height: 115, position: 'relative', background: 'rgba(201,168,76,0.05)', overflow: 'hidden' }}>
+                      {catPhotos[0]?.imageUrl
+                        ? <img src={catPhotos[0].imageUrl} alt={option.label} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                        : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: '2.2rem' }}>📁</div>
+                      }
+                      <span style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.62)', backdropFilter: 'blur(4px)', color: 'var(--wa-gold)', fontSize: '0.65rem', fontWeight: 700, padding: '0.18rem 0.45rem', borderRadius: '20px', border: '1px solid rgba(201,168,76,0.28)' }}>{catPhotos.length}</span>
                     </div>
+                    <span style={{ display: 'block', padding: '0.55rem 0.75rem', color: 'var(--wa-light)', fontSize: '0.82rem', fontWeight: 700 }}>📂 {option.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )
+        )}
+
+        {/* Year Folders (level 2) */}
+        {browseCategory && !browseYear && (() => {
+          const catPhotos = galleryPhotos.filter(p => p.category === browseCategory);
+          const yearMap = new Map<string, GalleryPhoto[]>();
+          catPhotos.forEach(p => { const { year } = getPhotoYearMonth(p); if (!yearMap.has(year)) yearMap.set(year, []); yearMap.get(year)!.push(p); });
+          return (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(145px, 1fr))', gap: '1rem' }}>
+              {Array.from(yearMap.entries()).sort((a, b) => b[0].localeCompare(a[0])).map(([year, yPhotos]) => (
+                <button key={year} onClick={() => setBrowseYear(year)}
+                  style={{ border: '1px solid rgba(201,168,76,0.18)', borderRadius: '14px', overflow: 'hidden', padding: 0, background: 'rgba(255,255,255,0.03)', cursor: 'pointer', textAlign: 'left' }}>
+                  <div style={{ height: 105, position: 'relative', overflow: 'hidden' }}>
+                    <img src={yPhotos[0].imageUrl} alt={year} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    <span style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.62)', backdropFilter: 'blur(4px)', color: 'var(--wa-gold)', fontSize: '0.65rem', fontWeight: 700, padding: '0.18rem 0.45rem', borderRadius: '20px', border: '1px solid rgba(201,168,76,0.28)' }}>{yPhotos.length}</span>
                   </div>
-                ) : (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.35rem' }}>
-                    <h4 style={{ color: 'var(--wa-light)', fontSize: '0.85rem', margin: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{photo.title}</h4>
-                    {!selectMode && (
-                      <button onClick={(e) => { e.stopPropagation(); handleRenameStart(photo); }} title="Rename photo" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(201,168,76,0.65)', padding: '0.1rem', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                        <Pencil size={12} />
-                      </button>
-                    )}
+                  <span style={{ display: 'block', padding: '0.55rem 0.75rem', color: 'var(--wa-light)', fontSize: '0.82rem', fontWeight: 700 }}>📅 {year}</span>
+                </button>
+              ))}
+            </div>
+          );
+        })()}
+
+        {/* Month Folders (level 3) */}
+        {browseCategory && browseYear && !browseMonth && (() => {
+          const yPhotos = galleryPhotos.filter(p => { if (p.category !== browseCategory) return false; const { year } = getPhotoYearMonth(p); return year === browseYear; });
+          const monthMap = new Map<string, GalleryPhoto[]>();
+          yPhotos.forEach(p => { const { month } = getPhotoYearMonth(p); if (!monthMap.has(month)) monthMap.set(month, []); monthMap.get(month)!.push(p); });
+          return (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(145px, 1fr))', gap: '1rem' }}>
+              {Array.from(monthMap.entries()).sort((a, b) => b[0].localeCompare(a[0])).map(([month, mPhotos]) => (
+                <button key={month} onClick={() => setBrowseMonth(month)}
+                  style={{ border: '1px solid rgba(201,168,76,0.18)', borderRadius: '14px', overflow: 'hidden', padding: 0, background: 'rgba(255,255,255,0.03)', cursor: 'pointer', textAlign: 'left' }}>
+                  <div style={{ height: 105, position: 'relative', overflow: 'hidden' }}>
+                    <img src={mPhotos[0].imageUrl} alt={month} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    <span style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.62)', backdropFilter: 'blur(4px)', color: 'var(--wa-gold)', fontSize: '0.65rem', fontWeight: 700, padding: '0.18rem 0.45rem', borderRadius: '20px', border: '1px solid rgba(201,168,76,0.28)' }}>{mPhotos.length}</span>
                   </div>
-                )}
-                <span style={{ display: 'inline-block', padding: '0.2rem 0.55rem', borderRadius: '999px', background: 'rgba(201,168,76,0.12)', color: 'var(--wa-gold)', fontSize: '0.62rem', textTransform: 'uppercase' }}>{photo.category}</span>
-                {!selectMode && (
-                  <div style={{ marginTop: '0.75rem' }}>
-                    {deleteId === photoKey ? (
-                      <div style={{ display: 'flex', gap: '0.4rem' }}>
-                        <button onClick={() => handleDelete(photo)} style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.18)', color: '#f87171', cursor: 'pointer', fontSize: '0.7rem' }}>Delete</button>
-                        <button onClick={() => setDeleteId(null)} style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: 'rgba(235,230,220,0.6)', cursor: 'pointer', fontSize: '0.7rem' }}>Cancel</button>
+                  <span style={{ display: 'block', padding: '0.55rem 0.75rem', color: 'var(--wa-light)', fontSize: '0.82rem', fontWeight: 700 }}>🗓️ {MONTH_NAMES[month]}</span>
+                </button>
+              ))}
+            </div>
+          );
+        })()}
+
+        {/* Photo Grid (level 4) */}
+        {browseCategory && browseYear && browseMonth && (
+          visiblePhotos.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '3rem', color: 'rgba(235,230,220,0.3)' }}>No photos in this folder.</div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
+              {visiblePhotos.map((photo) => { const photoKey = photo.id || photo.imageUrl; const isSelected = selectedIds.has(photoKey); return (
+                <div key={photoKey} onClick={selectMode ? () => toggleSelect(photoKey) : undefined}
+                  style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${isSelected ? 'rgba(201,168,76,0.6)' : 'rgba(201,168,76,0.1)'}`, borderRadius: '12px', overflow: 'hidden', position: 'relative', cursor: selectMode ? 'pointer' : 'default', boxShadow: isSelected ? '0 0 0 2px rgba(201,168,76,0.3)' : 'none' }}>
+                  {selectMode && (<div style={{ position: 'absolute', top: 8, left: 8, zIndex: 2, width: 20, height: 20, borderRadius: 4, border: '2px solid rgba(201,168,76,0.85)', background: isSelected ? 'var(--wa-gold)' : 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {isSelected && <Check size={12} style={{ color: '#000' }} />}
+                  </div>)}
+                  <img src={photo.imageUrl} alt={photo.title} style={{ width: '100%', height: 150, objectFit: 'cover' }} />
+                  <div style={{ padding: '0.8rem' }}>
+                    {editingId === (photo.id || photo.imageUrl) ? (
+                      <div style={{ marginBottom: '0.35rem' }}>
+                        <input value={editingTitle} onChange={(e) => setEditingTitle(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') handleRenameSave(photo); if (e.key === 'Escape') handleRenameCancel(); }}
+                          style={{ ...inputStyle, fontSize: '0.82rem', padding: '0.3rem 0.5rem', marginBottom: '0.4rem' }}
+                          autoFocus disabled={renaming} />
+                        <div style={{ display: 'flex', gap: '0.35rem' }}>
+                          <button onClick={() => handleRenameSave(photo)} disabled={renaming || !editingTitle.trim()}
+                            style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', padding: '0.3rem 0.6rem', borderRadius: 6, border: '1px solid rgba(201,168,76,0.3)', background: 'rgba(201,168,76,0.12)', color: 'var(--wa-gold)', cursor: 'pointer', fontSize: '0.7rem' }}>
+                            <Save size={11} /> Save
+                          </button>
+                          <button onClick={handleRenameCancel} disabled={renaming}
+                            style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', padding: '0.3rem 0.6rem', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: 'rgba(235,230,220,0.6)', cursor: 'pointer', fontSize: '0.7rem' }}>
+                            <X size={11} /> Cancel
+                          </button>
+                        </div>
                       </div>
                     ) : (
-                      <button onClick={() => setDeleteId(photoKey)} style={{ width: '100%', padding: '0.45rem 0.75rem', borderRadius: 6, border: '1px solid rgba(239,68,68,0.18)', background: 'rgba(239,68,68,0.08)', color: 'rgba(248,113,113,0.85)', cursor: 'pointer', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}><Trash2 size={13} /> Delete</button>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.35rem' }}>
+                        <h4 style={{ color: 'var(--wa-light)', fontSize: '0.85rem', margin: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{photo.title}</h4>
+                        {!selectMode && (<button onClick={(e) => { e.stopPropagation(); handleRenameStart(photo); }} title="Rename"
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(201,168,76,0.65)', padding: 0, display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                          <Pencil size={12} />
+                        </button>)}
+                      </div>
                     )}
+                    <span style={{ display: 'inline-block', padding: '0.2rem 0.55rem', borderRadius: '999px', background: 'rgba(201,168,76,0.12)', color: 'var(--wa-gold)', fontSize: '0.62rem', textTransform: 'uppercase' }}>{photo.category}</span>
+                    {!selectMode && (<div style={{ marginTop: '0.75rem' }}>
+                      {deleteId === photoKey ? (
+                        <div style={{ display: 'flex', gap: '0.4rem' }}>
+                          <button onClick={() => handleDelete(photo)} style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.18)', color: '#f87171', cursor: 'pointer', fontSize: '0.7rem' }}>Delete</button>
+                          <button onClick={() => setDeleteId(null)} style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: 'rgba(235,230,220,0.6)', cursor: 'pointer', fontSize: '0.7rem' }}>Cancel</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => setDeleteId(photoKey)} style={{ width: '100%', padding: '0.45rem 0.75rem', borderRadius: 6, border: '1px solid rgba(239,68,68,0.18)', background: 'rgba(239,68,68,0.08)', color: 'rgba(248,113,113,0.85)', cursor: 'pointer', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}><Trash2 size={13} /> Delete</button>
+                      )}
+                    </div>)}
                   </div>
-                )}
-              </div>
+                </div>
+              ); })}
             </div>
-            );
-          })}
-        </div>
-        {galleryPhotos.length === 0 && <div style={{ textAlign: 'center', padding: '3rem', color: 'rgba(235,230,220,0.3)' }}>No gallery photos uploaded yet.</div>}
+          )
+        )}
       </div>
     </div>
   );
