@@ -17,6 +17,12 @@ export interface FirestoreStory {
 
 const STORIES_COLLECTION = 'stories';
 
+// Only show stories that have a non-empty title
+// (filters out stories from other sites sharing the same Firebase)
+function hasTitle(story: FirestoreStory): boolean {
+  return !!(story.title && story.title.trim() !== '');
+}
+
 export async function uploadStoryCoverToStorage(dataUrl: string, filename: string): Promise<string> {
   const storageRef = ref(storage, `story-covers/${Date.now()}_${filename}`);
   await uploadString(storageRef, dataUrl, 'data_url');
@@ -35,11 +41,15 @@ export async function getStoriesFromFirestore(): Promise<FirestoreStory[]> {
   try {
     const q = query(collection(db, STORIES_COLLECTION), orderBy('createdAt', 'desc'));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as FirestoreStory));
+    return snapshot.docs
+      .map(d => ({ id: d.id, ...d.data() } as FirestoreStory))
+      .filter(hasTitle);
   } catch (err) {
     try {
       const snapshot = await getDocs(collection(db, STORIES_COLLECTION));
-      return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as FirestoreStory));
+      return snapshot.docs
+        .map(d => ({ id: d.id, ...d.data() } as FirestoreStory))
+        .filter(hasTitle);
     } catch {
       console.warn('Firestore stories fetch failed:', err);
       return [];
@@ -67,7 +77,9 @@ export function subscribeToStories(
   const q = query(collection(db, STORIES_COLLECTION), orderBy('createdAt', 'desc'));
   return onSnapshot(q,
     (snapshot) => {
-      const stories = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as FirestoreStory));
+      const stories = snapshot.docs
+        .map(d => ({ id: d.id, ...d.data() } as FirestoreStory))
+        .filter(hasTitle);
       onUpdate(stories);
     },
     (error) => {
