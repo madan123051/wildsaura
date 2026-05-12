@@ -53,34 +53,25 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
     return photos.filter((p) => p.category === openCategory);
   }, [photos, openCategory]);
 
-  // Group category photos by year
+  // Group category photos by year — uses storagePath > createdAt.toDate() > current year
   const yearMap = useMemo(() => {
     const map = new Map<string, GalleryPhoto[]>();
     categoryPhotos.forEach((p) => {
-      const year = p.uploadedAt
-        ? new Date(p.uploadedAt.seconds ? p.uploadedAt.seconds * 1000 : p.uploadedAt).getFullYear().toString()
-        : 'Unknown';
+      const { year } = getPhotoYearMonth(p);
       if (!map.has(year)) map.set(year, []);
       map.get(year)!.push(p);
     });
     return map;
   }, [categoryPhotos]);
 
-  // Group category+year photos by month
+  // Group category+year photos by month — same helper for consistency
   const monthMap = useMemo(() => {
     const map = new Map<string, GalleryPhoto[]>();
     if (!openYear) return map;
     categoryPhotos
-      .filter((p) => {
-        const year = p.uploadedAt
-          ? new Date(p.uploadedAt.seconds ? p.uploadedAt.seconds * 1000 : p.uploadedAt).getFullYear().toString()
-          : 'Unknown';
-        return year === openYear;
-      })
+      .filter((p) => getPhotoYearMonth(p).year === openYear)
       .forEach((p) => {
-        const month = p.uploadedAt
-          ? String(new Date(p.uploadedAt.seconds ? p.uploadedAt.seconds * 1000 : p.uploadedAt).getMonth() + 1).padStart(2, '0')
-          : '01';
+        const { month } = getPhotoYearMonth(p);
         if (!map.has(month)) map.set(month, []);
         map.get(month)!.push(p);
       });

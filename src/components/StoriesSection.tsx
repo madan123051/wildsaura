@@ -1,5 +1,13 @@
 import React, { useState } from 'react';
-import { Clock, Eye, Heart, ChevronDown } from 'lucide-react';
+import { Clock, Eye, Heart, ChevronDown, CalendarDays } from 'lucide-react';
+
+const formatStoryDate = (dateStr: string): string => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+};
 import { Story } from '../types';
 
 interface StoriesSectionProps {
@@ -110,6 +118,13 @@ export const StoriesSection: React.FC<StoriesSectionProps> = ({ stories, onStory
                   {story.excerpt}
                 </p>
 
+                {/* Date row */}
+                {story.createdAt && formatStoryDate(story.createdAt) && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.68rem', color: 'var(--wa-gold)', opacity: 0.75, marginBottom: '0.6rem' }}>
+                    <CalendarDays size={11} />
+                    <span>{formatStoryDate(story.createdAt)}</span>
+                  </div>
+                )}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--wa-text-muted)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
