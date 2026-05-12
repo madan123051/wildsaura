@@ -13,9 +13,15 @@ export interface FirestoreStory {
   createdAt?: any;
   viewCount: number;
   likeCount: number;
+  projectId?: string;
 }
 
 const STORIES_COLLECTION = 'stories';
+const PROJECT_ID = 'wildsaura';
+
+/** Keep only docs that belong to wildsaura or have no projectId (old content). */
+const belongsHere = (s: FirestoreStory) =>
+  !s.projectId || s.projectId === PROJECT_ID;
 
 export async function uploadStoryCoverToStorage(dataUrl: string, filename: string): Promise<string> {
   const storageRef = ref(storage, `story-covers/${Date.now()}_${filename}`);
@@ -26,6 +32,7 @@ export async function uploadStoryCoverToStorage(dataUrl: string, filename: strin
 export async function addStoryToFirestore(story: Omit<FirestoreStory, 'id'>): Promise<string> {
   const docRef = await addDoc(collection(db, STORIES_COLLECTION), {
     ...story,
+    projectId: PROJECT_ID,
     createdAt: serverTimestamp(),
   });
   return docRef.id;
@@ -35,11 +42,15 @@ export async function getStoriesFromFirestore(): Promise<FirestoreStory[]> {
   try {
     const q = query(collection(db, STORIES_COLLECTION), orderBy('createdAt', 'desc'));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as FirestoreStory));
+    return snapshot.docs
+      .map(d => ({ id: d.id, ...d.data() } as FirestoreStory))
+      .filter(belongsHere);
   } catch (err) {
     try {
       const snapshot = await getDocs(collection(db, STORIES_COLLECTION));
-      return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as FirestoreStory));
+      return snapshot.docs
+        .map(d => ({ id: d.id, ...d.data() } as FirestoreStory))
+        .filter(belongsHere);
     } catch {
       console.warn('Firestore stories fetch failed:', err);
       return [];
@@ -67,7 +78,9 @@ export function subscribeToStories(
   const q = query(collection(db, STORIES_COLLECTION), orderBy('createdAt', 'desc'));
   return onSnapshot(q,
     (snapshot) => {
-      const stories = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as FirestoreStory));
+      const stories = snapshot.docs
+        .map(d => ({ id: d.id, ...d.data() } as FirestoreStory))
+        .filter(belongsHere);
       onUpdate(stories);
     },
     (error) => {

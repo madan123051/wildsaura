@@ -15,9 +15,15 @@ export interface GalleryPhoto {
   format?: 'webp' | 'jpeg';
   sizeBytes?: number;
   createdAt?: any;
+  projectId?: string;
 }
 
 const GALLERY_COLLECTION = 'galleryPhotos';
+const PROJECT_ID = 'wildsaura';
+
+/** Keep only docs that belong to wildsaura or have no projectId (old content). */
+const belongsHere = (photo: GalleryPhoto) =>
+  !photo.projectId || photo.projectId === PROJECT_ID;
 
 const sanitize = (s: string) => s.replace(/[^a-zA-Z0-9._-]/g, '_');
 
@@ -64,6 +70,7 @@ export async function uploadGalleryBlobToStorage(
 export async function addGalleryPhotoToFirestore(photo: Omit<GalleryPhoto, 'id'>): Promise<string> {
   const docRef = await addDoc(collection(db, GALLERY_COLLECTION), {
     ...photo,
+    projectId: PROJECT_ID,
     createdAt: serverTimestamp(),
   });
   return docRef.id;
@@ -76,7 +83,9 @@ export async function updateGalleryPhotoTitle(id: string, title: string): Promis
 export async function getGalleryPhotosFromFirestore(): Promise<GalleryPhoto[]> {
   const q = query(collection(db, GALLERY_COLLECTION), orderBy('createdAt', 'desc'));
   const snapshot = await getDocs(q);
-  return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as GalleryPhoto));
+  return snapshot.docs
+    .map(d => ({ id: d.id, ...d.data() } as GalleryPhoto))
+    .filter(belongsHere);
 }
 
 export async function deleteGalleryPhoto(photo: GalleryPhoto): Promise<void> {
@@ -93,7 +102,12 @@ export function subscribeToGalleryPhotos(
 ): Unsubscribe {
   const q = query(collection(db, GALLERY_COLLECTION), orderBy('createdAt', 'desc'));
   return onSnapshot(q,
-    (snapshot) => onUpdate(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as GalleryPhoto))),
+    (snapshot) => {
+      const photos = snapshot.docs
+        .map(d => ({ id: d.id, ...d.data() } as GalleryPhoto))
+        .filter(belongsHere);
+      onUpdate(photos);
+    },
     (error) => {
       console.error('Gallery subscription error:', error);
       if (onError) onError(error);

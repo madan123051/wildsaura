@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Clock, Eye, Heart, ChevronDown } from 'lucide-react';
+import { Clock, Eye, Heart, ChevronDown, Calendar } from 'lucide-react';
 import { Story } from '../types';
 
 interface StoriesSectionProps {
@@ -9,6 +9,24 @@ interface StoriesSectionProps {
 
 const INITIAL_COUNT = 3;
 const estimateReadTime = (content: string): number => Math.max(1, Math.ceil(content.split(/\s+/).length / 200));
+
+function formatStoryDate(createdAt: any): string {
+  if (!createdAt) return '';
+  try {
+    let date: Date;
+    if (typeof createdAt.toDate === 'function') {
+      date = createdAt.toDate();
+    } else if (createdAt.seconds != null) {
+      date = new Date(createdAt.seconds * 1000);
+    } else {
+      date = new Date(createdAt);
+    }
+    if (isNaN(date.getTime())) return '';
+    return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  } catch {
+    return '';
+  }
+}
 
 export const StoriesSection: React.FC<StoriesSectionProps> = ({ stories, onStoryClick }) => {
   const [showAll, setShowAll] = useState(false);
@@ -118,6 +136,11 @@ export const StoriesSection: React.FC<StoriesSectionProps> = ({ stories, onStory
                     <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                       <Eye size={12} /> {story.viewCount}
                     </span>
+                    {formatStoryDate(story.createdAt) && (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                        <Calendar size={12} /> {formatStoryDate(story.createdAt)}
+                      </span>
+                    )}
                   </div>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'rgba(201,168,76,0.6)' }}>
                     <Heart size={12} /> {story.likeCount}

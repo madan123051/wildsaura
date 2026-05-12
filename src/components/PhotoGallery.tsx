@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Camera, Search, ChevronLeft } from 'lucide-react';
 import { GalleryPhoto, GalleryCategory } from '../types';
+import { formatDate } from '../utils/dateFormatter';
 
 interface PhotoGalleryProps {
   photos: GalleryPhoto[];
@@ -353,8 +354,27 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
                 <p style={{ color: 'var(--wa-gold)', margin: '0.25rem 0 0', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.08em' }}>
                   {categoryLabel(activePhoto.category)}
                 </p>
+                {formatDate(activePhoto.createdAt) && (
+                  <p style={{ color: 'rgba(201,168,76,0.55)', margin: '0.2rem 0 0', fontSize: '0.7rem' }}>
+                    📅 {formatDate(activePhoto.createdAt)}
+                  </p>
+                )}
               </div>
-              <button className="filter-tab active" onClick={() => setActivePhoto(null)}>Close</button>
+              <button
+                onClick={() => setActivePhoto(null)}
+                style={{
+                  background: 'rgba(201,168,76,0.12)',
+                  border: '1px solid rgba(201,168,76,0.35)',
+                  color: 'var(--wa-gold)',
+                  borderRadius: '8px',
+                  padding: '0.45rem 1.1rem',
+                  cursor: 'pointer',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                }}
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

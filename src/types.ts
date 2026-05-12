@@ -4,7 +4,7 @@ export interface Photo {
   title: string;
   category: 'wildlife' | 'landscape' | 'street' | 'nature' | 'other';
   imageUrl: string;
-  thumbnailUrl?: string;       // ← NEW: Optimized gallery thumbnail (WebP ~150KB, 600px)
+  thumbnailUrl?: string;
   location?: string;
   caption?: string;
   type: 'photo' | 'video';
@@ -23,8 +23,8 @@ export interface Photo {
   photographer?: string;
   latitude?: number;
   longitude?: number;
-  originalSize?: number;       // ← NEW: Original file size in bytes (before compression)
-  compressedSize?: number;     // ← NEW: Compressed WebP size in bytes (after compression)
+  originalSize?: number;
+  compressedSize?: number;
 }
 
 export interface Category {
@@ -66,11 +66,12 @@ export interface Story {
   content: string;
   coverImageUrl: string;
   tags: string[];
-  createdAt: string;
+  createdAt: any;
   viewCount: number;
   likeCount: number;
   liked: boolean;
   photographer?: string;
+  projectId?: string;
 }
 
 export interface Video {
@@ -83,15 +84,16 @@ export interface Video {
   tags: string[];
   location?: string;
   duration?: string;
-  createdAt: string;
+  createdAt: any;
   viewCount: number;
   likeCount: number;
   liked: boolean;
   photographer?: string;
-  originalSize?: number;       // ← NEW: Original video file size in bytes
-  aspectRatio?: string;        // ← NEW: Video aspect ratio e.g. '16:9', '9:16', '1:1', '4:5'
-  videoWidth?: number;         // ← NEW: Original video width in pixels
-  videoHeight?: number;        // ← NEW: Original video height in pixels
+  originalSize?: number;
+  aspectRatio?: string;
+  videoWidth?: number;
+  videoHeight?: number;
+  projectId?: string;
 }
 
 export interface ChatMessage {
@@ -120,4 +122,5 @@ export interface GalleryPhoto {
   imageUrl: string;
   storagePath?: string;
   createdAt?: any;
+  projectId?: string;
 }
