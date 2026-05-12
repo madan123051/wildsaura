@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Play, Eye, Heart, ChevronDown, MapPin, MessageCircle, Share2, Send, Trash2 } from 'lucide-react';
+import { Play, Eye, Heart, ChevronDown, MapPin, MessageCircle, Share2, Send, Trash2, CalendarDays } from 'lucide-react';
 import { Video, Comment, Visitor } from '../types';
 
 interface VideoSectionProps {
@@ -276,6 +276,13 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
                     </p>
                   )}
 
+                  {/* Date row */}
+                  {video.createdAt && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.68rem', color: 'var(--wa-gold)', opacity: 0.75, marginBottom: '0.5rem' }}>
+                      <CalendarDays size={11} />
+                      <span>{timeAgo(video.createdAt)}</span>
+                    </div>
+                  )}
                   {/* Stats row — with like, share buttons */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--wa-text-muted)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
