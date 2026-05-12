@@ -18,10 +18,44 @@ const C = {
   muted:        'rgba(197,217,181,0.65)', // dimmed sage for secondary
 };
 
+// Nepal Standard Time = UTC+5:45
+function getNPTDate(): { dateStr: string; timeStr: string } {
+  const now = new Date();
+  // NPT offset: +5 hours 45 minutes
+  const nptOffset = 5 * 60 + 45; // minutes
+  const utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
+  const npt = new Date(utcMs + nptOffset * 60000);
+
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+  const day  = DAYS[npt.getDay()];
+  const date = npt.getDate();
+  const mon  = MONTHS[npt.getMonth()];
+  const yr   = npt.getFullYear();
+
+  const hh = npt.getHours();
+  const mm  = String(npt.getMinutes()).padStart(2, '0');
+  const ampm = hh >= 12 ? 'PM' : 'AM';
+  const h12  = hh % 12 || 12;
+
+  return {
+    dateStr: `${day}, ${date} ${mon} ${yr}`,
+    timeStr: `${h12}:${mm} ${ampm} NPT`,
+  };
+}
+
 export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages }) => {
   const images = heroImages && heroImages.length > 0 ? heroImages : [DEFAULT_HERO];
   const [currentIndex, setCurrentIndex] = useState(0);
   const [fade, setFade] = useState(true);
+  const [nptTime, setNptTime] = useState<{ dateStr: string; timeStr: string }>(getNPTDate);
+
+  // Tick every second
+  useEffect(() => {
+    const tick = setInterval(() => setNptTime(getNPTDate()), 1000);
+    return () => clearInterval(tick);
+  }, []);
 
   useEffect(() => {
     if (images.length <= 1) return;
@@ -107,9 +141,33 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages }) => {
               color: C.himalBlue,
               textTransform: 'uppercase',
               display: 'flex', alignItems: 'center', gap: '0.5rem',
+              flexWrap: 'wrap',
             }}>
               <span style={{ display: 'inline-block', width: 24, height: 2, background: C.natgeoYellow, borderRadius: 1, flexShrink: 0 }} />
               Nature &nbsp;·&nbsp; Stories &nbsp;·&nbsp; Conservation
+            </div>
+
+            {/* Live Nepal Date & Time bar */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '0.6rem',
+              marginBottom: '0.7rem',
+              fontFamily: 'monospace',
+              fontSize: '0.68rem',
+              letterSpacing: '0.04em',
+              color: C.parchment,
+              opacity: 0.82,
+            }}>
+              {/* Pulsing green dot */}
+              <span style={{
+                display: 'inline-block', width: 7, height: 7, borderRadius: '50%',
+                background: '#4ade80',
+                boxShadow: '0 0 6px rgba(74,222,128,0.7)',
+                animation: 'livePulse 1.8s ease-in-out infinite',
+                flexShrink: 0,
+              }} />
+              <span style={{ color: C.natgeoYellow, fontWeight: 700 }}>{nptTime.dateStr}</span>
+              <span style={{ color: 'rgba(197,217,181,0.5)' }}>·</span>
+              <span>{nptTime.timeStr}</span>
             </div>
 
             {/* Main title — warm parchment */}
@@ -208,6 +266,10 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages }) => {
         @keyframes bounce {
           0%, 100% { transform: translateY(0); }
           50% { transform: translateY(4px); }
+        }
+        @keyframes livePulse {
+          0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 6px rgba(74,222,128,0.7); }
+          50% { opacity: 0.5; transform: scale(0.75); box-shadow: 0 0 3px rgba(74,222,128,0.3); }
         }
       `}</style>
     </section>
