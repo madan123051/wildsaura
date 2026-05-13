@@ -765,10 +765,10 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
       try {
         const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
         const { storage } = await import('../firebase');
-        const storageRef = ref(storage, `story-covers/${Date.now()}_${file.name}`);
-        const response = await fetch(finalUrl);
-        const blob = await response.blob();
-        await uploadBytes(storageRef, blob);
+        // Compress to WebP before uploading
+        const compressedFile = await compressForUpload(file);
+        const storageRef = ref(storage, `story-covers/${Date.now()}_${compressedFile.name}`);
+        await uploadBytes(storageRef, compressedFile);
         const firebaseUrl = await getDownloadURL(storageRef);
         setCoverImageUrl(firebaseUrl);
       } catch {
@@ -897,8 +897,13 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
   const handleInlineImageUpload = useCallback(async (file: File) => {
     setInlineUploading(true);
     try {
-      const storageRef = ref(storage, `story-inline/${Date.now()}_${file.name}`);
-      await uploadBytes(storageRef, file);
+      // Compress to WebP before uploading (max 2MB)
+      const compressedFile = await compressForUpload(file, (progress) => {
+        // Could show progress bar here
+        console.log(`Upload compression progress: ${progress}%`);
+      });
+      const storageRef = ref(storage, `stories/inline/${Date.now()}_${compressedFile.name}`);
+      await uploadBytes(storageRef, compressedFile);
       const url = await getDownloadURL(storageRef);
       const marker = `[IMAGE:${url}]`;
 
