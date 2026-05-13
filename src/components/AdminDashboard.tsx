@@ -17,6 +17,8 @@ import { compressImageForAI, compressForUpload, generateThumbnail } from '../uti
 import { readExifFromFile } from '../utils/exifReader';
 import { subscribeToContactMessages, deleteContactMessage, ContactMessage } from '../services/contactService';
 import { addGalleryPhotoToFirestore, deleteGalleryPhoto, subscribeToGalleryPhotos, uploadGalleryBlobToStorage, updateGalleryPhotoTitle } from '../services/galleryService';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '../firebase';
 
 
 
@@ -895,8 +897,6 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
   const handleInlineImageUpload = useCallback(async (file: File) => {
     setInlineUploading(true);
     try {
-      const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
-      const { storage } = await import('../firebase');
       const storageRef = ref(storage, `story-inline/${Date.now()}_${file.name}`);
       await uploadBytes(storageRef, file);
       const url = await getDownloadURL(storageRef);
