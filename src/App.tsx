@@ -377,6 +377,7 @@ const App: React.FC = () => {
         published: fp.published !== false,
         likeCount: fp.likeCount || 0,
         liked: false,
+        createdAt: fp.createdAt || null,  // ← FIX: preserve Firestore Timestamp for date display
       }));
 
       setPhotos(prev => {
