@@ -897,7 +897,7 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
   const handleInlineImageUpload = useCallback(async (file: File) => {
     setInlineUploading(true);
     try {
-      const storageRef = ref(storage, `story-inline/${Date.now()}_${file.name}`);
+      const storageRef = ref(storage, `stories/inline/${Date.now()}_${file.name}`);
       await uploadBytes(storageRef, file);
       const url = await getDownloadURL(storageRef);
       const marker = `[IMAGE:${url}]`;
