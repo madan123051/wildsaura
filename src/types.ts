@@ -25,6 +25,7 @@ export interface Photo {
   longitude?: number;
   originalSize?: number;       // ← NEW: Original file size in bytes (before compression)
   compressedSize?: number;     // ← NEW: Compressed WebP size in bytes (after compression)
+  createdAt?: any;             // ← NEW: Firestore Timestamp or ISO string — upload/publish date
 }
 
 export interface Category {
