@@ -16,6 +16,49 @@ interface StoryDetailProps {
 
 const estimateReadTime = (content: string): number => Math.max(1, Math.ceil(content.split(/\s+/).length / 200));
 
+// Parse story content: splits by [IMAGE:url] markers and renders paragraphs + images
+const renderStoryContent = (content: string) => {
+  const parts = content.split(/(\[IMAGE:[^\]]+\])/g);
+  const elements: React.ReactNode[] = [];
+
+  parts.forEach((part, i) => {
+    const imgMatch = part.match(/^\[IMAGE:(.+)\]$/);
+    if (imgMatch) {
+      elements.push(
+        <div key={`img-${i}`} style={{ margin: '2rem 0', textAlign: 'center' }}>
+          <img
+            src={imgMatch[1]}
+            alt={`Story image ${Math.floor(i / 2) + 1}`}
+            style={{
+              maxWidth: '100%',
+              width: '100%',
+              borderRadius: '12px',
+              boxShadow: '0 6px 30px rgba(0,0,0,0.5)',
+              display: 'block',
+            }}
+            loading="lazy"
+          />
+        </div>
+      );
+    } else {
+      // Regular text — split into paragraphs by double newline
+      const paras = part.split('\n\n').filter(p => p.trim() !== '');
+      paras.forEach((para, j) => {
+        elements.push(
+          <p key={`p-${i}-${j}`} style={{
+            fontSize: '0.95rem', lineHeight: 1.8, color: 'var(--wa-text)',
+            marginBottom: '1.25rem', opacity: 0.85,
+          }}>
+            {para}
+          </p>
+        );
+      });
+    }
+  });
+
+  return elements;
+};
+
 export const StoryDetail: React.FC<StoryDetailProps> = ({
   story, onBack, onLike, visitor, comments, onAddComment, onVisitorLoginClick: _onVisitorLoginClick, isAdmin, onDeleteComment,
 }) => {
@@ -120,16 +163,9 @@ export const StoryDetail: React.FC<StoryDetailProps> = ({
             <span>{new Date(story.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
           </div>
 
-          {/* Story Content */}
+          {/* Story Content — supports [IMAGE:url] inline markers */}
           <div style={{ marginBottom: '2.5rem' }}>
-            {story.content.split('\n\n').map((para, i) => (
-              <p key={i} style={{
-                fontSize: '0.95rem', lineHeight: 1.8, color: 'var(--wa-text)',
-                marginBottom: '1.25rem', opacity: 0.85,
-              }}>
-                {para}
-              </p>
-            ))}
+            {renderStoryContent(story.content)}
           </div>
 
           {/* Like Button */}

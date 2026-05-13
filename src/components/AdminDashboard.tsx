@@ -723,6 +723,9 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiStatus, setAiStatus] = useState('');
   const [photographer, setPhotographer] = useState(initial?.photographer || '');
+  const [inlineUploading, setInlineUploading] = useState(false);
+  const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const inlineImageInputRef = useRef<HTMLInputElement>(null);
 
   const autoSlug = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
@@ -889,6 +892,37 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
     setAiGenerating(false);
   }, [title, previewUrl, coverImageUrl, tagsStr, slug, photographer]);
 
+  const handleInlineImageUpload = useCallback(async (file: File) => {
+    setInlineUploading(true);
+    try {
+      const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
+      const { storage } = await import('../firebase');
+      const storageRef = ref(storage, `story-inline/${Date.now()}_${file.name}`);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      const marker = `[IMAGE:${url}]`;
+
+      // Insert at cursor position in textarea
+      const ta = contentTextareaRef.current;
+      if (ta) {
+        const start = ta.selectionStart;
+        const end = ta.selectionEnd;
+        const newContent = content.substring(0, start) + '\n\n' + marker + '\n\n' + content.substring(end);
+        setContent(newContent);
+        setTimeout(() => {
+          ta.selectionStart = ta.selectionEnd = start + marker.length + 4;
+          ta.focus();
+        }, 0);
+      } else {
+        setContent(prev => prev + '\n\n' + marker + '\n\n');
+      }
+    } catch (err) {
+      console.error('Inline image upload failed:', err);
+      alert('Image upload failed. Please try again.');
+    }
+    setInlineUploading(false);
+  }, [content]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave({
@@ -987,8 +1021,51 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
           <textarea value={excerpt} onChange={(e) => setExcerpt(e.target.value)} required placeholder="Brief summary..." rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
         </div>
         <div style={{ gridColumn: '1 / -1' }}>
-          <label style={labelStyle}>Content *</label>
-          <textarea value={content} onChange={(e) => setContent(e.target.value)} required placeholder="Full story content... Use double newlines for paragraphs." rows={8} style={{ ...inputStyle, resize: 'vertical' }} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+            <label style={labelStyle}>Content *</label>
+            <button
+              type="button"
+              onClick={() => inlineImageInputRef.current?.click()}
+              disabled={inlineUploading}
+              title="Insert image at cursor position"
+              style={{
+                display: 'flex', alignItems: 'center', gap: '0.35rem',
+                padding: '0.3rem 0.7rem', borderRadius: '7px',
+                background: inlineUploading ? 'rgba(201,168,76,0.08)' : 'rgba(201,168,76,0.15)',
+                border: '1px solid rgba(201,168,76,0.35)',
+                color: 'var(--wa-gold)', cursor: inlineUploading ? 'wait' : 'pointer',
+                fontSize: '0.72rem', fontWeight: 600, transition: 'all 0.2s',
+              }}
+            >
+              {inlineUploading
+                ? <><Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> Uploading...</>
+                : <><FileImage size={13} /> 📷 Insert Image</>
+              }
+            </button>
+            <input
+              ref={inlineImageInputRef}
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleInlineImageUpload(file);
+                e.target.value = '';
+              }}
+            />
+          </div>
+          <textarea
+            ref={contentTextareaRef}
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            required
+            placeholder={"Full story content...\n\nUse double newlines for paragraphs.\nClick '📷 Insert Image' to add photos inside the story."}
+            rows={12}
+            style={{ ...inputStyle, resize: 'vertical', fontFamily: 'monospace', fontSize: '0.8rem' }}
+          />
+          <div style={{ fontSize: '0.68rem', color: 'rgba(235,230,220,0.35)', marginTop: '0.3rem' }}>
+            💡 Tip: Place cursor in text where you want an image, then click "Insert Image"
+          </div>
         </div>
       </div>
 
