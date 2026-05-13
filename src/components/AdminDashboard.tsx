@@ -1025,7 +1025,10 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
             <label style={labelStyle}>Content *</label>
             <button
               type="button"
-              onClick={() => inlineImageInputRef.current?.click()}
+              onClick={(e) => {
+                e.preventDefault();
+                inlineImageInputRef.current?.click();
+              }}
               disabled={inlineUploading}
               title="Insert image at cursor position"
               style={{
@@ -1046,7 +1049,7 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
               ref={inlineImageInputRef}
               type="file"
               accept="image/*"
-              style={{ display: 'none' }}
+              style={{ position: 'absolute', left: '-9999px', visibility: 'hidden' }}
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) handleInlineImageUpload(file);
