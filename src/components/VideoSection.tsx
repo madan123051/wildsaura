@@ -8,6 +8,7 @@ interface VideoSectionProps {
   videoComments: Record<string, Comment[]>;
   onAddVideoComment: (firestoreId: string, content: string) => void;
   onVideoLike: (videoId: number) => void;
+  onVideoView?: (videoId: number) => void;
   onVisitorLoginClick: () => void;
   isAdmin?: boolean;
   onDeleteComment?: (firestoreId: string) => void;
@@ -46,6 +47,7 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
   videoComments,
   onAddVideoComment,
   onVideoLike,
+  onVideoView,
   onVisitorLoginClick,
   isAdmin,
   onDeleteComment,
@@ -165,7 +167,7 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
                   ) : (
                     <div
                       style={{ cursor: 'pointer', position: 'relative', width: '100%', height: '100%' }}
-                      onClick={() => setPlayingId(video.id)}
+                      onClick={() => { setPlayingId(video.id); onVideoView?.(video.id); }}
                     >
                       {video.thumbnailUrl ? (
                         <img
