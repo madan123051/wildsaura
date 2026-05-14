@@ -1354,7 +1354,7 @@ const App: React.FC = () => {
   // ── Terms & Conditions View ──
   if (view === 'terms') {
     return (
-      <div style={{ minHeight: '100vh', background: 'var(--wa-bg)' }}>
+      <div style={{ minHeight: '100vh', background: 'var(--wa-bg)', display: 'flex', flexDirection: 'column' }}>
         <Header
           onScrollToGallery={scrollToGallery}
           logoUrl={logoUrl}
@@ -1369,7 +1369,9 @@ const App: React.FC = () => {
           isAdmin={isAdmin}
           onAdminClick={() => { setView('admin-dashboard'); window.history.pushState({}, '', '/admin'); }}
         />
-        <TermsConditions onBack={() => { setView('home'); window.history.pushState({}, '', '/'); window.scrollTo(0, 0); }} />
+        <div style={{ flex: 1 }}>
+          <TermsConditions onBack={() => { setView('home'); window.history.pushState({}, '', '/'); window.scrollTo(0, 0); }} />
+        </div>
         <Footer logoUrl={logoUrl} onTermsClick={handleTermsClick} />
         <AIChatbot photos={photos} onPhotoClick={openPhoto} />
         <SearchBar
@@ -1392,7 +1394,7 @@ const App: React.FC = () => {
   // ── Story Detail View ──
   if (view === 'story-detail' && selectedStory) {
     return (
-      <div style={{ minHeight: '100vh', background: 'var(--wa-bg)' }}>
+      <div style={{ minHeight: '100vh', background: 'var(--wa-bg)', display: 'flex', flexDirection: 'column' }}>
         <Header
           onScrollToGallery={scrollToGallery}
           logoUrl={logoUrl}
@@ -1407,17 +1409,19 @@ const App: React.FC = () => {
           isAdmin={isAdmin}
           onAdminClick={() => { setView('admin-dashboard'); window.history.pushState({}, '', '/admin'); }}
         />
-        <StoryDetail
-          story={selectedStory}
-          onBack={handleStoryBack}
-          onLike={handleStoryLike}
-          visitor={visitor}
-          comments={storyComments[selectedStory.firestoreId || ''] || []}
-          onAddComment={(content) => handleAddStoryComment(selectedStory.firestoreId || '', content)}
-          onVisitorLoginClick={() => setShowVisitorLogin(true)}
-          isAdmin={isAdmin}
-          onDeleteComment={handleDeleteComment}
-        />
+        <div style={{ flex: 1 }}>
+          <StoryDetail
+            story={selectedStory}
+            onBack={handleStoryBack}
+            onLike={handleStoryLike}
+            visitor={visitor}
+            comments={storyComments[selectedStory.firestoreId || ''] || []}
+            onAddComment={(content) => handleAddStoryComment(selectedStory.firestoreId || '', content)}
+            onVisitorLoginClick={() => setShowVisitorLogin(true)}
+            isAdmin={isAdmin}
+            onDeleteComment={handleDeleteComment}
+          />
+        </div>
         <Footer logoUrl={logoUrl} onTermsClick={handleTermsClick} />
         <AIChatbot photos={photos} onPhotoClick={openPhoto} />
         <SearchBar
@@ -1438,7 +1442,7 @@ const App: React.FC = () => {
   }
 
   const StaticPage = ({ title, text, cta }: { title: string; text: string; cta?: string }) => (
-    <div style={{ minHeight: '100vh', background: 'var(--wa-bg)' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--wa-bg)', display: 'flex', flexDirection: 'column' }}>
       <Header
         onScrollToGallery={scrollToGallery}
         logoUrl={logoUrl}
@@ -1453,6 +1457,7 @@ const App: React.FC = () => {
         isAdmin={isAdmin}
         onAdminClick={() => { setView('admin-dashboard'); window.history.pushState({}, '', '/admin'); }}
       />
+      <div style={{ flex: 1 }}>
       <div className="wa-container" style={{ paddingTop: '8rem', paddingBottom: '5rem', maxWidth: 900 }}>
         <button
           onClick={() => { setView('home'); window.history.pushState({}, '', '/'); window.scrollTo(0, 0); }}
@@ -1472,6 +1477,7 @@ const App: React.FC = () => {
         <h1 style={{ fontSize: '2.5rem', color: 'var(--wa-text)', marginBottom: '1rem' }}>{title}</h1>
         <p style={{ fontSize: '1.1rem', lineHeight: 1.8, color: 'var(--wa-muted)' }}>{text}</p>
         {cta && <p style={{ marginTop: '1.5rem', fontWeight: 700, color: 'var(--wa-accent)' }}>{cta}</p>}
+      </div>
       </div>
       <Footer logoUrl={logoUrl} onTermsClick={handleTermsClick} />
     </div>
