@@ -17,8 +17,6 @@ import { compressImageForAI, compressForUpload, generateThumbnail } from '../uti
 import { readExifFromFile } from '../utils/exifReader';
 import { subscribeToContactMessages, deleteContactMessage, ContactMessage } from '../services/contactService';
 import { addGalleryPhotoToFirestore, deleteGalleryPhoto, subscribeToGalleryPhotos, uploadGalleryBlobToStorage, updateGalleryPhotoTitle } from '../services/galleryService';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from '../firebase';
 
 
 
@@ -765,10 +763,10 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
       try {
         const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
         const { storage } = await import('../firebase');
-        // Compress to WebP before uploading
-        const compressedFile = await compressForUpload(file);
-        const storageRef = ref(storage, `story-covers/${Date.now()}_${compressedFile.name}`);
-        await uploadBytes(storageRef, compressedFile);
+        const storageRef = ref(storage, `story-covers/${Date.now()}_${file.name}`);
+        const response = await fetch(finalUrl);
+        const blob = await response.blob();
+        await uploadBytes(storageRef, blob);
         const firebaseUrl = await getDownloadURL(storageRef);
         setCoverImageUrl(firebaseUrl);
       } catch {
@@ -897,13 +895,10 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
   const handleInlineImageUpload = useCallback(async (file: File) => {
     setInlineUploading(true);
     try {
-      // Compress to WebP before uploading (max 2MB)
-      const compressedFile = await compressForUpload(file, (progress) => {
-        // Could show progress bar here
-        console.log(`Upload compression progress: ${progress}%`);
-      });
-      const storageRef = ref(storage, `stories/inline/${Date.now()}_${compressedFile.name}`);
-      await uploadBytes(storageRef, compressedFile);
+      const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
+      const { storage } = await import('../firebase');
+      const storageRef = ref(storage, `story-inline/${Date.now()}_${file.name}`);
+      await uploadBytes(storageRef, file);
       const url = await getDownloadURL(storageRef);
       const marker = `[IMAGE:${url}]`;
 
@@ -1030,10 +1025,7 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
             <label style={labelStyle}>Content *</label>
             <button
               type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                inlineImageInputRef.current?.click();
-              }}
+              onClick={() => inlineImageInputRef.current?.click()}
               disabled={inlineUploading}
               title="Insert image at cursor position"
               style={{
@@ -1054,7 +1046,7 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
               ref={inlineImageInputRef}
               type="file"
               accept="image/*"
-              style={{ position: 'absolute', left: '-9999px', visibility: 'hidden' }}
+              style={{ display: 'none' }}
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) handleInlineImageUpload(file);
@@ -2246,6 +2238,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [editingStory, setEditingStory] = useState<Story | null>(null);
   const [editingVideo, setEditingVideo] = useState<Video | null>(null);
   const [search, setSearch] = useState('');
+  // Manage Photos — Year/Month folder navigation
+  const [mpFolderMode, setMpFolderMode] = useState(false);
+  const [mpYear, setMpYear] = useState<string | null>(null);
+  const [mpMonth, setMpMonth] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   const [storyDeleteConfirm, setStoryDeleteConfirm] = useState<number | null>(null);
   const [videoDeleteConfirm, setVideoDeleteConfirm] = useState<number | null>(null);
@@ -2280,6 +2276,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     p.title.toLowerCase().includes(search.toLowerCase()) ||
     (p.location || '').toLowerCase().includes(search.toLowerCase())
   );
+
+  // Year/Month folder helpers for Manage Photos
+  const MP_MONTH_NAMES: Record<string, string> = { '01':'Jan','02':'Feb','03':'Mar','04':'Apr','05':'May','06':'Jun','07':'Jul','08':'Aug','09':'Sep','10':'Oct','11':'Nov','12':'Dec' };
+  const getMpPhotoDate = (p: Photo): { year: string; month: string } => {
+    if ((p as any).storagePath) { const parts = (p as any).storagePath.split('/'); if (parts.length >= 5) return { year: parts[2], month: parts[3] }; }
+    if ((p as any).createdAt?.toDate) { const d: Date = (p as any).createdAt.toDate(); return { year: String(d.getFullYear()), month: String(d.getMonth() + 1).padStart(2, '0') }; }
+    return { year: '2026', month: '05' };
+  };
 
   const handleSaveNew = (data: Photo) => { onAddPhoto(data); setView('photos'); };
   const handleSaveEdit = (data: Photo) => { onUpdatePhoto(data); setEditingPhoto(null); };
@@ -2539,49 +2543,181 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           {/* Photos View */}
           {view === 'photos' && !editingPhoto && (
             <>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-                <div style={{ position: 'relative', flex: '1 1 250px', maxWidth: 350 }}>
-                  <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'rgba(235,230,220,0.3)' }} />
-                  <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search photos..."
-                    style={{ ...inputStyle, paddingLeft: '2.25rem' }} />
+              {/* ── Top bar ── */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, flexWrap: 'wrap' }}>
+                  {!mpFolderMode && (
+                    <div style={{ position: 'relative', flex: '1 1 200px', maxWidth: 300 }}>
+                      <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'rgba(235,230,220,0.3)' }} />
+                      <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search photos..."
+                        style={{ ...inputStyle, paddingLeft: '2.25rem' }} />
+                    </div>
+                  )}
+                  {mpFolderMode && mpYear && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+                      <button onClick={() => { setMpYear(null); setMpMonth(null); }} style={{ background: 'none', border: 'none', color: 'rgba(201,168,76,0.7)', cursor: 'pointer', fontSize: '0.78rem', padding: 0, textDecoration: 'underline' }}>All Years</button>
+                      <span style={{ color: 'rgba(201,168,76,0.4)', fontSize: '0.78rem' }}>›</span>
+                      {mpMonth ? (
+                        <>
+                          <button onClick={() => setMpMonth(null)} style={{ background: 'none', border: 'none', color: 'rgba(201,168,76,0.7)', cursor: 'pointer', fontSize: '0.78rem', padding: 0, textDecoration: 'underline' }}>{mpYear}</button>
+                          <span style={{ color: 'rgba(201,168,76,0.4)', fontSize: '0.78rem' }}>›</span>
+                          <span style={{ color: 'var(--wa-gold)', fontSize: '0.78rem' }}>{MP_MONTH_NAMES[mpMonth]}</span>
+                        </>
+                      ) : (
+                        <span style={{ color: 'var(--wa-gold)', fontSize: '0.78rem' }}>{mpYear}</span>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <button className="btn-gold" onClick={() => setView('add')} style={{ padding: '0.55rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem' }}>
-                  <Plus size={16} /> Add Photo
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  {mpFolderMode && mpYear && (
+                    <button onClick={() => { if (mpMonth) setMpMonth(null); else setMpYear(null); }}
+                      style={{ padding: '0.35rem 0.65rem', borderRadius: 6, border: '1px solid rgba(201,168,76,0.25)', background: 'rgba(201,168,76,0.07)', color: 'var(--wa-gold)', cursor: 'pointer', fontSize: '0.72rem' }}>← Back</button>
+                  )}
+                  <button className="btn-gold" onClick={() => setView('add')} style={{ padding: '0.5rem 0.9rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem' }}>
+                    <Plus size={16} /> Add
+                  </button>
+                </div>
+              </div>
+
+              {/* ── View mode toggle ── */}
+              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', borderBottom: '1px solid rgba(201,168,76,0.08)', paddingBottom: '1rem' }}>
+                <button onClick={() => { setMpFolderMode(false); setMpYear(null); setMpMonth(null); }}
+                  style={{ padding: '0.35rem 0.85rem', borderRadius: '8px', border: `1px solid ${!mpFolderMode ? 'rgba(201,168,76,0.4)' : 'rgba(255,255,255,0.08)'}`, background: !mpFolderMode ? 'rgba(201,168,76,0.15)' : 'rgba(255,255,255,0.03)', color: !mpFolderMode ? 'var(--wa-gold)' : 'rgba(235,230,220,0.4)', cursor: 'pointer', fontSize: '0.75rem' }}>
+                  📋 All Photos
+                </button>
+                <button onClick={() => { setMpFolderMode(true); setSearch(''); }}
+                  style={{ padding: '0.35rem 0.85rem', borderRadius: '8px', border: `1px solid ${mpFolderMode ? 'rgba(201,168,76,0.4)' : 'rgba(255,255,255,0.08)'}`, background: mpFolderMode ? 'rgba(201,168,76,0.15)' : 'rgba(255,255,255,0.03)', color: mpFolderMode ? 'var(--wa-gold)' : 'rgba(235,230,220,0.4)', cursor: 'pointer', fontSize: '0.75rem' }}>
+                  📅 Year / Month
                 </button>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
-                {filteredPhotos.map((p) => (
-                  <div key={p.id} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.1)', borderRadius: '12px', overflow: 'hidden', transition: 'border-color 0.3s' }}>
-                    <img src={p.imageUrl} alt={p.title} style={{ width: '100%', height: 160, objectFit: 'cover' }} />
-                    <div style={{ padding: '1rem' }}>
-                      <h4 style={{ color: 'var(--wa-light)', fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.35rem' }}>{p.title}</h4>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
-                        <span style={{ padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.65rem', textTransform: 'capitalize', background: 'rgba(201,168,76,0.1)', color: 'var(--wa-gold)', border: '1px solid rgba(201,168,76,0.2)' }}>{p.category}</span>
-                        <span style={{ padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.6rem', background: p.published !== false ? 'rgba(34,197,94,0.1)' : 'rgba(255,165,0,0.1)', color: p.published !== false ? '#22c55e' : '#f59e0b', border: `1px solid ${p.published !== false ? 'rgba(34,197,94,0.15)' : 'rgba(255,165,0,0.15)'}` }}>
-                          {p.published !== false ? '● Published' : '● Draft'}
-                        </span>
-                        {p.location && <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.7rem', color: 'rgba(235,230,220,0.4)' }}><MapPin size={11} /> {p.location}</span>}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', color: 'rgba(239,68,68,0.6)' }}><Heart size={13} /> {p.likeCount}</span>
-                        <div style={{ display: 'flex', gap: '0.4rem' }}>
-                          <button onClick={() => { const newPublished = p.published !== false ? false : true; onUpdatePhoto({ ...p, published: newPublished }); if (p.firestoreId) { updatePhotoInFirestore(p.firestoreId, { published: newPublished }).catch(err => console.warn('Publish toggle failed:', err)); } }} title={p.published !== false ? 'Unpublish' : 'Publish'} style={{ width: 32, height: 32, borderRadius: '6px', background: p.published !== false ? 'rgba(34,197,94,0.15)' : 'rgba(255,165,0,0.15)', border: `1px solid ${p.published !== false ? 'rgba(34,197,94,0.2)' : 'rgba(255,165,0,0.2)'}`, color: p.published !== false ? '#22c55e' : '#f59e0b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{p.published !== false ? <Eye size={14} /> : <EyeOff size={14} />}</button>
-                          <button onClick={() => setEditingPhoto(p)} style={{ width: 32, height: 32, borderRadius: '6px', background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.2)', color: '#60a5fa', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Pencil size={14} /></button>
-                          {deleteConfirm === p.id ? (
-                            <div style={{ display: 'flex', gap: '0.25rem' }}>
-                              <button onClick={() => handleDelete(p.id)} style={{ padding: '0 0.6rem', height: 32, borderRadius: '6px', background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', cursor: 'pointer', fontSize: '0.7rem' }}>Delete</button>
-                              <button onClick={() => setDeleteConfirm(null)} style={{ width: 32, height: 32, borderRadius: '6px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(235,230,220,0.5)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={14} /></button>
+
+              {/* ── All Photos: 2-column compact grid ── */}
+              {!mpFolderMode && (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
+                    {filteredPhotos.map((p) => (
+                      <div key={p.id} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.1)', borderRadius: '12px', overflow: 'hidden' }}>
+                        <div style={{ position: 'relative' }}>
+                          <img src={p.imageUrl} alt={p.title} style={{ width: '100%', height: 110, objectFit: 'cover', display: 'block' }} />
+                          <span style={{ position: 'absolute', top: 5, right: 5, padding: '0.15rem 0.45rem', borderRadius: '999px', fontSize: '0.55rem', background: p.published !== false ? 'rgba(34,197,94,0.9)' : 'rgba(245,158,11,0.9)', color: '#fff', fontWeight: 700 }}>
+                            {p.published !== false ? '● Live' : '● Draft'}
+                          </span>
+                        </div>
+                        <div style={{ padding: '0.6rem' }}>
+                          <h4 style={{ color: 'var(--wa-light)', fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.3rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.title}</h4>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginBottom: '0.45rem', flexWrap: 'wrap' }}>
+                            <span style={{ padding: '0.15rem 0.4rem', borderRadius: '4px', fontSize: '0.58rem', textTransform: 'capitalize', background: 'rgba(201,168,76,0.1)', color: 'var(--wa-gold)', border: '1px solid rgba(201,168,76,0.2)' }}>{p.category}</span>
+                            {p.location && <span style={{ fontSize: '0.58rem', color: 'rgba(235,230,220,0.38)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{p.location}</span>}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', fontSize: '0.68rem', color: 'rgba(239,68,68,0.6)' }}><Heart size={11} /> {p.likeCount}</span>
+                            <div style={{ display: 'flex', gap: '0.3rem' }}>
+                              <button onClick={() => { const newPublished = p.published !== false ? false : true; onUpdatePhoto({ ...p, published: newPublished }); if (p.firestoreId) { updatePhotoInFirestore(p.firestoreId, { published: newPublished }).catch(err => console.warn('Publish toggle failed:', err)); } }} title={p.published !== false ? 'Unpublish' : 'Publish'} style={{ width: 26, height: 26, borderRadius: '5px', background: p.published !== false ? 'rgba(34,197,94,0.15)' : 'rgba(255,165,0,0.15)', border: `1px solid ${p.published !== false ? 'rgba(34,197,94,0.2)' : 'rgba(255,165,0,0.2)'}`, color: p.published !== false ? '#22c55e' : '#f59e0b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{p.published !== false ? <Eye size={12} /> : <EyeOff size={12} />}</button>
+                              <button onClick={() => setEditingPhoto(p)} style={{ width: 26, height: 26, borderRadius: '5px', background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.2)', color: '#60a5fa', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Pencil size={12} /></button>
+                              {deleteConfirm === p.id ? (
+                                <div style={{ display: 'flex', gap: '0.2rem' }}>
+                                  <button onClick={() => handleDelete(p.id)} style={{ padding: '0 0.5rem', height: 26, borderRadius: '5px', background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', cursor: 'pointer', fontSize: '0.65rem' }}>Del</button>
+                                  <button onClick={() => setDeleteConfirm(null)} style={{ width: 26, height: 26, borderRadius: '5px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(235,230,220,0.5)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={12} /></button>
+                                </div>
+                              ) : (
+                                <button onClick={() => setDeleteConfirm(p.id)} style={{ width: 26, height: 26, borderRadius: '5px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.15)', color: 'rgba(239,68,68,0.5)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Trash2 size={12} /></button>
+                              )}
                             </div>
-                          ) : (
-                            <button onClick={() => setDeleteConfirm(p.id)} style={{ width: 32, height: 32, borderRadius: '6px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.15)', color: 'rgba(239,68,68,0.5)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Trash2 size={14} /></button>
-                          )}
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-              {filteredPhotos.length === 0 && <div style={{ textAlign: 'center', padding: '3rem', color: 'rgba(235,230,220,0.3)' }}>No photos found.</div>}
+                  {filteredPhotos.length === 0 && <div style={{ textAlign: 'center', padding: '3rem', color: 'rgba(235,230,220,0.3)' }}>No photos found.</div>}
+                </>
+              )}
+
+              {/* ── By Year/Month: Year folders ── */}
+              {mpFolderMode && !mpYear && (() => {
+                const yearMap = new Map<string, Photo[]>();
+                photos.forEach(p => { const { year } = getMpPhotoDate(p); if (!yearMap.has(year)) yearMap.set(year, []); yearMap.get(year)!.push(p); });
+                return yearMap.size === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '3rem', color: 'rgba(235,230,220,0.3)' }}>No photos yet.</div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(145px, 1fr))', gap: '1rem' }}>
+                    {Array.from(yearMap.entries()).sort((a, b) => b[0].localeCompare(a[0])).map(([year, yPhotos]) => (
+                      <button key={year} onClick={() => setMpYear(year)}
+                        style={{ border: '1px solid rgba(201,168,76,0.18)', borderRadius: '14px', overflow: 'hidden', padding: 0, background: 'rgba(255,255,255,0.03)', cursor: 'pointer', textAlign: 'left' }}>
+                        <div style={{ height: 105, position: 'relative', overflow: 'hidden' }}>
+                          <img src={yPhotos[0].imageUrl} alt={year} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                          <span style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.62)', backdropFilter: 'blur(4px)', color: 'var(--wa-gold)', fontSize: '0.65rem', fontWeight: 700, padding: '0.18rem 0.45rem', borderRadius: '20px', border: '1px solid rgba(201,168,76,0.28)' }}>{yPhotos.length}</span>
+                        </div>
+                        <span style={{ display: 'block', padding: '0.55rem 0.75rem', color: 'var(--wa-light)', fontSize: '0.82rem', fontWeight: 700 }}>📅 {year}</span>
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
+
+              {/* ── By Year/Month: Month folders ── */}
+              {mpFolderMode && mpYear && !mpMonth && (() => {
+                const yPhotos = photos.filter(p => getMpPhotoDate(p).year === mpYear);
+                const monthMap = new Map<string, Photo[]>();
+                yPhotos.forEach(p => { const { month } = getMpPhotoDate(p); if (!monthMap.has(month)) monthMap.set(month, []); monthMap.get(month)!.push(p); });
+                return (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(145px, 1fr))', gap: '1rem' }}>
+                    {Array.from(monthMap.entries()).sort((a, b) => b[0].localeCompare(a[0])).map(([month, mPhotos]) => (
+                      <button key={month} onClick={() => setMpMonth(month)}
+                        style={{ border: '1px solid rgba(201,168,76,0.18)', borderRadius: '14px', overflow: 'hidden', padding: 0, background: 'rgba(255,255,255,0.03)', cursor: 'pointer', textAlign: 'left' }}>
+                        <div style={{ height: 105, position: 'relative', overflow: 'hidden' }}>
+                          <img src={mPhotos[0].imageUrl} alt={month} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                          <span style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.62)', backdropFilter: 'blur(4px)', color: 'var(--wa-gold)', fontSize: '0.65rem', fontWeight: 700, padding: '0.18rem 0.45rem', borderRadius: '20px', border: '1px solid rgba(201,168,76,0.28)' }}>{mPhotos.length}</span>
+                        </div>
+                        <span style={{ display: 'block', padding: '0.55rem 0.75rem', color: 'var(--wa-light)', fontSize: '0.82rem', fontWeight: 700 }}>🗓️ {MP_MONTH_NAMES[month]}</span>
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
+
+              {/* ── By Year/Month: Photo grid inside a month ── */}
+              {mpFolderMode && mpYear && mpMonth && (() => {
+                const mPhotos = photos.filter(p => { const d = getMpPhotoDate(p); return d.year === mpYear && d.month === mpMonth; });
+                return mPhotos.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '3rem', color: 'rgba(235,230,220,0.3)' }}>No photos in this folder.</div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
+                    {mPhotos.map((p) => (
+                      <div key={p.id} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.1)', borderRadius: '12px', overflow: 'hidden' }}>
+                        <div style={{ position: 'relative' }}>
+                          <img src={p.imageUrl} alt={p.title} style={{ width: '100%', height: 110, objectFit: 'cover', display: 'block' }} />
+                          <span style={{ position: 'absolute', top: 5, right: 5, padding: '0.15rem 0.45rem', borderRadius: '999px', fontSize: '0.55rem', background: p.published !== false ? 'rgba(34,197,94,0.9)' : 'rgba(245,158,11,0.9)', color: '#fff', fontWeight: 700 }}>
+                            {p.published !== false ? '● Live' : '● Draft'}
+                          </span>
+                        </div>
+                        <div style={{ padding: '0.6rem' }}>
+                          <h4 style={{ color: 'var(--wa-light)', fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.3rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.title}</h4>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginBottom: '0.45rem', flexWrap: 'wrap' }}>
+                            <span style={{ padding: '0.15rem 0.4rem', borderRadius: '4px', fontSize: '0.58rem', textTransform: 'capitalize', background: 'rgba(201,168,76,0.1)', color: 'var(--wa-gold)', border: '1px solid rgba(201,168,76,0.2)' }}>{p.category}</span>
+                            {p.location && <span style={{ fontSize: '0.58rem', color: 'rgba(235,230,220,0.38)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{p.location}</span>}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', fontSize: '0.68rem', color: 'rgba(239,68,68,0.6)' }}><Heart size={11} /> {p.likeCount}</span>
+                            <div style={{ display: 'flex', gap: '0.3rem' }}>
+                              <button onClick={() => { const newPublished = p.published !== false ? false : true; onUpdatePhoto({ ...p, published: newPublished }); if (p.firestoreId) { updatePhotoInFirestore(p.firestoreId, { published: newPublished }).catch(err => console.warn('Publish toggle failed:', err)); } }} title={p.published !== false ? 'Unpublish' : 'Publish'} style={{ width: 26, height: 26, borderRadius: '5px', background: p.published !== false ? 'rgba(34,197,94,0.15)' : 'rgba(255,165,0,0.15)', border: `1px solid ${p.published !== false ? 'rgba(34,197,94,0.2)' : 'rgba(255,165,0,0.2)'}`, color: p.published !== false ? '#22c55e' : '#f59e0b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{p.published !== false ? <Eye size={12} /> : <EyeOff size={12} />}</button>
+                              <button onClick={() => setEditingPhoto(p)} style={{ width: 26, height: 26, borderRadius: '5px', background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.2)', color: '#60a5fa', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Pencil size={12} /></button>
+                              {deleteConfirm === p.id ? (
+                                <div style={{ display: 'flex', gap: '0.2rem' }}>
+                                  <button onClick={() => handleDelete(p.id)} style={{ padding: '0 0.5rem', height: 26, borderRadius: '5px', background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', cursor: 'pointer', fontSize: '0.65rem' }}>Del</button>
+                                  <button onClick={() => setDeleteConfirm(null)} style={{ width: 26, height: 26, borderRadius: '5px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(235,230,220,0.5)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={12} /></button>
+                                </div>
+                              ) : (
+                                <button onClick={() => setDeleteConfirm(p.id)} style={{ width: 26, height: 26, borderRadius: '5px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.15)', color: 'rgba(239,68,68,0.5)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Trash2 size={12} /></button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </>
           )}
 
