@@ -377,6 +377,8 @@ const App: React.FC = () => {
         published: fp.published !== false,
         likeCount: fp.likeCount || 0,
         liked: false,
+        // ✅ FIX: Pass createdAt so PhotoCard can display the upload date
+        createdAt: fp.createdAt?.toDate?.()?.toISOString?.()?.split('T')[0] || fp.createdAt || undefined,
       }));
 
       setPhotos(prev => {
