@@ -1354,7 +1354,7 @@ const App: React.FC = () => {
   // ── Terms & Conditions View ──
   if (view === 'terms') {
     return (
-      <div style={{ minHeight: '100vh', background: 'var(--wa-dark)' }}>
+      <div style={{ minHeight: '100vh', background: 'var(--wa-bg)' }}>
         <Header
           onScrollToGallery={scrollToGallery}
           logoUrl={logoUrl}
@@ -1392,7 +1392,7 @@ const App: React.FC = () => {
   // ── Story Detail View ──
   if (view === 'story-detail' && selectedStory) {
     return (
-      <div style={{ minHeight: '100vh', background: 'var(--wa-dark)' }}>
+      <div style={{ minHeight: '100vh', background: 'var(--wa-bg)' }}>
         <Header
           onScrollToGallery={scrollToGallery}
           logoUrl={logoUrl}
@@ -1438,7 +1438,7 @@ const App: React.FC = () => {
   }
 
   const StaticPage = ({ title, text, cta }: { title: string; text: string; cta?: string }) => (
-    <div style={{ minHeight: '100vh', background: 'var(--wa-dark)' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--wa-bg)' }}>
       <Header
         onScrollToGallery={scrollToGallery}
         logoUrl={logoUrl}
@@ -1506,7 +1506,7 @@ const App: React.FC = () => {
 
 // ── Home View ──
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--wa-dark)' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--wa-bg)' }}>
       {(pullDistance > 0 || isPullRefreshing) && (
         <div
           style={{
