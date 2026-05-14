@@ -15,6 +15,7 @@
   --wa-text-mid: rgba(247, 251, 248, 0.92);
   --wa-border: rgba(159, 203, 143, 0.18);
   --wa-border-gold: rgba(63, 123, 74, 0.45);
+  --wa-gold: linear-gradient(135deg, #3f7b4a 0%, #9fcb8f 55%, #72aa81 100%);
 }
 
 html, body, #root {

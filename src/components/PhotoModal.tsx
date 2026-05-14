@@ -198,7 +198,7 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
     alignItems: 'center',
     justifyContent: 'center',
     cursor: 'pointer',
-    color: '#d4a853',
+    color: '#9fcb8f',
     transition: 'background 0.2s, border-color 0.2s',
     backdropFilter: 'blur(4px)',
   });
@@ -307,9 +307,9 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
               </h2>
               <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem', fontSize: '0.7rem' }} className="text-wa-muted">
                 <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><User size={11} /> {photo.photographer || 'Unknown'}</span>
-                {photo.location && <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(photo.location)}`} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#d4a853', textDecoration: 'none', cursor: 'pointer' }} onClick={(e) => e.stopPropagation()}><MapPin size={11} /> {photo.location}</a>}
+                {photo.location && <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(photo.location)}`} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#9fcb8f', textDecoration: 'none', cursor: 'pointer' }} onClick={(e) => e.stopPropagation()}><MapPin size={11} /> {photo.location}</a>}
                 {formatPhotoDate(photo.createdAt) && (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#d4a853' }}><CalendarDays size={11} /> {formatPhotoDate(photo.createdAt)}</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#9fcb8f' }}><CalendarDays size={11} /> {formatPhotoDate(photo.createdAt)}</span>
                 )}
                 <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Tag size={11} /> {photo.category}</span>
               </div>
@@ -372,7 +372,7 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
                         border: 'none',
                         borderRadius: '0.5rem',
                         cursor: 'pointer',
-                        color: opt.label === 'Copied!' ? '#4ade80' : '#e0e0e0',
+                        color: opt.label === 'Copied!' ? '#9fcb8f' : 'rgba(247,251,248,0.7)',
                         fontSize: '0.8rem',
                         textAlign: 'left',
                         transition: 'background 0.15s',
@@ -453,12 +453,12 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
                 <InfoCard label="Photographer" value={photo.photographer || 'Unknown'} />
                 {photo.location && (
                   <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(photo.location)}`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', color: 'inherit' }} onClick={(e) => e.stopPropagation()}>
-                    <InfoCard label="Location" value={photo.location} icon={<MapPin size={14} style={{ color: '#d4a853' }} />} />
+                    <InfoCard label="Location" value={photo.location} icon={<MapPin size={14} style={{ color: '#9fcb8f' }} />} />
                   </a>
                 )}
                 <InfoCard label="Category" value={photo.category} />
                 {formatPhotoDate(photo.createdAt) && (
-                  <InfoCard label="Date" value={formatPhotoDate(photo.createdAt)} icon={<CalendarDays size={14} style={{ color: '#d4a853' }} />} />
+                  <InfoCard label="Date" value={formatPhotoDate(photo.createdAt)} icon={<CalendarDays size={14} style={{ color: '#9fcb8f' }} />} />
                 )}
               </div>
             </div>
@@ -535,7 +535,7 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
                       <div style={{
                         width: 20, height: 20, borderRadius: '50%', background: visitor.avatarColor,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '0.6rem', fontWeight: 700, color: '#000',
+                        fontSize: '0.6rem', fontWeight: 700, color: '#062013',
                       }}>
                         {visitor.displayName.charAt(0).toUpperCase()}
                       </div>

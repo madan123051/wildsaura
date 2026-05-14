@@ -8,7 +8,6 @@ interface VideoSectionProps {
   videoComments: Record<string, Comment[]>;
   onAddVideoComment: (firestoreId: string, content: string) => void;
   onVideoLike: (videoId: number) => void;
-  onVideoView?: (videoId: number) => void;
   onVisitorLoginClick: () => void;
   isAdmin?: boolean;
   onDeleteComment?: (firestoreId: string) => void;
@@ -23,7 +22,7 @@ const showToast = (msg: string) => {
   Object.assign(t.style, {
     position: 'fixed', bottom: '2rem', left: '50%', transform: 'translateX(-50%)',
     padding: '0.75rem 1.5rem', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '600',
-    background: 'rgba(201,168,76,0.95)', color: '#0a0a0a', zIndex: '9999',
+    background: 'rgba(201,168,76,0.95)', color: '#062013', zIndex: '9999',
     boxShadow: '0 4px 20px rgba(0,0,0,0.4)', transition: 'opacity 0.4s',
   });
   document.body.appendChild(t);
@@ -47,7 +46,6 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
   videoComments,
   onAddVideoComment,
   onVideoLike,
-  onVideoView,
   onVisitorLoginClick,
   isAdmin,
   onDeleteComment,
@@ -167,7 +165,7 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
                   ) : (
                     <div
                       style={{ cursor: 'pointer', position: 'relative', width: '100%', height: '100%' }}
-                      onClick={() => { setPlayingId(video.id); onVideoView?.(video.id); }}
+                      onClick={() => setPlayingId(video.id)}
                     >
                       {video.thumbnailUrl ? (
                         <img
@@ -198,7 +196,7 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
                           boxShadow: '0 4px 20px rgba(201,168,76,0.4)',
                           transition: 'transform 0.3s',
                         }}>
-                          <Play size={24} style={{ color: '#0a0a0a', marginLeft: 2 }} fill="#0a0a0a" />
+                          <Play size={24} style={{ color: '#062013', marginLeft: 2 }} fill="#062013" />
                         </div>
                       </div>
                       {/* Duration Badge */}
@@ -424,7 +422,7 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
                       ) : (
                         <div style={{
                           width: 26, height: 26, minWidth: 26, borderRadius: '50%',
-                          background: visitor?.avatarColor || '#4f9f62',
+                          background: visitor?.avatarColor || '#3f7b4a',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           fontSize: '0.65rem', fontWeight: 700, color: '#fff',
                         }}>
@@ -489,7 +487,7 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
               }}
               onMouseOver={(e) => {
                 e.currentTarget.style.background = 'var(--wa-gold)';
-                e.currentTarget.style.color = '#0a0a0a';
+                e.currentTarget.style.color = '#062013';
               }}
               onMouseOut={(e) => {
                 e.currentTarget.style.background = 'transparent';

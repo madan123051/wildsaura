@@ -209,7 +209,7 @@ export const StoryDetail: React.FC<StoryDetailProps> = ({
             {shareToast && (
               <div style={{
                 position: 'fixed', bottom: 30, left: '50%', transform: 'translateX(-50%)',
-                background: 'var(--wa-gold)', color: '#0a0a0a', padding: '0.75rem 1.5rem',
+                background: 'linear-gradient(135deg, #3f7b4a 0%, #9fcb8f 55%, #72aa81 100%)', color: '#062013', padding: '0.75rem 1.5rem',
                 borderRadius: '10px', fontWeight: 600, fontSize: '0.85rem', zIndex: 9999,
                 boxShadow: '0 4px 20px rgba(201,168,76,0.4)',
               }}>
@@ -244,7 +244,7 @@ export const StoryDetail: React.FC<StoryDetailProps> = ({
                         width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         background: c.avatarColor || 'var(--wa-gold)',
-                        fontSize: '0.75rem', fontWeight: 700, color: '#000',
+                        fontSize: '0.75rem', fontWeight: 700, color: '#062013',
                       }}>
                         {c.displayName.charAt(0).toUpperCase()}
                       </div>
@@ -285,9 +285,9 @@ export const StoryDetail: React.FC<StoryDetailProps> = ({
                   ) : (
                     <div style={{
                       width: 24, height: 24, borderRadius: '50%',
-                      background: visitor?.avatarColor || '#4f9f62',
+                      background: visitor?.avatarColor || '#3f7b4a',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '0.65rem', fontWeight: 700, color: '#000',
+                      fontSize: '0.65rem', fontWeight: 700, color: '#062013',
                     }}>
                       {(visitor?.displayName || 'Guest').charAt(0).toUpperCase()}
                     </div>

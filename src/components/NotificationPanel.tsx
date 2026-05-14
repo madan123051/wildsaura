@@ -118,7 +118,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
           </span>
           {unreadCount > 0 && (
             <span style={{
-              background: 'var(--wa-gold)',
+              background: 'linear-gradient(135deg, #3f7b4a 0%, #9fcb8f 55%, #72aa81 100%)',
               color: '#000',
               fontSize: '0.6rem',
               fontWeight: 700,
@@ -238,7 +238,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                   width: 6,
                   height: 6,
                   borderRadius: '50%',
-                  background: 'var(--wa-gold)',
+                  background: 'linear-gradient(135deg, #3f7b4a 0%, #9fcb8f 55%, #72aa81 100%)',
                   boxShadow: '0 0 8px rgba(201,168,76,0.5)',
                 }} />
               )}
