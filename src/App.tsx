@@ -377,7 +377,6 @@ const App: React.FC = () => {
         published: fp.published !== false,
         likeCount: fp.likeCount || 0,
         liked: false,
-        createdAt: fp.createdAt || null,  // ← FIX: preserve Firestore Timestamp for date display
       }));
 
       setPhotos(prev => {
@@ -698,6 +697,8 @@ const App: React.FC = () => {
   }, []);
 
   const handleLike = useCallback((id: number) => {
+    // ✅ FIX: Enforce login before like — otherwise Firestore write fails silently
+    if (!visitor) { setShowVisitorLogin(true); return; }
     setPhotos((prev) => {
       const photo = prev.find(p => p.id === id);
       if (!photo) return prev;
@@ -958,8 +959,13 @@ const App: React.FC = () => {
   }, []);
 
   const handleStoryClick = useCallback((story: Story) => {
-    setSelectedStory({ ...story, viewCount: story.viewCount + 1 });
-    setStories((prev) => prev.map((s) => s.id === story.id ? { ...s, viewCount: s.viewCount + 1 } : s));
+    const newViewCount = story.viewCount + 1;
+    setSelectedStory({ ...story, viewCount: newViewCount });
+    setStories((prev) => prev.map((s) => s.id === story.id ? { ...s, viewCount: newViewCount } : s));
+    // ✅ FIX: Save viewCount to Firestore so it persists across page reloads
+    if (story.firestoreId) {
+      updateStoryInFirestore(story.firestoreId, { viewCount: newViewCount }).catch(err => console.warn('Story viewCount update failed:', err));
+    }
     setView('story-detail');
     window.history.pushState({}, '', '/story/' + encodeURIComponent(story.slug));
     updateStoryMeta({
@@ -976,6 +982,8 @@ const App: React.FC = () => {
   }, []);
 
   const handleStoryLike = useCallback(() => {
+    // ✅ FIX: Enforce login before like
+    if (!visitor) { setShowVisitorLogin(true); return; }
     if (!selectedStory) return;
     const updated = {
       ...selectedStory,
@@ -1161,7 +1169,22 @@ const App: React.FC = () => {
     // Real-time subscription will auto-update the UI
   }, []);
 
+  const handleVideoView = useCallback((id: number) => {
+    // ✅ FIX: Increment video viewCount and save to Firestore
+    setVideos((prev) => {
+      const video = prev.find(v => v.id === id);
+      if (!video) return prev;
+      const newViewCount = video.viewCount + 1;
+      if (video.firestoreId) {
+        updateVideoInFirestore(video.firestoreId, { viewCount: newViewCount }).catch(err => console.warn('Video viewCount update failed:', err));
+      }
+      return prev.map((v) => v.id === id ? { ...v, viewCount: newViewCount } : v);
+    });
+  }, []);
+
   const handleVideoLike = useCallback((id: number) => {
+    // ✅ FIX: Enforce login before like — otherwise Firestore write fails silently
+    if (!visitor) { setShowVisitorLogin(true); return; }
     setVideos((prev) => {
       const video = prev.find(v => v.id === id);
       if (!video) return prev;
@@ -1563,6 +1586,7 @@ const App: React.FC = () => {
         videoComments={videoComments}
         onAddVideoComment={handleAddVideoComment}
         onVideoLike={handleVideoLike}
+        onVideoView={handleVideoView}
         onVisitorLoginClick={() => setShowVisitorLogin(true)}
         isAdmin={isAdmin}
         onDeleteComment={handleDeleteComment}
