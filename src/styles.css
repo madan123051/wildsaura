@@ -42,6 +42,15 @@
   --wa-gradient-accent: linear-gradient(135deg, #3f7b4a 0%, #9fcb8f 55%, #72aa81 100%);
   --wa-gradient-card:   linear-gradient(160deg, rgba(14,38,28,0.96), rgba(9,27,20,0.98));
 
+  /* legacy aliases — used by StoriesSection, CategorySection etc */
+  --wa-dark:        #06120d;
+  --wa-dark-card:   #0e2620;
+  --wa-gold:        #c9a84c;
+  --wa-gold-light:  #d4b96e;
+  --wa-accent:      #4f9f62;
+  --wa-light:       rgba(232,243,232,0.76);
+  --wa-muted:       rgba(247,251,248,0.55);
+
   /* scrollbar */
   --wa-scroll-track: #0a1a13;
   --wa-scroll-thumb: rgba(159,203,143,0.35);
@@ -118,6 +127,15 @@
     --wa-label-bg:    rgba(42,96,53,0.1);
     --wa-label-text:  #2a6035;
     --wa-label-border: rgba(42,96,53,0.22);
+
+    /* legacy aliases — light mode overrides */
+    --wa-dark:        #f4f0e8;
+    --wa-dark-card:   #ffffff;
+    --wa-gold:        #8b5e00;
+    --wa-gold-light:  #a07820;
+    --wa-accent:      #2a6035;
+    --wa-light:       #1a1a18;
+    --wa-muted:       #706e67;
   }
 }
 
@@ -465,11 +483,35 @@ button p, button span { color: inherit; }
   .section-title  { color: #0d1a10; }
   .section-subtitle { color: var(--wa-forest); }
 
-  /* nav bar light */
+  /* nav bar light — background + all icon/button colors */
   header, nav {
     background: var(--wa-bg-nav) !important;
     border-bottom: 1px solid rgba(42,96,53,0.14) !important;
     box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+  header button {
+    color: #1a1a18 !important;
+  }
+  header button:hover {
+    color: var(--wa-forest) !important;
+  }
+  /* nav icons (search, bell, hamburger) */
+  header svg {
+    color: #1a1a18 !important;
+    stroke: #1a1a18;
+  }
+  /* fix hard-coded dark header background in Header.tsx scrolled state */
+  header[style*="rgba(6"] {
+    background: var(--wa-bg-nav) !important;
+  }
+
+  /* section backgrounds — override inline dark gradients (hero excluded) */
+  section:not([id="top"]):not(.wa-hero) {
+    background: var(--wa-bg) !important;
+  }
+  /* story cards / dark cards inside sections */
+  [style*="var(--wa-dark-card)"] {
+    background: #ffffff !important;
   }
 
   /* footer light */
