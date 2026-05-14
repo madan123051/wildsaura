@@ -121,7 +121,7 @@ export const AboutSection: React.FC<AboutSectionProps> = ({ onMapClick }) => {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-                <Heart size={18} color="#c9a84c" />
+                <Heart size={18} color="#9fcb8f" />
                 <h3 className="font-cinzel" style={{ fontSize: '1rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--wa-gold)', margin: 0 }}>
                   My Mission
                 </h3>
@@ -155,7 +155,7 @@ export const AboutSection: React.FC<AboutSectionProps> = ({ onMapClick }) => {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-                <Globe size={18} color="#c9a84c" />
+                <Globe size={18} color="#9fcb8f" />
                 <h3 className="font-cinzel" style={{ fontSize: '1rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--wa-gold)', margin: 0 }}>
                   Behind the Lens
                 </h3>
@@ -198,7 +198,7 @@ export const AboutSection: React.FC<AboutSectionProps> = ({ onMapClick }) => {
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   flexShrink: 0,
                 }}>
-                  <MapPin size={22} color="#c9a84c" />
+                  <MapPin size={22} color="#9fcb8f" />
                 </div>
                 <div>
                   <h4 className="font-cinzel" style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--wa-gold)', letterSpacing: '0.08em', margin: '0 0 0.2rem' }}>

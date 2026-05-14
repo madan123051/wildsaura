@@ -220,7 +220,7 @@ const App: React.FC = () => {
   const onlineCleanupRef = useRef<(() => void) | null>(null);
   const getGuestIdentity = useCallback(() => {
     const sid = sessionStorage.getItem('wa_session_id') || `guest_${Date.now()}`;
-    return { displayName: `Guest ${sid.slice(-4).toUpperCase()}`, avatarColor: '#4f9f62', avatarUrl: '' };
+    return { displayName: `Guest ${sid.slice(-4).toUpperCase()}`, avatarColor: '#3f7b4a', avatarUrl: '' };
   }, []);
 
   // ── Notification Helpers ──────────────────────────────────────────────────
@@ -299,7 +299,7 @@ const App: React.FC = () => {
               setVisitor({
                 displayName: firebaseUser.displayName || firebaseUser.email.split('@')[0] || 'User',
                 email: firebaseUser.email,
-                avatarColor: '#c9a84c',
+                avatarColor: '#9fcb8f',
                 avatarUrl: firebaseUser.photoURL || undefined,
                 loginMethod: 'email',
               });
@@ -377,8 +377,7 @@ const App: React.FC = () => {
         published: fp.published !== false,
         likeCount: fp.likeCount || 0,
         liked: false,
-        // ✅ FIX: Pass createdAt so PhotoCard can display the upload date
-        createdAt: fp.createdAt?.toDate?.()?.toISOString?.()?.split('T')[0] || fp.createdAt || undefined,
+        createdAt: fp.createdAt || null,  // ← FIX: preserve Firestore Timestamp for date display
       }));
 
       setPhotos(prev => {
@@ -699,8 +698,6 @@ const App: React.FC = () => {
   }, []);
 
   const handleLike = useCallback((id: number) => {
-    // ✅ FIX: Enforce login before like — otherwise Firestore write fails silently
-    if (!visitor) { setShowVisitorLogin(true); return; }
     setPhotos((prev) => {
       const photo = prev.find(p => p.id === id);
       if (!photo) return prev;
@@ -961,13 +958,8 @@ const App: React.FC = () => {
   }, []);
 
   const handleStoryClick = useCallback((story: Story) => {
-    const newViewCount = story.viewCount + 1;
-    setSelectedStory({ ...story, viewCount: newViewCount });
-    setStories((prev) => prev.map((s) => s.id === story.id ? { ...s, viewCount: newViewCount } : s));
-    // ✅ FIX: Save viewCount to Firestore so it persists across page reloads
-    if (story.firestoreId) {
-      updateStoryInFirestore(story.firestoreId, { viewCount: newViewCount }).catch(err => console.warn('Story viewCount update failed:', err));
-    }
+    setSelectedStory({ ...story, viewCount: story.viewCount + 1 });
+    setStories((prev) => prev.map((s) => s.id === story.id ? { ...s, viewCount: s.viewCount + 1 } : s));
     setView('story-detail');
     window.history.pushState({}, '', '/story/' + encodeURIComponent(story.slug));
     updateStoryMeta({
@@ -984,8 +976,6 @@ const App: React.FC = () => {
   }, []);
 
   const handleStoryLike = useCallback(() => {
-    // ✅ FIX: Enforce login before like
-    if (!visitor) { setShowVisitorLogin(true); return; }
     if (!selectedStory) return;
     const updated = {
       ...selectedStory,
@@ -1171,22 +1161,7 @@ const App: React.FC = () => {
     // Real-time subscription will auto-update the UI
   }, []);
 
-  const handleVideoView = useCallback((id: number) => {
-    // ✅ FIX: Increment video viewCount and save to Firestore
-    setVideos((prev) => {
-      const video = prev.find(v => v.id === id);
-      if (!video) return prev;
-      const newViewCount = video.viewCount + 1;
-      if (video.firestoreId) {
-        updateVideoInFirestore(video.firestoreId, { viewCount: newViewCount }).catch(err => console.warn('Video viewCount update failed:', err));
-      }
-      return prev.map((v) => v.id === id ? { ...v, viewCount: newViewCount } : v);
-    });
-  }, []);
-
   const handleVideoLike = useCallback((id: number) => {
-    // ✅ FIX: Enforce login before like — otherwise Firestore write fails silently
-    if (!visitor) { setShowVisitorLogin(true); return; }
     setVideos((prev) => {
       const video = prev.find(v => v.id === id);
       if (!video) return prev;
@@ -1588,7 +1563,6 @@ const App: React.FC = () => {
         videoComments={videoComments}
         onAddVideoComment={handleAddVideoComment}
         onVideoLike={handleVideoLike}
-        onVideoView={handleVideoView}
         onVisitorLoginClick={() => setShowVisitorLogin(true)}
         isAdmin={isAdmin}
         onDeleteComment={handleDeleteComment}

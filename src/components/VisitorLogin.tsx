@@ -11,9 +11,9 @@ interface VisitorLoginProps {
 }
 
 const AVATAR_COLORS = [
-  '#c9a84c', '#d4a843', '#b8963f', '#e6c35a',
-  '#d4a574', '#c4956a', '#b8860b', '#daa520',
-  '#cd853f', '#d2b48c',
+  '#3f7b4a', '#9fcb8f', '#8dc3d8', '#4a8f5a',
+  '#6aaa7a', '#7bc8a0', '#5da8c5', '#3d6e8f',
+  '#a8c9a0', '#4d7a6a',
 ];
 
 type AuthMode = 'main' | 'email-login' | 'email-signup';
@@ -239,7 +239,7 @@ export const VisitorLogin: React.FC<VisitorLoginProps> = ({ isOpen, onClose, onL
             <Mail size={18} /><span>Log in with Email</span>
           </button>
           <p style={{ textAlign: 'center', fontSize: '0.75rem', color: 'rgba(255,255,255,0.35)', marginTop: '0.75rem' }}>
-            Don't have an account? <span onClick={() => setMode('email-signup')} style={{ color: '#c9a84c', cursor: 'pointer', textDecoration: 'underline' }}>Sign up</span>
+            Don't have an account? <span onClick={() => setMode('email-signup')} style={{ color: '#9fcb8f', cursor: 'pointer', textDecoration: 'underline' }}>Sign up</span>
           </p>
           {errorBox}
         </div>
@@ -275,7 +275,7 @@ export const VisitorLogin: React.FC<VisitorLoginProps> = ({ isOpen, onClose, onL
               {loading ? 'Logging in...' : 'Log In'}
             </button>
             <p style={{ textAlign: 'center', fontSize: '0.75rem', color: 'rgba(255,255,255,0.35)', marginTop: '1rem' }}>
-              Don't have an account? <span onClick={() => { setMode('email-signup'); setError(''); }} style={{ color: '#c9a84c', cursor: 'pointer', textDecoration: 'underline' }}>Sign up</span>
+              Don't have an account? <span onClick={() => { setMode('email-signup'); setError(''); }} style={{ color: '#9fcb8f', cursor: 'pointer', textDecoration: 'underline' }}>Sign up</span>
             </p>
           </form>
         </div>
@@ -315,7 +315,7 @@ export const VisitorLogin: React.FC<VisitorLoginProps> = ({ isOpen, onClose, onL
             {loading ? 'Creating account...' : 'Create Account'}
           </button>
           <p style={{ textAlign: 'center', fontSize: '0.75rem', color: 'rgba(255,255,255,0.35)', marginTop: '1rem' }}>
-            Already have an account? <span onClick={() => { setMode('email-login'); setError(''); }} style={{ color: '#c9a84c', cursor: 'pointer', textDecoration: 'underline' }}>Log in</span>
+            Already have an account? <span onClick={() => { setMode('email-login'); setError(''); }} style={{ color: '#9fcb8f', cursor: 'pointer', textDecoration: 'underline' }}>Log in</span>
           </p>
         </form>
       </div>

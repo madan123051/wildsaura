@@ -233,7 +233,7 @@ export const Header: React.FC<HeaderProps> = ({
                               }
                               setEditingName(false);
                             }}
-                            style={{ background: 'var(--wa-gold)', border: 'none', borderRadius: 4, color: '#000', fontSize: '0.65rem', padding: '0.2rem 0.4rem', cursor: 'pointer', fontWeight: 600 }}
+                            style={{ background: 'linear-gradient(135deg, #3f7b4a 0%, #9fcb8f 55%, #72aa81 100%)', border: 'none', borderRadius: 4, color: '#062013', fontSize: '0.65rem', padding: '0.2rem 0.4rem', cursor: 'pointer', fontWeight: 600 }}
                           >Save</button>
                           <button
                             onClick={(e) => { e.stopPropagation(); setEditingName(false); }}

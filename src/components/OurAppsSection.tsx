@@ -20,12 +20,12 @@ const MarketIcon: React.FC<{ size?: number }> = ({ size = 40 }) => (
     <rect x="42" y="35" width="8" height="8" rx="1" fill="currentColor" opacity="0.08" stroke="currentColor" strokeWidth="1" />
     <defs>
       <linearGradient id="marketGrad1" x1="32" y1="12" x2="32" y2="24" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#c9a84c" />
-        <stop offset="1" stopColor="#8b6914" />
+        <stop stopColor="#3f7b4a" />
+        <stop offset="1" stopColor="#2d6040" />
       </linearGradient>
       <linearGradient id="marketGrad2" x1="0" y1="24" x2="0" y2="31" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#c9a84c" stopOpacity="0.4" />
-        <stop offset="1" stopColor="#c9a84c" stopOpacity="0.1" />
+        <stop stopColor="#3f7b4a" stopOpacity="0.4" />
+        <stop offset="1" stopColor="#3f7b4a" stopOpacity="0.1" />
       </linearGradient>
     </defs>
   </svg>
@@ -49,12 +49,12 @@ const DrishyaIcon: React.FC<{ size?: number }> = ({ size = 40 }) => (
     <circle cx="48" cy="24" r="2" fill="currentColor" opacity="0.3" />
     <defs>
       <radialGradient id="drishyaGrad" cx="32" cy="36" r="9" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#c9a84c" />
-        <stop offset="1" stopColor="#4a3a10" />
+        <stop stopColor="#3f7b4a" />
+        <stop offset="1" stopColor="#0d241a" />
       </radialGradient>
       <radialGradient id="drishyaGrad2" cx="32" cy="36" r="5" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#f0d68a" />
-        <stop offset="1" stopColor="#c9a84c" />
+        <stop stopColor="#9fcb8f" />
+        <stop offset="1" stopColor="#3f7b4a" />
       </radialGradient>
     </defs>
   </svg>
@@ -73,16 +73,16 @@ const ProStudioIcon: React.FC<{ size?: number }> = ({ size = 40 }) => (
     {/* Play triangle */}
     <path d="M30 22v20l18-10L30 22z" fill="url(#studioGrad2)" opacity="0.7" />
     {/* Sparkle / star accent */}
-    <path d="M52 12l1.5 3 3 1.5-3 1.5L52 21l-1.5-3-3-1.5 3-1.5L52 12z" fill="#c9a84c" opacity="0.6" />
-    <path d="M22 50l1 2 2 1-2 1-1 2-1-2-2-1 2-1 1-2z" fill="#c9a84c" opacity="0.4" />
+    <path d="M52 12l1.5 3 3 1.5-3 1.5L52 21l-1.5-3-3-1.5 3-1.5L52 12z" fill="#3f7b4a" opacity="0.6" />
+    <path d="M22 50l1 2 2 1-2 1-1 2-1-2-2-1 2-1 1-2z" fill="#3f7b4a" opacity="0.4" />
     <defs>
       <radialGradient id="studioGrad" cx="36" cy="32" r="18" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#c9a84c" />
-        <stop offset="1" stopColor="#2a2010" />
+        <stop stopColor="#3f7b4a" />
+        <stop offset="1" stopColor="#07150f" />
       </radialGradient>
       <linearGradient id="studioGrad2" x1="30" y1="22" x2="48" y2="32" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#f0d68a" />
-        <stop offset="1" stopColor="#c9a84c" />
+        <stop stopColor="#9fcb8f" />
+        <stop offset="1" stopColor="#3f7b4a" />
       </linearGradient>
     </defs>
   </svg>
@@ -108,7 +108,7 @@ const OUR_APPS: AppInfo[] = [
     url: 'https://market.wildsaura.com',
     Icon: MarketIcon,
     gradient: 'linear-gradient(135deg, rgba(201,168,76,0.12) 0%, rgba(139,105,20,0.06) 100%)',
-    accentColor: '#c9a84c',
+    accentColor: '#9fcb8f',
   },
   {
     name: 'Drishya',
@@ -117,7 +117,7 @@ const OUR_APPS: AppInfo[] = [
     url: 'https://drishya.wildsaura.com',
     Icon: DrishyaIcon,
     gradient: 'linear-gradient(135deg, rgba(76,168,201,0.12) 0%, rgba(20,105,139,0.06) 100%)',
-    accentColor: '#4ca8c9',
+    accentColor: '#8dc3d8',
   },
   {
     name: 'ProStudio',
@@ -126,7 +126,7 @@ const OUR_APPS: AppInfo[] = [
     url: 'https://prostudio.wildsaura.com',
     Icon: ProStudioIcon,
     gradient: 'linear-gradient(135deg, rgba(168,76,201,0.12) 0%, rgba(105,20,139,0.06) 100%)',
-    accentColor: '#a84cc9',
+    accentColor: '#3f7b4a',
   },
 ];
 

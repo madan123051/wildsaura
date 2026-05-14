@@ -113,7 +113,7 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
             boxShadow: '0 10px 36px rgba(0,0,0,0.65), 0 0 0 4px rgba(201,168,76,0.35)',
             transition: 'transform 0.3s, box-shadow 0.3s',
             fontSize: '28px',
-            color: '#1b1200',
+            color: '#062013',
           }}
           onMouseOver={(e) => {
             e.currentTarget.style.transform = 'scale(1.1)';
@@ -208,8 +208,8 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
                     border: '1px solid rgba(80,160,80,0.2)',
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.3rem' }}>
-                      <BookOpen size={11} style={{ color: '#6fae6f' }} />
-                      <span style={{ fontSize: '0.65rem', color: '#6fae6f', fontWeight: 600, letterSpacing: '0.05em' }}>
+                      <BookOpen size={11} style={{ color: '#9fcb8f' }} />
+                      <span style={{ fontSize: '0.65rem', color: '#9fcb8f', fontWeight: 600, letterSpacing: '0.05em' }}>
                         Wikipedia • {msg.animalName}
                       </span>
                     </div>
@@ -344,7 +344,7 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
                 flexShrink: 0,
               }}
             >
-              <Send size={16} style={{ color: '#0f0d0a' }} />
+              <Send size={16} style={{ color: '#062013' }} />
             </button>
           </div>
         </div>

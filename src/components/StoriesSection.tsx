@@ -163,7 +163,7 @@ export const StoriesSection: React.FC<StoriesSectionProps> = ({ stories, onStory
               }}
               onMouseOver={(e) => {
                 e.currentTarget.style.background = 'var(--wa-gold)';
-                e.currentTarget.style.color = '#0a0a0a';
+                e.currentTarget.style.color = '#062013';
               }}
               onMouseOut={(e) => {
                 e.currentTarget.style.background = 'transparent';

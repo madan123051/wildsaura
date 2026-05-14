@@ -95,7 +95,7 @@ export const TermsConditions: React.FC<TermsConditionsProps> = ({ onBack }) => {
             justifyContent: 'center',
             margin: '0 auto 1.25rem',
           }}>
-            <Scale size={28} color="#c9a84c" />
+            <Scale size={28} color="#9fcb8f" />
           </div>
           <h1 className="font-cinzel text-gold-gradient" style={{ fontSize: '2rem', fontWeight: 700, letterSpacing: '0.08em', marginBottom: '0.5rem' }}>
             Terms & Conditions
@@ -124,7 +124,7 @@ export const TermsConditions: React.FC<TermsConditionsProps> = ({ onBack }) => {
                 onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--wa-border)')}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                  <Icon size={18} color="#c9a84c" />
+                  <Icon size={18} color="#9fcb8f" />
                   <h2 className="font-cinzel" style={{ fontSize: '0.95rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--wa-gold)', margin: 0 }}>
                     {section.title}
                   </h2>
