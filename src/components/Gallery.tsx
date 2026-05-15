@@ -109,8 +109,8 @@ export const Gallery: React.FC<GalleryProps> = ({
                     display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
                     padding: '0.75rem 2rem',
                     background: 'transparent',
-                    border: '2px solid var(--wa-gold)',
-                    color: 'var(--wa-gold)',
+                    border: '2px solid #9fcb8f',
+                    color: '#9fcb8f',
                     borderRadius: '50px',
                     fontSize: '0.9rem',
                     fontWeight: 600,
@@ -120,7 +120,7 @@ export const Gallery: React.FC<GalleryProps> = ({
                   }}
                   onMouseOver={(e) => {
                     e.currentTarget.style.background = 'var(--wa-gold)';
-                    e.currentTarget.style.color = '#0a0a0a';
+                    e.currentTarget.style.color = '#062013';
                   }}
                   onMouseOut={(e) => {
                     e.currentTarget.style.background = 'transparent';
