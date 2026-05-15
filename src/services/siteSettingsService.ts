@@ -8,6 +8,7 @@ export interface SiteSettings {
   categoryImages?: {
     wildlife?: string;
     birds?: string;
+    macro?: string;
     landscape?: string;
     nature?: string;
     portraits?: string;
