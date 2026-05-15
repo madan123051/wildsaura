@@ -32,6 +32,7 @@ import { CommunityPage } from './components/CommunityPage';
 import { PhotoMap } from './components/PhotoMap';
 import { onSiteSettingsChange, SiteSettings } from './services/siteSettingsService';
 import { NotificationPanel, AppNotification } from './components/NotificationPanel';
+import { ProfileModal } from './components/ProfileModal';
 import { updatePhotoMeta, updateStoryMeta, resetMeta } from './utils/seo';
 
 const logoUrl = '/photos/logo.png';
@@ -202,6 +203,7 @@ const App: React.FC = () => {
   const [visitor, setVisitor] = useState<Visitor | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [showVisitorLogin, setShowVisitorLogin] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [photoComments, setPhotoComments] = useState<Record<string, Comment[]>>({});
   const [storyComments, setStoryComments] = useState<Record<string, Comment[]>>({});
@@ -1369,6 +1371,7 @@ const App: React.FC = () => {
           visitor={visitor}
           onVisitorLoginClick={() => setShowVisitorLogin(true)}
           onVisitorLogout={handleVisitorLogout}
+          onProfileClick={() => setShowProfile(true)}
           onVisitorUpdate={handleVisitorUpdate}
           onStoriesClick={handleStoriesNavClick}
           notificationCount={unreadNotifCount}
@@ -1409,6 +1412,7 @@ const App: React.FC = () => {
           visitor={visitor}
           onVisitorLoginClick={() => setShowVisitorLogin(true)}
           onVisitorLogout={handleVisitorLogout}
+          onProfileClick={() => setShowProfile(true)}
           onVisitorUpdate={handleVisitorUpdate}
           onStoriesClick={handleStoriesNavClick}
           notificationCount={unreadNotifCount}
@@ -1692,6 +1696,15 @@ const App: React.FC = () => {
         isOpen={showVisitorLogin}
         onClose={() => setShowVisitorLogin(false)}
         onLogin={handleVisitorLogin}
+      />
+
+      <ProfileModal
+        isOpen={showProfile}
+        visitor={visitor}
+        onClose={() => setShowProfile(false)}
+        onVisitorUpdate={handleVisitorUpdate}
+        onLogout={handleVisitorLogout}
+        downloadCount={downloadCount}
       />
 
       <NotificationPanel
