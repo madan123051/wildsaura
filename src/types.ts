@@ -2,7 +2,7 @@ export interface Photo {
   id: number;
   firestoreId?: string;
   title: string;
-  category: 'wildlife' | 'landscape' | 'street' | 'nature' | 'other';
+  category: 'wildlife' | 'birds' | 'landscape' | 'street' | 'nature' | 'other';
   imageUrl: string;
   thumbnailUrl?: string;       // ← NEW: Optimized gallery thumbnail (WebP ~150KB, 600px)
   location?: string;

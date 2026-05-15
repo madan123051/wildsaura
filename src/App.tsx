@@ -145,6 +145,7 @@ The technical challenge of night street photography is real. At ISO 3200 and 1/6
 
 const CATEGORIES: Category[] = [
   { key: 'wildlife', label: 'Wildlife', imageUrl: '/photos/photo-wildlife.jpeg' },
+  { key: 'birds', label: 'Birds', imageUrl: '/photos/photo-wildlife.jpeg' },
   { key: 'landscape', label: 'Landscapes', imageUrl: '/photos/photo-landscape.jpeg' },
   { key: 'nature', label: 'Nature', imageUrl: '/photos/photo-nature.jpeg' },
   { key: 'other', label: 'Portraits', imageUrl: '/photos/photo-portrait.jpeg' },
@@ -153,6 +154,7 @@ const CATEGORIES: Category[] = [
 const FILTER_TABS: FilterTab[] = [
   { key: 'all', label: 'All' },
   { key: 'wildlife', label: 'Wildlife' },
+  { key: 'birds', label: 'Birds' },
   { key: 'landscape', label: 'Landscapes' },
   { key: 'nature', label: 'Nature' },
   { key: 'street', label: 'Street' },
@@ -1490,6 +1492,7 @@ const App: React.FC = () => {
   // ── Dynamic Categories (uses custom images from site settings if available) ──
   const dynamicCategories: Category[] = [
     { key: 'wildlife', label: 'Wildlife', imageUrl: siteSettings.categoryImages?.wildlife || '/photos/photo-wildlife.jpeg' },
+    { key: 'birds', label: 'Birds', imageUrl: siteSettings.categoryImages?.birds || '/photos/photo-wildlife.jpeg' },
     { key: 'landscape', label: 'Landscapes', imageUrl: siteSettings.categoryImages?.landscape || '/photos/photo-landscape.jpeg' },
     { key: 'nature', label: 'Nature', imageUrl: siteSettings.categoryImages?.nature || '/photos/photo-nature.jpeg' },
     { key: 'other', label: 'Portraits', imageUrl: siteSettings.categoryImages?.portraits || '/photos/photo-portrait.jpeg' },
