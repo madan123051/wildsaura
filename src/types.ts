@@ -4,7 +4,7 @@ export interface Photo {
   title: string;
   category: 'wildlife' | 'birds' | 'macro' | 'domestic' | 'landscape' | 'street' | 'nature' | 'other';
   imageUrl: string;
-  thumbnailUrl?: string;       // ← NEW: Optimized gallery thumbnail (WebP ~150KB, 600px)
+  thumbnailUrl?: string;       // Optimized gallery thumbnail (WebP ~150KB, 600px)
   location?: string;
   caption?: string;
   type: 'photo' | 'video';
@@ -23,9 +23,9 @@ export interface Photo {
   photographer?: string;
   latitude?: number;
   longitude?: number;
-  originalSize?: number;       // ← NEW: Original file size in bytes (before compression)
-  compressedSize?: number;     // ← NEW: Compressed WebP size in bytes (after compression)
-  createdAt?: any;             // ← NEW: Firestore Timestamp or ISO string — upload/publish date
+  originalSize?: number;       // Original file size in bytes (before compression)
+  compressedSize?: number;     // Compressed WebP size in bytes (after compression)
+  createdAt?: any;             // Firestore Timestamp or ISO string — upload/publish date
 }
 
 export interface Category {
@@ -49,6 +49,36 @@ export interface Comment {
   createdAt: string;
 }
 
+/**
+ * User Profile stored in Firestore
+ * This is the main user data structure used across the app
+ */
+export interface User {
+  uid: string;                    // Firebase Auth UID
+  email: string;                  // User's email
+  displayName: string;            // User's display name
+  avatarUrl?: string;             // Profile picture URL
+  avatarColor?: string;           // Fallback avatar background color
+  spiritAnimal?: string;          // User's chosen spirit animal
+  bio?: string;                   // User bio
+  location?: string;              // User location
+  website?: string;               // User website
+  loginMethod: 'email' | 'google' | 'facebook' | 'apple'; // How user logged in
+  createdAt: any;                 // Account creation date (Firestore Timestamp)
+  updatedAt: any;                 // Last profile update (Firestore Timestamp)
+  isVerified?: boolean;           // Email verification status
+  totalPhotosLiked?: number;      // Total photos liked by user
+  totalStoriesLiked?: number;     // Total stories liked by user
+  followerCount?: number;         // Number of followers
+  followingCount?: number;        // Number of following
+  isAdmin?: boolean;              // Admin privilege flag
+  lastLoginAt?: any;              // Last login timestamp
+}
+
+/**
+ * Visitor - Deprecated in favor of User
+ * Kept for backwards compatibility
+ */
 export interface Visitor {
   displayName: string;
   email: string;
@@ -89,10 +119,10 @@ export interface Video {
   likeCount: number;
   liked: boolean;
   photographer?: string;
-  originalSize?: number;       // ← NEW: Original video file size in bytes
-  aspectRatio?: string;        // ← NEW: Video aspect ratio e.g. '16:9', '9:16', '1:1', '4:5'
-  videoWidth?: number;         // ← NEW: Original video width in pixels
-  videoHeight?: number;        // ← NEW: Original video height in pixels
+  originalSize?: number;       // Original video file size in bytes
+  aspectRatio?: string;        // Video aspect ratio e.g. '16:9', '9:16', '1:1', '4:5'
+  videoWidth?: number;         // Original video width in pixels
+  videoHeight?: number;        // Original video height in pixels
 }
 
 export interface ChatMessage {
@@ -110,7 +140,6 @@ export interface AISettings {
   storyProvider: 'gemini' | 'deepseek' | 'chatgpt';
   chatProvider: 'gemini' | 'deepseek' | 'chatgpt';
 }
-
 
 export type GalleryCategory = 'wildlife' | 'birds' | 'landscapes' | 'portraits' | 'others';
 
