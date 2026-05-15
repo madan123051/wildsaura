@@ -241,6 +241,19 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages }) => {
             </a>
 
             <a
+              href="/community"
+              style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', textDecoration: 'none' }}
+            >
+              <ChevronDown size={14} style={{ color: C.natgeoYellow, animation: 'bounce 2s infinite' }} />
+              <span
+                className="font-cinzel"
+                style={{ fontSize: '0.68rem', letterSpacing: '0.16em', color: C.muted }}
+              >
+                Join Community
+              </span>
+            </a>
+
+            <a
               href="/ngo"
               className="btn-gold-outline"
               style={{ textDecoration: 'none' }}
