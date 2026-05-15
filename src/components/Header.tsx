@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, Search, LogOut, Bell, Settings } from 'lucide-react';
+import { Menu, X, Search, LogOut, Bell, Settings, Sun, Moon, Monitor } from 'lucide-react';
 import { Visitor } from '../types';
+import { useTheme, Theme } from '../utils/useTheme';
 
 const ANIMAL_AVATARS = [
   { id: 'tiger', emoji: '🐯', label: 'Tiger' },
@@ -26,6 +27,20 @@ interface HeaderProps {
   onAdminClick?: () => void;
 }
 
+const THEME_CYCLE: Theme[] = ['system', 'light', 'dark'];
+
+function ThemeIcon({ theme }: { theme: Theme }) {
+  if (theme === 'light') return <Sun size={17} />;
+  if (theme === 'dark') return <Moon size={17} />;
+  return <Monitor size={17} />;
+}
+
+function themeLabel(theme: Theme) {
+  if (theme === 'light') return 'Light';
+  if (theme === 'dark') return 'Dark';
+  return 'System';
+}
+
 export const Header: React.FC<HeaderProps> = ({
   onScrollToGallery, logoUrl,
   onSearchClick, visitor, onVisitorLoginClick, onVisitorLogout, onStoriesClick, onVisitorUpdate,
@@ -36,6 +51,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState('');
+  const { theme, setTheme } = useTheme();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 60);
@@ -56,19 +72,26 @@ export const Header: React.FC<HeaderProps> = ({
     return ANIMAL_AVATARS.find(a => a.id === visitor.avatarAnimal)?.emoji;
   };
 
+  const cycleTheme = () => {
+    const idx = THEME_CYCLE.indexOf(theme);
+    setTheme(THEME_CYCLE[(idx + 1) % THEME_CYCLE.length]);
+  };
+
   return (
     <header
       style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50,
         transition: 'all 0.5s',
-        background: scrolled ? 'rgba(6, 17, 12, 0.92)' : 'rgba(6, 17, 12, 0.45)',
+        background: scrolled
+          ? 'var(--wa-nav-bg-scrolled)'
+          : 'var(--wa-nav-bg-top)',
         backdropFilter: 'blur(12px)',
-        borderBottom: scrolled ? '1px solid rgba(168,216,162,0.18)' : '1px solid transparent',
-        boxShadow: scrolled ? '0 4px 30px rgba(0,0,0,0.5)' : 'none',
+        borderBottom: scrolled ? '1px solid var(--wa-dropdown-border)' : '1px solid transparent',
+        boxShadow: scrolled ? '0 4px 30px rgba(0,0,0,0.18)' : 'none',
       }}
     >
       <div className="wa-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '72px' }}>
-        {/* Left: Logo + Brand Name */}
+        {/* Left: Logo */}
         <a href="#top" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none' }}>
           {logoUrl && (
             <img
@@ -78,9 +101,39 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </a>
 
-        {/* Right: Search icon + Hamburger menu */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          {/* Admin Dashboard Icon — only visible when admin is logged in */}
+        {/* Right: Icons */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+
+          {/* ── Theme Toggle ── */}
+          <button
+            onClick={cycleTheme}
+            title={`Theme: ${themeLabel(theme)} — click to switch`}
+            style={{
+              background: 'none',
+              border: '1px solid var(--wa-border)',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              color: 'var(--wa-nav-icon)',
+              padding: '0.32rem 0.44rem',
+              display: 'flex', alignItems: 'center', gap: '0.28rem',
+              fontSize: '0.62rem',
+              fontFamily: "'Cinzel', serif",
+              letterSpacing: '0.06em',
+              transition: 'all 0.2s',
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.borderColor = 'var(--wa-border-gold)';
+              e.currentTarget.style.color = 'var(--wa-nav-icon-hover)';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.borderColor = 'var(--wa-border)';
+              e.currentTarget.style.color = 'var(--wa-nav-icon)';
+            }}
+          >
+            <ThemeIcon theme={theme} />
+          </button>
+
+          {/* Admin Dashboard Icon */}
           {isAdmin && onAdminClick && (
             <button
               onClick={onAdminClick}
@@ -108,11 +161,11 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={onNotificationClick}
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
-                color: 'rgba(232,243,232,0.76)', padding: '0.4rem',
+                color: 'var(--wa-nav-icon)', padding: '0.4rem',
                 transition: 'color 0.3s', position: 'relative',
               }}
-              onMouseOver={(e) => e.currentTarget.style.color = 'var(--wa-gold)'}
-              onMouseOut={(e) => e.currentTarget.style.color = 'rgba(232,243,232,0.76)'}
+              onMouseOver={(e) => e.currentTarget.style.color = 'var(--wa-nav-icon-hover)'}
+              onMouseOut={(e) => e.currentTarget.style.color = 'var(--wa-nav-icon)'}
             >
               <Bell size={22} />
               {notificationCount > 0 && (
@@ -122,7 +175,7 @@ export const Header: React.FC<HeaderProps> = ({
                   fontSize: '0.55rem', fontWeight: 700,
                   width: 16, height: 16, borderRadius: '50%',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  border: '2px solid rgba(0,0,0,0.8)',
+                  border: '2px solid var(--wa-bg)',
                 }}>
                   {notificationCount > 9 ? '9+' : notificationCount}
                 </span>
@@ -135,11 +188,11 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={onSearchClick}
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
-                color: 'rgba(232,243,232,0.76)', padding: '0.4rem',
+                color: 'var(--wa-nav-icon)', padding: '0.4rem',
                 transition: 'color 0.3s',
               }}
-              onMouseOver={(e) => e.currentTarget.style.color = 'var(--wa-gold)'}
-              onMouseOut={(e) => e.currentTarget.style.color = 'rgba(232,243,232,0.76)'}
+              onMouseOver={(e) => e.currentTarget.style.color = 'var(--wa-nav-icon-hover)'}
+              onMouseOut={(e) => e.currentTarget.style.color = 'var(--wa-nav-icon)'}
             >
               <Search size={24} />
             </button>
@@ -149,11 +202,11 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => setMenuOpen(!menuOpen)}
             style={{
               background: 'none', border: 'none',
-              color: 'rgba(232,243,232,0.76)', cursor: 'pointer', padding: '0.4rem',
+              color: 'var(--wa-nav-icon)', cursor: 'pointer', padding: '0.4rem',
               transition: 'color 0.3s',
             }}
-            onMouseOver={(e) => e.currentTarget.style.color = 'rgba(232,243,232,0.96)'}
-            onMouseOut={(e) => e.currentTarget.style.color = 'rgba(232,243,232,0.76)'}
+            onMouseOver={(e) => e.currentTarget.style.color = 'var(--wa-text)'}
+            onMouseOut={(e) => e.currentTarget.style.color = 'var(--wa-nav-icon)'}
           >
             {menuOpen ? <X size={26} /> : <Menu size={26} />}
           </button>
@@ -163,8 +216,8 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Dropdown Menu */}
       {menuOpen && (
         <div style={{
-          background: 'rgba(5, 16, 11, 0.95)', backdropFilter: 'blur(16px)',
-          borderTop: '1px solid rgba(168,216,162,0.2)',
+          background: 'var(--wa-dropdown-bg)', backdropFilter: 'blur(16px)',
+          borderTop: '1px solid var(--wa-dropdown-border)',
           padding: '1.5rem 2rem',
           animation: 'menuSlideDown 0.3s ease',
         }}>
@@ -176,7 +229,7 @@ export const Header: React.FC<HeaderProps> = ({
                 onClick={(e) => { if (item.onClick) { e.preventDefault(); item.onClick(); } setMenuOpen(false); }}
                 style={{
                   display: 'block', padding: '0.85rem 0',
-                  borderBottom: '1px solid rgba(168,216,162,0.18)',
+                  borderBottom: '1px solid var(--wa-dropdown-border)',
                   fontSize: '0.85rem', letterSpacing: '0.1em',
                 }}
               >
@@ -185,7 +238,7 @@ export const Header: React.FC<HeaderProps> = ({
             ))}
 
             {/* Visitor area */}
-            <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(168,216,162,0.2)' }}>
+            <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid var(--wa-dropdown-border)' }}>
               {visitor ? (
                 <div style={{ padding: '0.5rem 0' }}>
                   {/* Profile row */}
@@ -218,8 +271,8 @@ export const Header: React.FC<HeaderProps> = ({
                             }}
                             autoFocus
                             style={{
-                              background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(168,216,162,0.4)',
-                              borderRadius: 6, padding: '0.25rem 0.4rem', color: '#fff',
+                              background: 'var(--wa-bg-input)', border: '1px solid var(--wa-border)',
+                              borderRadius: 6, padding: '0.25rem 0.4rem', color: 'var(--wa-text)',
                               fontSize: '0.78rem', flex: 1, outline: 'none', minWidth: 0,
                             }}
                             placeholder="Enter name"
@@ -237,7 +290,7 @@ export const Header: React.FC<HeaderProps> = ({
                           >Save</button>
                           <button
                             onClick={(e) => { e.stopPropagation(); setEditingName(false); }}
-                            style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 4, color: '#fff', fontSize: '0.65rem', padding: '0.2rem 0.4rem', cursor: 'pointer' }}
+                            style={{ background: 'transparent', border: '1px solid var(--wa-border)', borderRadius: 4, color: 'var(--wa-text)', fontSize: '0.65rem', padding: '0.2rem 0.4rem', cursor: 'pointer' }}
                           >✕</button>
                         </div>
                       ) : (
@@ -250,7 +303,7 @@ export const Header: React.FC<HeaderProps> = ({
                             {visitor.displayName} ✏️
                           </span>
                           {visitor.email && (
-                            <span style={{ display: 'block', fontSize: '0.65rem', color: 'rgba(255,255,255,0.3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--wa-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {visitor.email}
                             </span>
                           )}
@@ -262,7 +315,7 @@ export const Header: React.FC<HeaderProps> = ({
                       style={{
                         background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)',
                         borderRadius: '8px', cursor: 'pointer',
-                        color: 'rgba(239,68,68,0.7)', padding: '0.35rem 0.6rem',
+                        color: 'rgba(239,68,68,0.8)', padding: '0.35rem 0.6rem',
                         display: 'flex', alignItems: 'center', gap: '0.3rem',
                         fontSize: '0.72rem', flexShrink: 0,
                       }}
@@ -271,7 +324,7 @@ export const Header: React.FC<HeaderProps> = ({
                     </button>
                   </div>
 
-                  {/* Change Avatar + Choose Spirit Animal buttons */}
+                  {/* Change Avatar button */}
                   <button
                     onClick={(e) => { e.stopPropagation(); setShowAvatarPicker(!showAvatarPicker); }}
                     style={{
@@ -291,11 +344,11 @@ export const Header: React.FC<HeaderProps> = ({
                       onClick={(e) => e.stopPropagation()}
                       style={{
                         marginTop: '0.5rem', padding: '0.8rem',
-                        background: 'rgba(79,159,98,0.12)', borderRadius: '12px',
-                        border: '1px solid rgba(168,216,162,0.3)',
+                        background: 'var(--wa-label-bg)', borderRadius: '12px',
+                        border: '1px solid var(--wa-border)',
                       }}
                     >
-                      <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.6)', marginBottom: '0.6rem', textAlign: 'center', fontWeight: 600 }}>
+                      <p style={{ fontSize: '0.78rem', color: 'var(--wa-text-muted)', marginBottom: '0.6rem', textAlign: 'center', fontWeight: 600 }}>
                         Choose Your Spirit Animal 🐾
                       </p>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
@@ -315,21 +368,20 @@ export const Header: React.FC<HeaderProps> = ({
                               }}
                               style={{
                                 padding: '0.6rem 0.3rem', borderRadius: '12px',
-                                background: isSelected ? 'rgba(79,159,98,0.28)' : 'rgba(255,255,255,0.04)',
-                                border: isSelected ? '2px solid var(--wa-gold)' : '2px solid rgba(255,255,255,0.08)',
+                                background: isSelected ? 'rgba(79,159,98,0.28)' : 'var(--wa-bg-input)',
+                                border: isSelected ? '2px solid var(--wa-gold)' : '2px solid var(--wa-border)',
                                 cursor: 'pointer', fontSize: '1.6rem',
                                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem',
                                 transition: 'all 0.2s',
                               }}
                             >
                               <span>{a.emoji}</span>
-                              <span style={{ fontSize: '0.6rem', color: isSelected ? 'var(--wa-gold)' : 'rgba(255,255,255,0.4)', fontWeight: isSelected ? 600 : 400 }}>
+                              <span style={{ fontSize: '0.6rem', color: isSelected ? 'var(--wa-gold)' : 'var(--wa-text-muted)', fontWeight: isSelected ? 600 : 400 }}>
                                 {a.label}
                               </span>
                             </button>
                           );
-                        })}
-                      </div>
+                        })}</div>
                     </div>
                   )}
                 </div>
@@ -347,8 +399,6 @@ export const Header: React.FC<HeaderProps> = ({
                 </button>
               )}
             </div>
-
-
           </div>
         </div>
       )}
