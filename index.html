@@ -1,86 +1,484 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WILDS AURA — Wildlife & Nature Photography | Madan Shrestha</title>
-  <meta name="description" content="WILDS AURA — Stunning wildlife & nature photography by Madan Shrestha. Explore breathtaking photos of wild animals, birds, landscapes, and untold stories from the wild." />
-  <meta name="keywords" content="wildlife photography, nature photography, wild animals, birds, landscape, Madan Shrestha, WildSaura, WILDS AURA, wildlife photos, nature gallery, wildlife art" />
-  <meta name="author" content="Madan Shrestha" />
-  <meta name="robots" content="index, follow, max-image-preview:large" />
-  <link rel="canonical" href="https://www.wildsaura.com" />
-  <meta name="theme-color" content="#0a0a0a" />
-
-  <!-- Open Graph / Facebook / WhatsApp -->
-  <meta property="fb:app_id" content="1631329071118237" />
-  <meta property="og:type" content="website" />
-  <meta property="og:site_name" content="WILDS AURA Photography" />
-  <meta property="og:title" content="WILDS AURA — Wildlife & Nature Photography" />
-  <meta property="og:description" content="Explore stunning wildlife photos, landscapes, and stories from the wild by Madan Shrestha." />
-  <meta property="og:image" content="https://www.wildsaura.com/photos/logo.png" />
-  <meta property="og:image:width" content="1200" />
-  <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="WILDS AURA Photography Logo" />
-  <meta property="og:url" content="https://www.wildsaura.com" />
-  <meta property="og:locale" content="en_US" />
-
-  <!-- Twitter Card -->
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="WILDS AURA — Wildlife & Nature Photography" />
-  <meta name="twitter:description" content="Explore stunning wildlife photos, landscapes, and stories from the wild by Madan Shrestha." />
-  <meta name="twitter:image" content="https://www.wildsaura.com/photos/logo.png" />
-  <meta name="twitter:creator" content="@wildsaura" />
-
-  <!-- Favicon & Icons -->
-  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-  <link rel="apple-touch-icon" sizes="192x192" href="/lion-192.png" />
-  <link rel="icon" type="image/png" sizes="192x192" href="/lion-192.png" />
-
-  <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
-
-  <!-- Structured Data / JSON-LD -->
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    "name": "WILDS AURA Photography",
-    "url": "https://www.wildsaura.com",
-    "description": "Stunning wildlife & nature photography by Madan Shrestha",
-    "author": {
-      "@type": "Person",
-      "name": "Madan Shrestha",
-      "url": "https://www.wildsaura.com"
-    },
-    "potentialAction": {
-      "@type": "SearchAction",
-      "target": "https://www.wildsaura.com/?search={search_term_string}",
-      "query-input": "required name=search_term_string"
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WildSaura Community</title>
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', 'Inter', system-ui, sans-serif;
+      background: #0b0c0e;
+      color: #e4e4e7;
+      min-height: 100vh;
     }
-  }
-  </script>
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "ImageGallery",
-    "name": "WILDS AURA Wildlife Photography Gallery",
-    "description": "A curated collection of wildlife and nature photographs",
-    "url": "https://www.wildsaura.com",
-    "creator": {
-      "@type": "Person",
-      "name": "Madan Shrestha"
-    },
-    "about": {
-      "@type": "Thing",
-      "name": "Wildlife Photography"
+    .container { max-width: 700px; margin: 0 auto; padding: 1rem; }
+    .hidden { display: none !important; }
+    /* Header */
+    .header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 0; border-bottom: 1px solid #1f2126; margin-bottom: 1.5rem;
     }
-  }
-  </script>
+    .logo {
+      font-size: 1.8rem; font-weight: 700; letter-spacing: 1px;
+      background: linear-gradient(135deg, #d4a373, #e9c46a);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .btn {
+      background: #1f2126; border: none; color: #e4e4e7;
+      padding: 0.6rem 1.4rem; border-radius: 30px; font-weight: 600;
+      cursor: pointer; transition: 0.2s; font-size: 0.95rem;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .btn-primary { background: #d4a373; color: #0b0c0e; }
+    .btn-primary:hover { background: #b5834a; }
+    .btn:hover { opacity: 0.9; }
+    .user-area { display: flex; align-items: center; gap: 1rem; }
+    .username-display { font-weight: 600; color: #d4a373; }
+    /* Auth Forms */
+    .auth-container {
+      max-width: 400px; margin: 3rem auto; background: #16181c;
+      border-radius: 20px; padding: 2rem; border: 1px solid #262a31;
+    }
+    .auth-container h2 { color: #d4a373; margin-bottom: 1.5rem; text-align: center; }
+    .input-group { margin-bottom: 1rem; }
+    .input-group input {
+      width: 100%; background: #1f2126; border: 1px solid #2e323a;
+      border-radius: 12px; padding: 0.8rem; color: white; outline: none;
+    }
+    .auth-footer { text-align: center; margin-top: 1rem; }
+    .auth-footer a { color: #d4a373; cursor: pointer; text-decoration: none; }
+    /* Feed Cards (same as before but with profile avatar) */
+    .feed { display: flex; flex-direction: column; gap: 1.8rem; }
+    .card {
+      background: #16181c; border-radius: 18px; padding: 1.2rem;
+      border: 1px solid #262a31;
+    }
+    .card-header { display: flex; align-items: center; gap: 0.8rem; margin-bottom: 0.8rem; }
+    .avatar {
+      width: 42px; height: 42px; border-radius: 50%; background: #2a2d35;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 600; font-size: 1.1rem; color: #d4a373;
+    }
+    .user-info { display: flex; flex-direction: column; }
+    .username { font-weight: 600; font-size: 1rem; }
+    .timestamp { font-size: 0.75rem; color: #8a8f98; }
+    .post-text { margin: 0.8rem 0 1rem; font-size: 1rem; line-height: 1.6; color: #d1d5db; }
+    .post-image {
+      width: 100%; border-radius: 14px; margin-bottom: 1rem;
+      max-height: 500px; object-fit: cover; background: #1f2126;
+    }
+    .actions {
+      display: flex; align-items: center; gap: 1.8rem;
+      margin-top: 0.5rem; padding-top: 0.8rem; border-top: 1px solid #252830;
+    }
+    .action-btn {
+      display: flex; align-items: center; gap: 6px; background: none;
+      border: none; color: #a1a5b0; cursor: pointer; font-size: 0.95rem;
+    }
+    .action-btn.liked { color: #e76f51; }
+    .action-btn:hover { color: #e4e4e7; }
+    .comment-section { margin-top: 1rem; display: none; }
+    .comment-section.open { display: block; }
+    .comment-list { list-style: none; margin-bottom: 0.8rem; max-height: 220px; overflow-y: auto; }
+    .comment-item { padding: 0.5rem 0; border-bottom: 1px solid #23262e; font-size: 0.9rem; }
+    .comment-user { font-weight: 600; color: #d4a373; margin-right: 6px; }
+    .comment-input-area { display: flex; gap: 8px; }
+    .comment-input-area input {
+      flex: 1; background: #1f2126; border: 1px solid #2e323a;
+      border-radius: 20px; padding: 0.6rem 1rem; color: white; outline: none;
+    }
+    .comment-input-area button { border-radius: 20px; padding: 0.5rem 1.2rem; }
+    /* Modal */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7); backdrop-filter: blur(6px);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1000;
+    }
+    .modal {
+      background: #16181c; width: 90%; max-width: 500px;
+      border-radius: 24px; padding: 2rem; border: 1px solid #2e323a;
+    }
+    .modal h2 { margin-bottom: 1.5rem; font-weight: 600; color: #d4a373; }
+    .input-group label { display: block; margin-bottom: 0.4rem; color: #b0b5c0; }
+    .input-group input, .input-group textarea {
+      width: 100%; background: #1f2126; border: 1px solid #2e323a;
+      border-radius: 14px; padding: 0.8rem; color: white; resize: vertical;
+    }
+    .file-upload { margin: 1rem 0; }
+    .modal-actions { display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem; }
+    .empty-state { text-align: center; padding: 3rem; color: #6b7280; }
+  </style>
 </head>
 <body>
-  <div id="root"></div>
-  <script type="module" src="/src/main.tsx"></script>
+  <!-- Auth UI (visible when not logged in) -->
+  <div id="authSection" class="auth-container hidden">
+    <!-- Login Form -->
+    <div id="loginForm">
+      <h2>Welcome Back</h2>
+      <div class="input-group"><input type="email" id="loginEmail" placeholder="Email"></div>
+      <div class="input-group"><input type="password" id="loginPassword" placeholder="Password"></div>
+      <button class="btn btn-primary" id="loginBtn" style="width:100%">Log In</button>
+      <div class="auth-footer">
+        Don't have an account? <a id="showSignup">Sign Up</a>
+      </div>
+    </div>
+    <!-- Sign Up Form (initially hidden) -->
+    <div id="signupForm" class="hidden">
+      <h2>Join WildSaura</h2>
+      <div class="input-group"><input type="text" id="signupUsername" placeholder="Username"></div>
+      <div class="input-group"><input type="email" id="signupEmail" placeholder="Email"></div>
+      <div class="input-group"><input type="password" id="signupPassword" placeholder="Password"></div>
+      <button class="btn btn-primary" id="signupBtn" style="width:100%">Create Account</button>
+      <div class="auth-footer">
+        Already a member? <a id="showLogin">Log In</a>
+      </div>
+    </div>
+    <div id="authError" style="color:#e76f51; text-align:center; margin-top:1rem;"></div>
+  </div>
+
+  <!-- Main App (visible after login) -->
+  <div id="appSection" class="container hidden">
+    <header class="header">
+      <div class="logo">WildSaura Community</div>
+      <div class="user-area">
+        <span class="username-display" id="displayUsername"></span>
+        <button class="btn" id="createPostBtn">+ New Post</button>
+        <button class="btn" id="logoutBtn">Logout</button>
+      </div>
+    </header>
+    <div id="feed" class="feed">
+      <div class="empty-state">✨ Loading posts...</div>
+    </div>
+  </div>
+
+  <!-- New Post Modal -->
+  <div class="modal-overlay hidden" id="postModal">
+    <div class="modal">
+      <h2>Create Post</h2>
+      <div class="input-group">
+        <label>Caption</label>
+        <textarea id="postText" rows="3" placeholder="Write something..."></textarea>
+      </div>
+      <div class="file-upload">
+        <label>Photo (optional)</label>
+        <input type="file" id="imageFile" accept="image/*">
+      </div>
+      <div class="modal-actions">
+        <button class="btn" id="cancelPost">Cancel</button>
+        <button class="btn btn-primary" id="submitPost">Post</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ---------- REPLACE WITH YOUR FIREBASE CONFIG ----------
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_AUTH_DOMAIN",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_STORAGE_BUCKET",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    const storage = firebase.storage();
+
+    // UI elements
+    const authSection = document.getElementById('authSection');
+    const appSection = document.getElementById('appSection');
+    const loginForm = document.getElementById('loginForm');
+    const signupForm = document.getElementById('signupForm');
+    const authError = document.getElementById('authError');
+    const displayUsername = document.getElementById('displayUsername');
+    const feedContainer = document.getElementById('feed');
+    const postModal = document.getElementById('postModal');
+    const cancelPostBtn = document.getElementById('cancelPost');
+    const submitPostBtn = document.getElementById('submitPost');
+    const postText = document.getElementById('postText');
+    const imageFileInput = document.getElementById('imageFile');
+    let currentUser = null;
+    let userProfile = null;
+    let unsubscribePosts = null;
+
+    // Auth form toggles
+    document.getElementById('showSignup').addEventListener('click', () => {
+      loginForm.classList.add('hidden');
+      signupForm.classList.remove('hidden');
+      authError.textContent = '';
+    });
+    document.getElementById('showLogin').addEventListener('click', () => {
+      signupForm.classList.add('hidden');
+      loginForm.classList.remove('hidden');
+      authError.textContent = '';
+    });
+
+    // Sign Up
+    document.getElementById('signupBtn').addEventListener('click', async () => {
+      const username = document.getElementById('signupUsername').value.trim();
+      const email = document.getElementById('signupEmail').value.trim();
+      const password = document.getElementById('signupPassword').value;
+      if (!username || !email || !password) {
+        authError.textContent = 'All fields are required.';
+        return;
+      }
+      try {
+        const userCred = await auth.createUserWithEmailAndPassword(email, password);
+        // Create user profile in Firestore
+        await db.collection('users').doc(userCred.user.uid).set({
+          username: username,
+          email: email,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        // After signup, user will be redirected via onAuthStateChanged
+      } catch (error) {
+        authError.textContent = error.message;
+      }
+    });
+
+    // Login
+    document.getElementById('loginBtn').addEventListener('click', async () => {
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      if (!email || !password) {
+        authError.textContent = 'Enter email and password.';
+        return;
+      }
+      try {
+        await auth.signInWithEmailAndPassword(email, password);
+      } catch (error) {
+        authError.textContent = error.message;
+      }
+    });
+
+    // Logout
+    document.getElementById('logoutBtn').addEventListener('click', () => auth.signOut());
+
+    // Auth state listener
+    auth.onAuthStateChanged(async user => {
+      if (user) {
+        currentUser = user;
+        // Fetch user profile
+        const userDoc = await db.collection('users').doc(user.uid).get();
+        if (userDoc.exists) {
+          userProfile = userDoc.data();
+          displayUsername.textContent = userProfile.username;
+        } else {
+          // Fallback
+          userProfile = { username: 'User' };
+          displayUsername.textContent = 'User';
+        }
+        authSection.classList.add('hidden');
+        appSection.classList.remove('hidden');
+        loadPosts();
+      } else {
+        currentUser = null;
+        userProfile = null;
+        authSection.classList.remove('hidden');
+        appSection.classList.add('hidden');
+        if (unsubscribePosts) {
+          unsubscribePosts();
+          unsubscribePosts = null;
+        }
+      }
+    });
+
+    // Create Post Modal
+    document.getElementById('createPostBtn').addEventListener('click', () => {
+      postModal.classList.remove('hidden');
+    });
+    cancelPostBtn.addEventListener('click', () => {
+      postModal.classList.add('hidden');
+      postText.value = '';
+      imageFileInput.value = '';
+    });
+    postModal.addEventListener('click', (e) => {
+      if (e.target === postModal) {
+        postModal.classList.add('hidden');
+        postText.value = '';
+        imageFileInput.value = '';
+      }
+    });
+
+    // Submit Post with image upload
+    submitPostBtn.addEventListener('click', async () => {
+      const text = postText.value.trim();
+      const file = imageFileInput.files[0];
+      if (!text && !file) {
+        alert('Please write something or select an image.');
+        return;
+      }
+      if (!currentUser || !userProfile) {
+        alert('You must be logged in.');
+        return;
+      }
+      try {
+        let imageUrl = null;
+        if (file) {
+          const storageRef = storage.ref(`posts/${currentUser.uid}/${Date.now()}_${file.name}`);
+          const snapshot = await storageRef.put(file);
+          imageUrl = await snapshot.ref.getDownloadURL();
+        }
+        await db.collection('posts').add({
+          userId: currentUser.uid,
+          username: userProfile.username,
+          text: text,
+          imageUrl: imageUrl,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+          likes: [],
+          comments: []
+        });
+        postModal.classList.add('hidden');
+        postText.value = '';
+        imageFileInput.value = '';
+      } catch (error) {
+        console.error(error);
+        alert('Failed to create post. ' + error.message);
+      }
+    });
+
+    // Real-time posts listener
+    function loadPosts() {
+      if (unsubscribePosts) unsubscribePosts();
+      unsubscribePosts = db.collection('posts')
+        .orderBy('timestamp', 'desc')
+        .onSnapshot(snapshot => {
+          if (snapshot.empty) {
+            feedContainer.innerHTML = '<div class="empty-state">🌿 No posts yet. Be the first to share!</div>';
+            return;
+          }
+          let html = '';
+          snapshot.forEach(doc => {
+            const post = doc.data();
+            const postId = doc.id;
+            const liked = post.likes && post.likes.includes(currentUser?.uid);
+            const likeCount = post.likes ? post.likes.length : 0;
+            const commentCount = post.comments ? post.comments.length : 0;
+            const timeStr = post.timestamp ? new Date(post.timestamp.toDate()).toLocaleString() : 'Just now';
+
+            html += `
+              <div class="card" data-post-id="${postId}">
+                <div class="card-header">
+                  <div class="avatar">${(post.username || 'U').charAt(0).toUpperCase()}</div>
+                  <div class="user-info">
+                    <span class="username">${escapeHtml(post.username || 'Anonymous')}</span>
+                    <span class="timestamp">${timeStr}</span>
+                  </div>
+                </div>
+                ${post.text ? `<div class="post-text">${escapeHtml(post.text)}</div>` : ''}
+                ${post.imageUrl ? `<img src="${escapeHtml(post.imageUrl)}" class="post-image" alt="Post image" onerror="this.style.display='none'">` : ''}
+                <div class="actions">
+                  <button class="action-btn like-btn ${liked ? 'liked' : ''}" data-post-id="${postId}">
+                    <span>${liked ? '❤️' : '🤍'}</span> <span class="like-count">${likeCount}</span>
+                  </button>
+                  <button class="action-btn comment-toggle-btn" data-post-id="${postId}">
+                    💬 <span>${commentCount}</span>
+                  </button>
+                </div>
+                <div class="comment-section" id="comments-${postId}">
+                  <ul class="comment-list" id="comment-list-${postId}"></ul>
+                  <div class="comment-input-area">
+                    <input type="text" placeholder="Add a comment..." id="comment-input-${postId}">
+                    <button class="btn btn-primary comment-submit-btn" data-post-id="${postId}">Post</button>
+                  </div>
+                </div>
+              </div>
+            `;
+          });
+          feedContainer.innerHTML = html;
+          attachLikeListeners();
+          attachCommentListeners();
+        }, error => {
+          feedContainer.innerHTML = '<div class="empty-state">⚠️ Error loading posts.</div>';
+          console.error(error);
+        });
+    }
+
+    function attachLikeListeners() {
+      document.querySelectorAll('.like-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const postId = btn.dataset.postId;
+          if (!currentUser) return;
+          const postRef = db.collection('posts').doc(postId);
+          try {
+            const doc = await postRef.get();
+            if (!doc.exists) return;
+            let likes = doc.data().likes || [];
+            if (likes.includes(currentUser.uid)) {
+              likes = likes.filter(id => id !== currentUser.uid);
+            } else {
+              likes.push(currentUser.uid);
+            }
+            await postRef.update({ likes });
+          } catch (err) { console.error(err); }
+        });
+      });
+    }
+
+    function attachCommentListeners() {
+      document.querySelectorAll('.comment-toggle-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const postId = btn.dataset.postId;
+          const section = document.getElementById(`comments-${postId}`);
+          if (section) {
+            section.classList.toggle('open');
+            if (section.classList.contains('open')) loadComments(postId);
+          }
+        });
+      });
+      document.querySelectorAll('.comment-submit-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const postId = btn.dataset.postId;
+          const input = document.getElementById(`comment-input-${postId}`);
+          const commentText = input.value.trim();
+          if (!commentText || !currentUser || !userProfile) return;
+          const postRef = db.collection('posts').doc(postId);
+          try {
+            const doc = await postRef.get();
+            if (!doc.exists) return;
+            let comments = doc.data().comments || [];
+            comments.push({
+              userId: currentUser.uid,
+              username: userProfile.username,
+              text: commentText,
+              timestamp: new Date().toISOString()
+            });
+            await postRef.update({ comments });
+            input.value = '';
+            loadComments(postId);
+          } catch (err) { console.error(err); }
+        });
+      });
+    }
+
+    function loadComments(postId) {
+      const listEl = document.getElementById(`comment-list-${postId}`);
+      if (!listEl) return;
+      db.collection('posts').doc(postId).get().then(doc => {
+        if (!doc.exists) return;
+        const comments = doc.data().comments || [];
+        listEl.innerHTML = comments.map(c => `
+          <li class="comment-item">
+            <span class="comment-user">${escapeHtml(c.username || 'Anonymous')}</span> ${escapeHtml(c.text)}
+          </li>
+        `).join('');
+      });
+    }
+
+    function escapeHtml(text) {
+      const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+      return text.replace(/[&<>"']/g, m => map[m]);
+    }
+  </script>
 </body>
 </html>
