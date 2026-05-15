@@ -1493,16 +1493,50 @@ const App: React.FC = () => {
   if (view === 'ngo') return <StaticPage title="Save Animal Nepal" text="We are building a system to support injured and abandoned animals across Nepal. Through photography and community support, we aim to create real impact. Mission: rescue, treatment, and feeding. Future plan: transparent monthly reporting and verified rescue partners." />;
   if (view === 'about') return <StaticPage title="About WildSaura" text="WildSaura connects photographers, nature lovers, and a mission to protect animals in Nepal. Start small, grow fast, and use visual storytelling for impact." />;
   if (view === 'contact') return <StaticPage title="Contact" text="For partnerships, volunteering, and media inquiries, message us through the contact form on the homepage." />;
-  // ── Dynamic Categories (uses custom images from site settings if available) ──
+
+  // ── Auto-rotating Category Thumbnails ────────────────────────────────────
+  // Uses a day-based index so every category thumbnail changes automatically every 24 hours.
+  // Priority: (1) Admin manual override via Site Settings → (2) Gallery photos → (3) Main photos → (4) Static default
+  const todayDayIndex = Math.floor(Date.now() / (1000 * 60 * 60 * 24));
+
+  const getAutoCategoryThumbnail = (
+    settingsKey: keyof NonNullable<SiteSettings['categoryImages']>,
+    galleryCategories: string[],
+    photoCategory: string,
+    fallback: string
+  ): string => {
+    // 1. Admin manual override takes priority
+    const manual = siteSettings.categoryImages?.[settingsKey];
+    if (manual) return manual;
+
+    // 2. Pick from gallery photos (rotates daily)
+    const fromGallery = galleryPhotos.filter(p => galleryCategories.includes(p.category) && p.imageUrl);
+    if (fromGallery.length > 0) {
+      return fromGallery[todayDayIndex % fromGallery.length].imageUrl;
+    }
+
+    // 3. Pick from main photos collection (rotates daily)
+    const fromPhotos = photos.filter(
+      p => p.category === (photoCategory as any) && p.published !== false && p.imageUrl && !p.imageUrl.startsWith('/photos/')
+    );
+    if (fromPhotos.length > 0) {
+      return fromPhotos[todayDayIndex % fromPhotos.length].imageUrl;
+    }
+
+    // 4. Static default fallback
+    return fallback;
+  };
+
   const dynamicCategories: Category[] = [
-    { key: 'wildlife', label: 'Wildlife', imageUrl: siteSettings.categoryImages?.wildlife || '/photos/photo-wildlife.jpeg' },
-    { key: 'birds', label: 'Birds', imageUrl: siteSettings.categoryImages?.birds || '/photos/photo-wildlife.jpeg' },
-    { key: 'macro', label: 'Macro', imageUrl: siteSettings.categoryImages?.macro || '/photos/photo-nature.jpeg' },
-    { key: 'domestic', label: 'Domestic Animals', imageUrl: siteSettings.categoryImages?.domestic || '/photos/photo-nature.jpeg' },
-    { key: 'landscape', label: 'Landscapes', imageUrl: siteSettings.categoryImages?.landscape || '/photos/photo-landscape.jpeg' },
-    { key: 'nature', label: 'Nature', imageUrl: siteSettings.categoryImages?.nature || '/photos/photo-nature.jpeg' },
-    { key: 'other', label: 'Portraits', imageUrl: siteSettings.categoryImages?.portraits || '/photos/photo-portrait.jpeg' },
+    { key: 'wildlife',  label: 'Wildlife',        imageUrl: getAutoCategoryThumbnail('wildlife',  ['wildlife'],   'wildlife',  '/photos/photo-wildlife.jpeg') },
+    { key: 'birds',     label: 'Birds',            imageUrl: getAutoCategoryThumbnail('birds',     ['birds'],      'birds',     '/photos/photo-wildlife.jpeg') },
+    { key: 'macro',     label: 'Macro',            imageUrl: getAutoCategoryThumbnail('macro',     ['others'],     'macro',     '/photos/photo-nature.jpeg') },
+    { key: 'domestic',  label: 'Domestic Animals', imageUrl: getAutoCategoryThumbnail('domestic',  ['others'],     'domestic',  '/photos/photo-nature.jpeg') },
+    { key: 'landscape', label: 'Landscapes',       imageUrl: getAutoCategoryThumbnail('landscape', ['landscapes'], 'landscape', '/photos/photo-landscape.jpeg') },
+    { key: 'nature',    label: 'Nature',           imageUrl: getAutoCategoryThumbnail('nature',    ['others'],     'nature',    '/photos/photo-nature.jpeg') },
+    { key: 'other',     label: 'Portraits',        imageUrl: getAutoCategoryThumbnail('portraits', ['portraits'],  'other',     '/photos/photo-portrait.jpeg') },
   ];
+
   const searchablePhotos: Photo[] = [
     ...photos,
     ...galleryPhotos.map((photo, index) => ({
