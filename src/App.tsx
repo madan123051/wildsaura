@@ -28,6 +28,7 @@ import { getVideosFromFirestore, addVideoToFirestore, deleteVideoFromFirestore, 
 import { addCommentToFirestore, deleteCommentFromFirestore, getCommentsForTarget, getAllComments, subscribeToAllComments } from './services/commentService';
 import { saveVisitorToFirestore, getVisitorFromFirestore, updateVisitorDownloadCount, updateVisitorProfile, trackOnlineVisitor, subscribeToOnlineVisitors } from './services/visitorService';
 import { LiveStats } from './components/LiveStats';
+import { CommunityPage } from './components/CommunityPage';
 import { PhotoMap } from './components/PhotoMap';
 import { onSiteSettingsChange, SiteSettings } from './services/siteSettingsService';
 import { NotificationPanel, AppNotification } from './components/NotificationPanel';
@@ -1489,7 +1490,24 @@ const App: React.FC = () => {
     </div>
   );
   if (view === 'marketplace') return <StaticPage title="Buy & Sell Authentic Nepal Photography" text="Support local photographers by purchasing high-quality images. Use them for personal or commercial projects. Option A: Buy Now via Google Form/DM and payment by eSewa or bank. Option B: Stripe or Gumroad links." cta="20% of every purchase supports animal rescue in Nepal." />;
-  if (view === 'community') return <StaticPage title="Join the Photography Community" text="Connect with creators, share your work, and grow your photography journey with Drishya." cta="Photography that makes an impact." />;
+  if (view === 'community') return (
+    <CommunityPage
+      onBack={() => { setView('home'); window.history.pushState({}, '', '/'); window.scrollTo(0, 0); }}
+      logoUrl={logoUrl}
+      onScrollToGallery={scrollToGallery}
+      onSearchClick={() => setShowSearch(true)}
+      visitor={visitor}
+      onVisitorLoginClick={() => setShowVisitorLogin(true)}
+      onVisitorLogout={handleVisitorLogout}
+      onVisitorUpdate={handleVisitorUpdate}
+      onStoriesClick={handleStoriesNavClick}
+      notificationCount={unreadNotifCount}
+      onNotificationClick={() => setShowNotifPanel(p => !p)}
+      isAdmin={isAdmin}
+      onAdminClick={() => { setView('admin-dashboard'); window.history.pushState({}, '', '/admin'); }}
+      onTermsClick={handleTermsClick}
+    />
+  );
   if (view === 'ngo') return <StaticPage title="Save Animal Nepal" text="We are building a system to support injured and abandoned animals across Nepal. Through photography and community support, we aim to create real impact. Mission: rescue, treatment, and feeding. Future plan: transparent monthly reporting and verified rescue partners." />;
   if (view === 'about') return <StaticPage title="About WildSaura" text="WildSaura connects photographers, nature lovers, and a mission to protect animals in Nepal. Start small, grow fast, and use visual storytelling for impact." />;
   if (view === 'contact') return <StaticPage title="Contact" text="For partnerships, volunteering, and media inquiries, message us through the contact form on the homepage." />;
