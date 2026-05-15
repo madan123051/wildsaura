@@ -25,6 +25,7 @@ interface HeaderProps {
   onNotificationClick?: () => void;
   isAdmin?: boolean;
   onAdminClick?: () => void;
+  onProfileClick?: () => void;
 }
 
 const THEME_CYCLE: Theme[] = ['system', 'light', 'dark'];
@@ -44,7 +45,7 @@ function themeLabel(theme: Theme) {
 export const Header: React.FC<HeaderProps> = ({
   onScrollToGallery, logoUrl,
   onSearchClick, visitor, onVisitorLoginClick, onVisitorLogout, onStoriesClick, onVisitorUpdate,
-  notificationCount = 0, onNotificationClick, isAdmin, onAdminClick,
+  notificationCount = 0, onNotificationClick, isAdmin, onAdminClick, onProfileClick,
 }) => {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -324,6 +325,19 @@ export const Header: React.FC<HeaderProps> = ({
                       <LogOut size={13} /> Sign out
                     </button>
                   </div>
+
+                  <button
+                    onClick={() => { if (onProfileClick) { onProfileClick(); setMenuOpen(false); } }}
+                    style={{
+                      marginTop: '0.6rem', width: '100%', padding: '0.5rem',
+                      background: 'rgba(79,159,98,0.12)',
+                      border: '1px solid rgba(168,216,162,0.3)', borderRadius: '10px',
+                      color: 'var(--wa-gold)', cursor: 'pointer', fontSize: '0.78rem',
+                      fontWeight: 500, transition: 'all 0.2s', textAlign: 'center',
+                    }}
+                  >
+                    👤 View Full Profile
+                  </button>
 
                   {/* Change Avatar button */}
                   <button
