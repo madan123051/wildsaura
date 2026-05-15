@@ -32,7 +32,7 @@ export const LiveStats: React.FC<LiveStatsProps> = ({
           style={{
             background: 'rgba(10, 10, 10, 0.92)',
             backdropFilter: 'blur(16px)',
-            border: '1px solid rgba(201, 168, 76, 0.25)',
+            border: '1px solid rgba(63, 123, 74, 0.35)',
             borderRadius: '14px',
             padding: '1rem 1.25rem',
             display: 'flex',
@@ -70,7 +70,7 @@ export const LiveStats: React.FC<LiveStatsProps> = ({
           padding: '0.5rem 0.85rem',
           background: 'rgba(10, 10, 10, 0.9)',
           backdropFilter: 'blur(12px)',
-          border: '1px solid rgba(201, 168, 76, 0.3)',
+          border: '1px solid rgba(63, 123, 74, 0.4)',
           borderRadius: '24px',
           cursor: 'pointer',
           color: 'var(--wa-gold)',
@@ -80,11 +80,11 @@ export const LiveStats: React.FC<LiveStatsProps> = ({
           transition: 'all 0.3s ease',
         }}
         onMouseOver={(e) => {
-          e.currentTarget.style.borderColor = 'rgba(201,168,76,0.6)';
+          e.currentTarget.style.borderColor = 'rgba(63,123,74,0.65)';
           e.currentTarget.style.transform = 'scale(1.05)';
         }}
         onMouseOut={(e) => {
-          e.currentTarget.style.borderColor = 'rgba(201,168,76,0.3)';
+          e.currentTarget.style.borderColor = 'rgba(63,123,74,0.4)';
           e.currentTarget.style.transform = 'scale(1)';
         }}
       >

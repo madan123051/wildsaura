@@ -9,13 +9,13 @@ interface HeroProps {
 
 const DEFAULT_HERO = '/photos/tiger-hero.jpg';
 
-// Nepal NatGeo palette
+// WA Nature of Nepal palette
 const C = {
-  natgeoYellow: '#E8C84A',
-  parchment:    '#F2E4C4',   // warm cream — title
-  sage:         '#C5D9B5',   // soft nature green — body text
+  natgeoYellow: '#9fcb8f',
+  parchment:    '#e8f5e9',   // WA light — title
+  sage:         '#9fcb8f',   // WA moss — body text
   himalBlue:    '#8DC3D8',   // Himalayan sky — eyebrow
-  muted:        'rgba(197,217,181,0.65)', // dimmed sage for secondary
+  muted:        'rgba(159,203,143,0.65)', // WA moss muted
 };
 
 // Nepal Standard Time = UTC+5:45
@@ -105,7 +105,7 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages }) => {
               style={{
                 width: idx === currentIndex ? 24 : 8, height: 8,
                 borderRadius: 4, border: 'none', cursor: 'pointer',
-                background: idx === currentIndex ? C.natgeoYellow : 'rgba(255,255,255,0.35)',
+                background: idx === currentIndex ? C.natgeoYellow : 'rgba(159,203,143,0.35)',
                 transition: 'all 0.3s',
               }}
             />
@@ -125,7 +125,7 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages }) => {
               padding: '1.1rem 1.2rem 1rem',
               borderRadius: '0 0 14px 14px',
               background: 'rgba(2, 8, 5, 0.52)',
-              border: '1px solid rgba(232,200,74,0.18)',
+              border: '1px solid rgba(63,123,74,0.22)',
               borderTop: `4px solid ${C.natgeoYellow}`,
               backdropFilter: 'blur(14px)',
               WebkitBackdropFilter: 'blur(14px)',
