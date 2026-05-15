@@ -65,6 +65,7 @@ export const Header: React.FC<HeaderProps> = ({
     { label: 'Stories', href: '#stories', onClick: onStoriesClick },
     { label: 'About', href: '#about' },
     { label: 'Contact', href: '#contact' },
+    { label: 'Join Community', href: '#join-community' },
   ];
 
   const getAvatarEmoji = () => {
