@@ -43,6 +43,7 @@ interface CommunityPageProps {
   isAdmin: boolean;
   onAdminClick: () => void;
   onTermsClick: () => void;
+  onProfileClick?: () => void;
 }
 
 export function CommunityPage({
@@ -60,6 +61,7 @@ export function CommunityPage({
   isAdmin,
   onAdminClick,
   onTermsClick,
+  onProfileClick,
 }: CommunityPageProps) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -252,6 +254,7 @@ export function CommunityPage({
         onNotificationClick={onNotificationClick}
         isAdmin={isAdmin}
         onAdminClick={onAdminClick}
+        onProfileClick={onProfileClick}
       />
 
       <div style={s.feed}>
@@ -288,15 +291,19 @@ export function CommunityPage({
             const likeCount = post.likes?.length || 0;
             const commentCount = post.comments?.length || 0;
             const showComments = openComments.has(post.id);
+            // Show current displayName for own posts so it stays in sync with the profile
+            const displayUsername = (authUid && post.userId === authUid && visitor)
+              ? visitor.displayName
+              : (post.username || 'Anonymous');
 
             return (
               <div key={post.id} style={s.card}>
                 <div style={s.cardHeader}>
                   <div style={s.avatar}>
-                    {(post.username || 'U').charAt(0).toUpperCase()}
+                    {(displayUsername).charAt(0).toUpperCase()}
                   </div>
                   <div>
-                    <div style={s.username}>{post.username || 'Anonymous'}</div>
+                    <div style={s.username}>{displayUsername}</div>
                     <div style={s.timestamp}>{formatTime(post.timestamp)}</div>
                   </div>
                 </div>

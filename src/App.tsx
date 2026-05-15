@@ -1397,6 +1397,14 @@ const App: React.FC = () => {
           onClose={() => setShowVisitorLogin(false)}
           onLogin={handleVisitorLogin}
         />
+        <ProfileModal
+          isOpen={showProfile}
+          visitor={visitor}
+          onClose={() => setShowProfile(false)}
+          onVisitorUpdate={handleVisitorUpdate}
+          onLogout={handleVisitorLogout}
+          downloadCount={downloadCount}
+        />
       </div>
     );
   }
@@ -1448,6 +1456,14 @@ const App: React.FC = () => {
           onClose={() => setShowVisitorLogin(false)}
           onLogin={handleVisitorLogin}
         />
+        <ProfileModal
+          isOpen={showProfile}
+          visitor={visitor}
+          onClose={() => setShowProfile(false)}
+          onVisitorUpdate={handleVisitorUpdate}
+          onLogout={handleVisitorLogout}
+          downloadCount={downloadCount}
+        />
       </div>
     );
   }
@@ -1495,22 +1511,38 @@ const App: React.FC = () => {
   );
   if (view === 'marketplace') return <StaticPage title="Buy & Sell Authentic Nepal Photography" text="Support local photographers by purchasing high-quality images. Use them for personal or commercial projects. Option A: Buy Now via Google Form/DM and payment by eSewa or bank. Option B: Stripe or Gumroad links." cta="20% of every purchase supports animal rescue in Nepal." />;
   if (view === 'community') return (
-    <CommunityPage
-      onBack={() => { setView('home'); window.history.pushState({}, '', '/'); window.scrollTo(0, 0); }}
-      logoUrl={logoUrl}
-      onScrollToGallery={scrollToGallery}
-      onSearchClick={() => setShowSearch(true)}
-      visitor={visitor}
-      onVisitorLoginClick={() => setShowVisitorLogin(true)}
-      onVisitorLogout={handleVisitorLogout}
-      onVisitorUpdate={handleVisitorUpdate}
-      onStoriesClick={handleStoriesNavClick}
-      notificationCount={unreadNotifCount}
-      onNotificationClick={() => setShowNotifPanel(p => !p)}
-      isAdmin={isAdmin}
-      onAdminClick={() => { setView('admin-dashboard'); window.history.pushState({}, '', '/admin'); }}
-      onTermsClick={handleTermsClick}
-    />
+    <>
+      <CommunityPage
+        onBack={() => { setView('home'); window.history.pushState({}, '', '/'); window.scrollTo(0, 0); }}
+        logoUrl={logoUrl}
+        onScrollToGallery={scrollToGallery}
+        onSearchClick={() => setShowSearch(true)}
+        visitor={visitor}
+        onVisitorLoginClick={() => setShowVisitorLogin(true)}
+        onVisitorLogout={handleVisitorLogout}
+        onVisitorUpdate={handleVisitorUpdate}
+        onStoriesClick={handleStoriesNavClick}
+        notificationCount={unreadNotifCount}
+        onNotificationClick={() => setShowNotifPanel(p => !p)}
+        isAdmin={isAdmin}
+        onAdminClick={() => { setView('admin-dashboard'); window.history.pushState({}, '', '/admin'); }}
+        onTermsClick={handleTermsClick}
+        onProfileClick={() => setShowProfile(true)}
+      />
+      <ProfileModal
+        isOpen={showProfile}
+        visitor={visitor}
+        onClose={() => setShowProfile(false)}
+        onVisitorUpdate={handleVisitorUpdate}
+        onLogout={handleVisitorLogout}
+        downloadCount={downloadCount}
+      />
+      <VisitorLogin
+        isOpen={showVisitorLogin}
+        onClose={() => setShowVisitorLogin(false)}
+        onLogin={handleVisitorLogin}
+      />
+    </>
   );
   if (view === 'ngo') return <StaticPage title="Save Animal Nepal" text="We are building a system to support injured and abandoned animals across Nepal. Through photography and community support, we aim to create real impact. Mission: rescue, treatment, and feeding. Future plan: transparent monthly reporting and verified rescue partners." />;
   if (view === 'about') return <StaticPage title="About WildSaura" text="WildSaura connects photographers, nature lovers, and a mission to protect animals in Nepal. Start small, grow fast, and use visual storytelling for impact." />;
@@ -1606,10 +1638,11 @@ const App: React.FC = () => {
         onVisitorLogout={handleVisitorLogout}
         onVisitorUpdate={handleVisitorUpdate}
         onStoriesClick={handleStoriesNavClick}
-          notificationCount={unreadNotifCount}
-          onNotificationClick={() => setShowNotifPanel(p => !p)}
-          isAdmin={isAdmin}
-          onAdminClick={() => { setView('admin-dashboard'); window.history.pushState({}, '', '/admin'); }}
+        onProfileClick={() => setShowProfile(true)}
+        notificationCount={unreadNotifCount}
+        onNotificationClick={() => setShowNotifPanel(p => !p)}
+        isAdmin={isAdmin}
+        onAdminClick={() => { setView('admin-dashboard'); window.history.pushState({}, '', '/admin'); }}
       />
       <Hero onExplore={scrollToGallery} logoUrl={logoUrl} heroImages={siteSettings.heroImages} />
       <CategorySection categories={dynamicCategories} onCategoryClick={handleCategoryClick} />
