@@ -608,6 +608,7 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
             <option value="wildlife">Wildlife</option>
             <option value="birds">Birds</option>
             <option value="macro">Macro</option>
+            <option value="domestic">Domestic Animals</option>
             <option value="landscape">Landscape</option>
             <option value="street">Street</option>
             <option value="nature">Nature</option>
@@ -1454,7 +1455,7 @@ const VideoForm: React.FC<VideoFormProps> = ({ initial, onSave, onCancel, nextId
 const SiteSettingsForm = () => {
   const [heroImages, setHeroImages] = React.useState<string[]>(['', '', '', '']);
   const [defaultThumbnail, setDefaultThumbnail] = React.useState('');
-  const [categoryImages, setCategoryImages] = React.useState<{ wildlife?: string; birds?: string; macro?: string; landscape?: string; nature?: string; portraits?: string }>({});
+  const [categoryImages, setCategoryImages] = React.useState<{ wildlife?: string; birds?: string; macro?: string; domestic?: string; landscape?: string; nature?: string; portraits?: string }>({});
   const [saving, setSaving] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
   const [uploadingSlot, setUploadingSlot] = React.useState<number | null>(null);
@@ -1677,6 +1678,7 @@ const SiteSettingsForm = () => {
             { key: 'wildlife', label: 'Wildlife' },
             { key: 'birds', label: 'Birds' },
             { key: 'macro', label: 'Macro' },
+            { key: 'domestic', label: 'Domestic Animals' },
             { key: 'landscape', label: 'Landscapes' },
             { key: 'nature', label: 'Nature' },
             { key: 'portraits', label: 'Portraits' },
