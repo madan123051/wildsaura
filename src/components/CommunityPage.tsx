@@ -77,6 +77,8 @@ export function CommunityPage({
   const [submitting, setSubmitting] = useState(false);
   const [openComments, setOpenComments] = useState<Set<string>>(new Set());
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | undefined>(undefined);
+  const [profileSpiritAnimal, setProfileSpiritAnimal] = useState<string | undefined>(undefined);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Track Firebase auth state for uid
@@ -86,6 +88,25 @@ export function CommunityPage({
     });
     return () => unsub();
   }, []);
+
+  useEffect(() => {
+    const loadProfileAvatar = async () => {
+      if (!visitor) {
+        setProfileAvatarUrl(undefined);
+        setProfileSpiritAnimal(undefined);
+        return;
+      }
+      try {
+        const profile = await getCurrentUserProfile();
+        setProfileAvatarUrl(profile?.avatarUrl);
+        setProfileSpiritAnimal(profile?.spiritAnimal);
+      } catch {
+        setProfileAvatarUrl(undefined);
+        setProfileSpiritAnimal(undefined);
+      }
+    };
+    loadProfileAvatar();
+  }, [visitor]);
 
   // Load posts — no login required
   useEffect(() => {
@@ -274,6 +295,7 @@ export function CommunityPage({
         isAdmin={isAdmin}
         onAdminClick={onAdminClick}
         onProfileClick={onProfileClick}
+        profileAvatarUrl={profileAvatarUrl}
       />
 
       <div style={s.feed}>
@@ -321,8 +343,8 @@ export function CommunityPage({
                   {/* NEW: Use AvatarDisplay component */}
                   <AvatarDisplay
                     displayName={displayUsername}
-                    avatarUrl={post.userAvatarUrl}
-                    spiritAnimal={post.userSpiritAnimal}
+                    avatarUrl={(authUid && post.userId === authUid) ? (profileAvatarUrl || post.userAvatarUrl) : post.userAvatarUrl}
+                    spiritAnimal={(authUid && post.userId === authUid) ? (profileSpiritAnimal || post.userSpiritAnimal) : post.userSpiritAnimal}
                     size={42}
                     style={{ marginRight: '0rem' }}
                   />
