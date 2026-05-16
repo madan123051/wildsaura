@@ -27,7 +27,6 @@ interface HeaderProps {
   onAdminClick?: () => void;
   onProfileClick?: () => void;
   onCommunityClick?: () => void;
-  profileAvatarUrl?: string;
 }
 
 const THEME_CYCLE: Theme[] = ['system', 'light', 'dark'];
@@ -48,7 +47,6 @@ export const Header: React.FC<HeaderProps> = ({
   onScrollToGallery, logoUrl,
   onSearchClick, visitor, onVisitorLoginClick, onVisitorLogout, onStoriesClick, onVisitorUpdate,
   notificationCount = 0, onNotificationClick, isAdmin, onAdminClick, onProfileClick, onCommunityClick,
-  profileAvatarUrl,
 }) => {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -259,9 +257,9 @@ export const Header: React.FC<HeaderProps> = ({
                         overflow: 'hidden',
                       }}
                     >
-                      {(profileAvatarUrl || visitor.avatarUrl) ? (
+                      {visitor.avatarUrl ? (
                         <img
-                          src={profileAvatarUrl || visitor.avatarUrl}
+                          src={visitor.avatarUrl}
                           alt={visitor.displayName}
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         />
