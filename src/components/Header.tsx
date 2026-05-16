@@ -244,19 +244,28 @@ export const Header: React.FC<HeaderProps> = ({
                 <div style={{ padding: '0.5rem 0' }}>
                   {/* Profile row */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                    {/* Avatar circle */}
+                    {/* Avatar circle - Shows profile photo if available */}
                     <div
                       style={{
                         width: 44, height: 44, borderRadius: '50%',
-                        background: getAvatarEmoji() ? 'rgba(79,159,98,0.22)' : visitor.avatarColor,
+                        background: visitor.avatarUrl ? 'transparent' : (getAvatarEmoji() ? 'rgba(79,159,98,0.22)' : visitor.avatarColor),
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontSize: getAvatarEmoji() ? '1.5rem' : '1rem',
                         fontWeight: 700, color: getAvatarEmoji() ? undefined : '#000',
                         border: '2px solid rgba(168,216,162,0.55)',
                         flexShrink: 0,
+                        overflow: 'hidden',
                       }}
                     >
-                      {getAvatarEmoji() || visitor.displayName.charAt(0).toUpperCase()}
+                      {visitor.avatarUrl ? (
+                        <img
+                          src={visitor.avatarUrl}
+                          alt={visitor.displayName}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                      ) : (
+                        getAvatarEmoji() || visitor.displayName.charAt(0).toUpperCase()
+                      )}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <span style={{ display: 'block', fontSize: '0.82rem', color: 'var(--wa-gold)', fontWeight: 600 }}>
