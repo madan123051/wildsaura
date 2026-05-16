@@ -20,6 +20,7 @@ import { StoryDetail } from './components/StoryDetail';
 import { PhotoGridPage } from './components/PhotoGridPage';
 import { StoryGridPage } from './components/StoryGridPage';
 import { VideoGridPage } from './components/VideoGridPage';
+import { ProfileModal } from './components/ProfileModal';
 import { downloadPhoto } from './utils/downloadPhoto';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './firebase';
@@ -204,6 +205,7 @@ const App: React.FC = () => {
   const [visitor, setVisitor] = useState<Visitor | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [showVisitorLogin, setShowVisitorLogin] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [photoComments, setPhotoComments] = useState<Record<string, Comment[]>>({});
   const [storyComments, setStoryComments] = useState<Record<string, Comment[]>>({});
@@ -1293,6 +1295,16 @@ const App: React.FC = () => {
     }, 100);
   }, [view]);
 
+  const handleProfileClick = useCallback(() => {
+    setShowProfile(true);
+  }, []);
+
+  const handleCommunityClick = useCallback(() => {
+    setView('community');
+    window.history.pushState({}, '', '/community');
+    window.scrollTo(0, 0);
+  }, []);
+
   // ── Helper: Open/Close Photo with URL ────────────────────────────────────
   const openPhoto = useCallback((photo: Photo | null) => {
     setSelectedPhoto(photo);
@@ -1638,12 +1650,14 @@ const App: React.FC = () => {
         onVisitorLogout={handleVisitorLogout}
         onVisitorUpdate={handleVisitorUpdate}
         onStoriesClick={handleStoriesNavClick}
-          notificationCount={unreadNotifCount}
-          onNotificationClick={() => setShowNotifPanel(p => !p)}
-          isAdmin={isAdmin}
-          onAdminClick={() => { setView('admin-dashboard'); window.history.pushState({}, '', '/admin'); }}
+        notificationCount={unreadNotifCount}
+        onNotificationClick={() => setShowNotifPanel(p => !p)}
+        isAdmin={isAdmin}
+        onAdminClick={() => { setView('admin-dashboard'); window.history.pushState({}, '', '/admin'); }}
+        onProfileClick={handleProfileClick}
+        onCommunityClick={handleCommunityClick}
       />
-      <Hero onExplore={scrollToGallery} logoUrl={logoUrl} heroImages={siteSettings.heroImages} />
+      <Hero onExplore={scrollToGallery} logoUrl={logoUrl} heroImages={siteSettings.heroImages} onCommunityClick={handleCommunityClick} />
       <CategorySection categories={dynamicCategories} onCategoryClick={handleCategoryClick} />
       <Gallery
         photos={photos}
@@ -1730,6 +1744,15 @@ const App: React.FC = () => {
         isOpen={showVisitorLogin}
         onClose={() => setShowVisitorLogin(false)}
         onLogin={handleVisitorLogin}
+      />
+
+      <ProfileModal
+        isOpen={showProfile}
+        visitor={visitor}
+        onClose={() => setShowProfile(false)}
+        onVisitorUpdate={handleVisitorUpdate}
+        onLogout={handleVisitorLogout}
+        downloadCount={downloadCount}
       />
 
       <NotificationPanel
