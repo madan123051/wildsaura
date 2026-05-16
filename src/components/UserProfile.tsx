@@ -7,6 +7,7 @@ import {
   updateUserAvatar,
 } from '../services/userProfileService';
 import { UserProfile } from '../services/userProfileService';
+import { AvatarDisplay } from './AvatarDisplay';
 import './UserProfile.css';
 
 interface UserProfilePageProps {
@@ -192,12 +193,17 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({ onLogout, onCl
           <div className="profile-view">
             {/* Avatar Section */}
             <div className="avatar-section">
-              <div
-                className="avatar"
-                style={{ backgroundColor: profile?.avatarColor || '#4ECDC4' }}
-              >
-                {profile?.displayName.charAt(0).toUpperCase()}
-              </div>
+              <AvatarDisplay
+                displayName={profile?.displayName}
+                avatarUrl={profile?.avatarUrl}
+                spiritAnimal={profile?.spiritAnimal}
+                avatarColor={profile?.avatarColor || '#4ECDC4'}
+                size={88}
+                style={{
+                  border: '3px solid rgba(212, 163, 115, 0.3)',
+                  marginBottom: '1rem',
+                }}
+              />
               <div className="user-info">
                 <h3>{profile?.displayName}</h3>
                 <p>{profile?.email}</p>
