@@ -20,6 +20,8 @@ import { StoryDetail } from './components/StoryDetail';
 import { PhotoGridPage } from './components/PhotoGridPage';
 import { StoryGridPage } from './components/StoryGridPage';
 import { VideoGridPage } from './components/VideoGridPage';
+import { ProfileModal } from './components/ProfileModal';
+import { CommunityPage } from './components/CommunityPage';
 import { downloadPhoto } from './utils/downloadPhoto';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './firebase';
@@ -204,6 +206,7 @@ const App: React.FC = () => {
   const [visitor, setVisitor] = useState<Visitor | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [showVisitorLogin, setShowVisitorLogin] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [photoComments, setPhotoComments] = useState<Record<string, Comment[]>>({});
   const [storyComments, setStoryComments] = useState<Record<string, Comment[]>>({});
@@ -222,6 +225,9 @@ const App: React.FC = () => {
   const [showNotifPanel, setShowNotifPanel] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
   const [isPullRefreshing, setIsPullRefreshing] = useState(false);
+  
+  // Derived notification count for Header/CommunityPage
+  const notificationCount = notifications.length;
   const pullStartYRef = useRef<number | null>(null);
   const pullDistanceRef = useRef(0);
   const isPullingRef = useRef(false);
@@ -1293,6 +1299,16 @@ const App: React.FC = () => {
     }, 100);
   }, [view]);
 
+  const handleProfileClick = useCallback(() => {
+    setShowProfile(true);
+  }, []);
+
+  const handleCommunityClick = useCallback(() => {
+    setView('community');
+    window.history.pushState({}, '', '/community');
+    window.scrollTo(0, 0);
+  }, []);
+
   // ── Helper: Open/Close Photo with URL ────────────────────────────────────
   const openPhoto = useCallback((photo: Photo | null) => {
     setSelectedPhoto(photo);
@@ -1543,7 +1559,25 @@ const App: React.FC = () => {
     </div>
   );
   if (view === 'marketplace') return <StaticPage title="Buy & Sell Authentic Nepal Photography" text="Support local photographers by purchasing high-quality images. Use them for personal or commercial projects. Option A: Buy Now via Google Form/DM and payment by eSewa or bank. Option B: Stripe or Gumroad links." cta="20% of every purchase supports animal rescue in Nepal." />;
-  if (view === 'community') return <StaticPage title="Join the Photography Community" text="Connect with creators, share your work, and grow your photography journey with Drishya." cta="Photography that makes an impact." />;
+  if (view === 'community') return (
+    <CommunityPage
+      onBack={() => setView('home')}
+      logoUrl={logoUrl}
+      onScrollToGallery={scrollToGallery}
+      onSearchClick={() => setShowSearch(true)}
+      visitor={visitor}
+      onVisitorLoginClick={() => setShowVisitorLogin(true)}
+      onVisitorLogout={handleVisitorLogout}
+      onVisitorUpdate={handleVisitorUpdate}
+      onStoriesClick={handleStoriesNavClick}
+      notificationCount={notificationCount}
+      onNotificationClick={() => setShowNotifPanel(true)}
+      isAdmin={isAdmin}
+      onAdminClick={() => { setView('admin-dashboard'); window.history.pushState({}, '', '/admin'); }}
+      onTermsClick={handleTermsClick}
+      onProfileClick={handleProfileClick}
+    />
+  );
   if (view === 'ngo') return <StaticPage title="Save Animal Nepal" text="We are building a system to support injured and abandoned animals across Nepal. Through photography and community support, we aim to create real impact. Mission: rescue, treatment, and feeding. Future plan: transparent monthly reporting and verified rescue partners." />;
   if (view === 'about') return <StaticPage title="About WildSaura" text="WildSaura connects photographers, nature lovers, and a mission to protect animals in Nepal. Start small, grow fast, and use visual storytelling for impact." />;
   if (view === 'contact') return <StaticPage title="Contact" text="For partnerships, volunteering, and media inquiries, message us through the contact form on the homepage." />;
@@ -1638,12 +1672,14 @@ const App: React.FC = () => {
         onVisitorLogout={handleVisitorLogout}
         onVisitorUpdate={handleVisitorUpdate}
         onStoriesClick={handleStoriesNavClick}
-          notificationCount={unreadNotifCount}
-          onNotificationClick={() => setShowNotifPanel(p => !p)}
-          isAdmin={isAdmin}
-          onAdminClick={() => { setView('admin-dashboard'); window.history.pushState({}, '', '/admin'); }}
+        notificationCount={unreadNotifCount}
+        onNotificationClick={() => setShowNotifPanel(p => !p)}
+        isAdmin={isAdmin}
+        onAdminClick={() => { setView('admin-dashboard'); window.history.pushState({}, '', '/admin'); }}
+        onProfileClick={handleProfileClick}
+        onCommunityClick={handleCommunityClick}
       />
-      <Hero onExplore={scrollToGallery} logoUrl={logoUrl} heroImages={siteSettings.heroImages} />
+      <Hero onExplore={scrollToGallery} logoUrl={logoUrl} heroImages={siteSettings.heroImages} onCommunityClick={handleCommunityClick} />
       <CategorySection categories={dynamicCategories} onCategoryClick={handleCategoryClick} />
       <Gallery
         photos={photos}
@@ -1730,6 +1766,15 @@ const App: React.FC = () => {
         isOpen={showVisitorLogin}
         onClose={() => setShowVisitorLogin(false)}
         onLogin={handleVisitorLogin}
+      />
+
+      <ProfileModal
+        isOpen={showProfile}
+        visitor={visitor}
+        onClose={() => setShowProfile(false)}
+        onVisitorUpdate={handleVisitorUpdate}
+        onLogout={handleVisitorLogout}
+        downloadCount={downloadCount}
       />
 
       <NotificationPanel
