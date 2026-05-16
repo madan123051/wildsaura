@@ -7,6 +7,9 @@ export interface SiteSettings {
   defaultThumbnail?: string; // Default thumbnail URL
   categoryImages?: {
     wildlife?: string;
+    birds?: string;
+    macro?: string;
+    domestic?: string;
     landscape?: string;
     nature?: string;
     portraits?: string;

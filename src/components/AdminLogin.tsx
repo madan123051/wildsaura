@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
+import { Eye, EyeOff, Lock, User } from 'lucide-react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebase';
 
@@ -22,19 +22,10 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ logoUrl, onLogin, onBack
     setLoading(true);
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      await signInWithEmailAndPassword(auth, username, password);
       onLogin();
-    } catch (err: any) {
-      console.error('Admin login error:', err.code);
-      if (err.code === 'auth/invalid-email') {
-        setError('Invalid email address.');
-      } else if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-        setError('Invalid credentials. Please try again.');
-      } else if (err.code === 'auth/too-many-requests') {
-        setError('Too many attempts. Please wait and try again.');
-      } else {
-        setError('Login failed. Please try again.');
-      }
+    } catch (err) {
+      setError('Invalid credentials. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -114,9 +105,9 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ logoUrl, onLogin, onBack
                 <Mail size={18} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'rgba(201,168,76,0.4)' }} />
                 <input
                   type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter admin email"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Enter email"
                   required
                   autoComplete="email"
                   style={{

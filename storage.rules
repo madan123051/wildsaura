@@ -24,8 +24,20 @@ service firebase.storage {
       allow write: if request.auth != null;
     }
 
+    // Inline images inside story content
+    match /stories/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
     // Site Settings: hero slider, category images, default thumbnail
     match /site-settings/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Community post photo uploads
+    match /community_posts/{allPaths=**} {
       allow read: if true;
       allow write: if request.auth != null;
     }

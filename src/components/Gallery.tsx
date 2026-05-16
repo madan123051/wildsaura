@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Camera, ChevronDown } from 'lucide-react';
+import { Camera, ArrowRight } from 'lucide-react';
 import { Photo, FilterTab } from '../types';
 import { PhotoCard } from './PhotoCard';
 
@@ -15,6 +15,7 @@ interface GalleryProps {
   galleryRef: React.RefObject<HTMLElement | null>;
   isLoggedIn: boolean;
   onLoginRequired: () => void;
+  onViewAll?: () => void;
 }
 
 const INITIAL_COUNT = 6;
@@ -31,11 +32,11 @@ export const Gallery: React.FC<GalleryProps> = ({
   galleryRef,
   isLoggedIn,
   onLoginRequired,
+  onViewAll,
 }) => {
-  const [showAll, setShowAll] = useState(false);
   const filtered = selectedCategory === 'all' ? photos : photos.filter((p) => p.category === selectedCategory);
   const published = filtered.filter(p => p.published !== false);
-  const displayPhotos = showAll ? published : published.slice(0, INITIAL_COUNT);
+  const displayPhotos = published.slice(0, INITIAL_COUNT);
   const hasMore = published.length > INITIAL_COUNT;
 
   return (
@@ -44,15 +45,43 @@ export const Gallery: React.FC<GalleryProps> = ({
         {/* Section Header */}
         <div style={{ marginBottom: '2.5rem' }}>
           <p className="section-subtitle">Portfolio</p>
-          <h2 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            📷 Latest Posts
-            <span style={{
-              fontSize: '0.9rem', fontWeight: 400, color: 'var(--wa-text-muted)',
-              marginLeft: '0.25rem',
-            }}>
-              ({published.length})
-            </span>
-          </h2>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
+            <h2 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+              📷 Latest Posts
+              <span style={{
+                fontSize: '0.9rem', fontWeight: 400, color: 'var(--wa-text-muted)',
+                marginLeft: '0.25rem',
+              }}>
+                ({published.length})
+              </span>
+            </h2>
+            {onViewAll && (
+              <button
+                onClick={onViewAll}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+                  padding: '0.5rem 1.25rem',
+                  background: 'linear-gradient(135deg, var(--wa-gold), #b8892d)',
+                  color: '#062013',
+                  border: 'none', borderRadius: 50,
+                  fontSize: '0.85rem', fontWeight: 700,
+                  letterSpacing: '0.03em', cursor: 'pointer',
+                  transition: 'all 0.25s',
+                  boxShadow: '0 2px 12px rgba(201,168,76,0.3)',
+                }}
+                onMouseOver={e => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(201,168,76,0.4)';
+                }}
+                onMouseOut={e => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 2px 12px rgba(201,168,76,0.3)';
+                }}
+              >
+                View All <ArrowRight size={15} />
+              </button>
+            )}
+          </div>
           <div className="section-line" />
         </div>
 
@@ -61,7 +90,7 @@ export const Gallery: React.FC<GalleryProps> = ({
           {filterTabs.map((tab) => (
             <button
               key={tab.key}
-              onClick={() => { onCategoryChange(tab.key); setShowAll(false); }}
+              onClick={() => onCategoryChange(tab.key)}
               className={`filter-tab ${selectedCategory === tab.key ? 'active' : ''}`}
             >
               {tab.label}
@@ -100,11 +129,11 @@ export const Gallery: React.FC<GalleryProps> = ({
               ))}
             </div>
 
-            {/* View More / View Less Button */}
-            {hasMore && (
+            {/* View All Button */}
+            {hasMore && onViewAll && (
               <div style={{ textAlign: 'center', marginTop: '2.5rem' }}>
                 <button
-                  onClick={() => setShowAll(!showAll)}
+                  onClick={onViewAll}
                   style={{
                     display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
                     padding: '0.75rem 2rem',
@@ -112,26 +141,20 @@ export const Gallery: React.FC<GalleryProps> = ({
                     border: '2px solid var(--wa-gold)',
                     color: 'var(--wa-gold)',
                     borderRadius: '50px',
-                    fontSize: '0.9rem',
-                    fontWeight: 600,
-                    letterSpacing: '0.05em',
-                    cursor: 'pointer',
+                    fontSize: '0.9rem', fontWeight: 600,
+                    letterSpacing: '0.05em', cursor: 'pointer',
                     transition: 'all 0.3s ease',
                   }}
                   onMouseOver={(e) => {
                     e.currentTarget.style.background = 'var(--wa-gold)';
-                    e.currentTarget.style.color = '#0a0a0a';
+                    e.currentTarget.style.color = '#062013';
                   }}
                   onMouseOut={(e) => {
                     e.currentTarget.style.background = 'transparent';
                     e.currentTarget.style.color = 'var(--wa-gold)';
                   }}
                 >
-                  {showAll ? 'Show Less' : `View More Posts`}
-                  <ChevronDown size={16} style={{
-                    transform: showAll ? 'rotate(180deg)' : 'rotate(0)',
-                    transition: 'transform 0.3s',
-                  }} />
+                  View All {published.length} Photos <ArrowRight size={16} />
                 </button>
               </div>
             )}

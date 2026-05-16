@@ -17,6 +17,12 @@ export interface FirestoreStory {
 
 const STORIES_COLLECTION = 'stories';
 
+// Only show stories that have a non-empty title
+// (filters out stories from other sites sharing the same Firebase)
+function hasTitle(story: FirestoreStory): boolean {
+  return !!(story.title && story.title.trim() !== '');
+}
+
 export async function uploadStoryCoverToStorage(dataUrl: string, filename: string): Promise<string> {
   const storageRef = ref(storage, `story-covers/${Date.now()}_${filename}`);
   await uploadString(storageRef, dataUrl, 'data_url');
@@ -35,16 +41,19 @@ export async function getStoriesFromFirestore(): Promise<FirestoreStory[]> {
   try {
     const q = query(collection(db, STORIES_COLLECTION), orderBy('createdAt', 'desc'));
     const snapshot = await getDocs(q);
-    
     return snapshot.docs
       .map(d => ({ id: d.id, ...d.data() } as FirestoreStory))
-      .filter(story => {
-        // Show stories with no projectId (old data) OR matching projectId (new data)
-        return !story.projectId || story.projectId === PROJECT_ID;
-      });
+      .filter(hasTitle);
   } catch (err) {
-    console.warn('Firestore stories fetch failed:', err);
-    return [];
+    try {
+      const snapshot = await getDocs(collection(db, STORIES_COLLECTION));
+      return snapshot.docs
+        .map(d => ({ id: d.id, ...d.data() } as FirestoreStory))
+        .filter(hasTitle);
+    } catch {
+      console.warn('Firestore stories fetch failed:', err);
+      return [];
+    }
   }
 }
 
@@ -65,27 +74,17 @@ export function subscribeToStories(
   onUpdate: (stories: FirestoreStory[]) => void,
   onError?: (error: Error) => void
 ): Unsubscribe {
-  try {
-    // ← FIXED: Fetch all, filter in-memory for backward compatibility
-    const q = query(collection(db, STORIES_COLLECTION), orderBy('createdAt', 'desc'));
-    
-    return onSnapshot(q,
-      (snapshot) => {
-        const stories = snapshot.docs
-          .map(d => ({ id: d.id, ...d.data() } as FirestoreStory))
-          .filter(story => {
-            // Show stories with no projectId (old data) OR matching projectId (new data)
-            return !story.projectId || story.projectId === PROJECT_ID;
-          });
-        onUpdate(stories);
-      },
-      (error) => {
-        console.error('Story subscription error:', error);
-        if (onError) onError(error);
-      }
-    );
-  } catch (error) {
-    console.error('Story subscription setup failed:', error);
-    return () => {}; // Return dummy unsubscribe
-  }
+  const q = query(collection(db, STORIES_COLLECTION), orderBy('createdAt', 'desc'));
+  return onSnapshot(q,
+    (snapshot) => {
+      const stories = snapshot.docs
+        .map(d => ({ id: d.id, ...d.data() } as FirestoreStory))
+        .filter(hasTitle);
+      onUpdate(stories);
+    },
+    (error) => {
+      console.error('Story subscription error:', error);
+      if (onError) onError(error);
+    }
+  );
 }

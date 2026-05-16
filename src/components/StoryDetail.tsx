@@ -16,6 +16,49 @@ interface StoryDetailProps {
 
 const estimateReadTime = (content: string): number => Math.max(1, Math.ceil(content.split(/\s+/).length / 200));
 
+// Parse story content: splits by [IMAGE:url] markers and renders paragraphs + images
+const renderStoryContent = (content: string) => {
+  const parts = content.split(/(\[IMAGE:[^\]]+\])/g);
+  const elements: React.ReactNode[] = [];
+
+  parts.forEach((part, i) => {
+    const imgMatch = part.match(/^\[IMAGE:(.+)\]$/);
+    if (imgMatch) {
+      elements.push(
+        <div key={`img-${i}`} style={{ margin: '2rem 0', textAlign: 'center' }}>
+          <img
+            src={imgMatch[1]}
+            alt={`Story image ${Math.floor(i / 2) + 1}`}
+            style={{
+              maxWidth: '100%',
+              width: '100%',
+              borderRadius: '12px',
+              boxShadow: '0 6px 30px rgba(0,0,0,0.5)',
+              display: 'block',
+            }}
+            loading="lazy"
+          />
+        </div>
+      );
+    } else {
+      // Regular text — split into paragraphs by double newline
+      const paras = part.split('\n\n').filter(p => p.trim() !== '');
+      paras.forEach((para, j) => {
+        elements.push(
+          <p key={`p-${i}-${j}`} style={{
+            fontSize: '0.95rem', lineHeight: 1.8, color: 'var(--wa-text)',
+            marginBottom: '1.25rem', opacity: 0.85,
+          }}>
+            {para}
+          </p>
+        );
+      });
+    }
+  });
+
+  return elements;
+};
+
 export const StoryDetail: React.FC<StoryDetailProps> = ({
   story, onBack, onLike, visitor, comments, onAddComment, onVisitorLoginClick: _onVisitorLoginClick, isAdmin, onDeleteComment,
 }) => {
@@ -120,16 +163,9 @@ export const StoryDetail: React.FC<StoryDetailProps> = ({
             <span>{new Date(story.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
           </div>
 
-          {/* Story Content */}
+          {/* Story Content — supports [IMAGE:url] inline markers */}
           <div style={{ marginBottom: '2.5rem' }}>
-            {story.content.split('\n\n').map((para, i) => (
-              <p key={i} style={{
-                fontSize: '0.95rem', lineHeight: 1.8, color: 'var(--wa-text)',
-                marginBottom: '1.25rem', opacity: 0.85,
-              }}>
-                {para}
-              </p>
-            ))}
+            {renderStoryContent(story.content)}
           </div>
 
           {/* Like Button */}
@@ -173,7 +209,7 @@ export const StoryDetail: React.FC<StoryDetailProps> = ({
             {shareToast && (
               <div style={{
                 position: 'fixed', bottom: 30, left: '50%', transform: 'translateX(-50%)',
-                background: 'var(--wa-gold)', color: '#0a0a0a', padding: '0.75rem 1.5rem',
+                background: 'linear-gradient(135deg, #3f7b4a 0%, #9fcb8f 55%, #72aa81 100%)', color: '#062013', padding: '0.75rem 1.5rem',
                 borderRadius: '10px', fontWeight: 600, fontSize: '0.85rem', zIndex: 9999,
                 boxShadow: '0 4px 20px rgba(201,168,76,0.4)',
               }}>
@@ -208,7 +244,7 @@ export const StoryDetail: React.FC<StoryDetailProps> = ({
                         width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         background: c.avatarColor || 'var(--wa-gold)',
-                        fontSize: '0.75rem', fontWeight: 700, color: '#000',
+                        fontSize: '0.75rem', fontWeight: 700, color: '#062013',
                       }}>
                         {c.displayName.charAt(0).toUpperCase()}
                       </div>
@@ -249,9 +285,9 @@ export const StoryDetail: React.FC<StoryDetailProps> = ({
                   ) : (
                     <div style={{
                       width: 24, height: 24, borderRadius: '50%',
-                      background: visitor?.avatarColor || '#4f9f62',
+                      background: visitor?.avatarColor || '#3f7b4a',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '0.65rem', fontWeight: 700, color: '#000',
+                      fontSize: '0.65rem', fontWeight: 700, color: '#062013',
                     }}>
                       {(visitor?.displayName || 'Guest').charAt(0).toUpperCase()}
                     </div>

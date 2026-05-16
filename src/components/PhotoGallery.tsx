@@ -10,33 +10,73 @@ interface PhotoGalleryProps {
   onLikePhoto: (id: string, currentLikes: number) => Promise<void>;
 }
 
-const CATEGORIES: GalleryCategory[] = ['Wildlife', 'Birds', 'Landscapes', 'Portraits', 'Others'];
+const CATEGORY_TABS: Array<{ key: GalleryCategory; label: string; emoji: string }> = [
+  { key: 'wildlife', label: 'Wildlife', emoji: '🦁' },
+  { key: 'birds', label: 'Birds', emoji: '🦅' },
+  { key: 'landscapes', label: 'Landscapes', emoji: '🏔️' },
+  { key: 'portraits', label: 'Portraits', emoji: '📷' },
+  { key: 'others', label: 'Others', emoji: '🌿' },
+];
 
-export function PhotoGallery({ photos, onAddPhoto, onDeletePhoto, onLikePhoto }: PhotoGalleryProps) {
-  const [selectedCategory, setSelectedCategory] = useState<GalleryCategory>('Wildlife');
-  const [selectedPhoto, setSelectedPhoto] = useState<GalleryPhoto | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isUploading, setIsUploading] = useState(false);
+const categoryLabel = (category: GalleryCategory) =>
+  CATEGORY_TABS.find((t) => t.key === category)?.label || category;
 
-  const filteredPhotos = photos.filter(photo => {
-    const matchesCategory = photo.category === selectedCategory;
-    const matchesSearch = photo.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         photo.description.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
+const categoryEmoji = (category: GalleryCategory) =>
+  CATEGORY_TABS.find((t) => t.key === category)?.emoji || '📁';
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.currentTarget.files?.[0];
-    if (!file) return;
+export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery }) => {
+  const [openCategory, setOpenCategory] = useState<GalleryCategory | null>(null);
+  const [openYear, setOpenYear] = useState<string | null>(null);
+  const [openMonth, setOpenMonth] = useState<string | null>(null);
+  const [activePhoto, setActivePhoto] = useState<GalleryPhoto | null>(null);
 
-    setIsUploading(true);
-    try {
-      await onAddPhoto({
-        url: file.name, // Will be replaced by upload function
-        title: file.name.replace(/\.[^/.]+$/, ''),
-        description: '',
-        category: selectedCategory,
-        likes: 0,
+  const MONTH_NAMES: Record<string, string> = { '01':'January','02':'February','03':'March','04':'April','05':'May','06':'June','07':'July','08':'August','09':'September','10':'October','11':'November','12':'December' };
+  const getPhotoYearMonth = (photo: GalleryPhoto): { year: string; month: string } => {
+    if (photo.storagePath) { const parts = photo.storagePath.split('/'); if (parts.length >= 5) return { year: parts[2], month: parts[3] }; }
+    if (photo.createdAt?.toDate) { const d: Date = photo.createdAt.toDate(); return { year: String(d.getFullYear()), month: String(d.getMonth() + 1).padStart(2, '0') }; }
+    return { year: String(new Date().getFullYear()), month: String(new Date().getMonth() + 1).padStart(2, '0') };
+  };
+  const isSearching = searchQuery.trim().length > 0;
+
+  // Search results across all categories
+  const searchResults = useMemo(() => {
+    if (!isSearching) return [];
+    const q = searchQuery.trim().toLowerCase();
+    return photos.filter(
+      (p) =>
+        p.title.toLowerCase().includes(q) ||
+        p.category.toLowerCase().includes(q) ||
+        categoryLabel(p.category).toLowerCase().includes(q)
+    );
+  }, [photos, searchQuery, isSearching]);
+
+  // Photos in open category
+  const categoryPhotos = useMemo(() => {
+    if (!openCategory) return [];
+    return photos.filter((p) => p.category === openCategory);
+  }, [photos, openCategory]);
+
+  // Group category photos by year — uses storagePath > createdAt.toDate() > current year
+  const yearMap = useMemo(() => {
+    const map = new Map<string, GalleryPhoto[]>();
+    categoryPhotos.forEach((p) => {
+      const { year } = getPhotoYearMonth(p);
+      if (!map.has(year)) map.set(year, []);
+      map.get(year)!.push(p);
+    });
+    return map;
+  }, [categoryPhotos]);
+
+  // Group category+year photos by month — same helper for consistency
+  const monthMap = useMemo(() => {
+    const map = new Map<string, GalleryPhoto[]>();
+    if (!openYear) return map;
+    categoryPhotos
+      .filter((p) => getPhotoYearMonth(p).year === openYear)
+      .forEach((p) => {
+        const { month } = getPhotoYearMonth(p);
+        if (!map.has(month)) map.set(month, []);
+        map.get(month)!.push(p);
       });
       e.currentTarget.value = '';
     } catch (error) {

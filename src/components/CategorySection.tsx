@@ -1,9 +1,9 @@
 import React from 'react';
 import { Category } from '../types';
 
-const NG_YELLOW = '#E8C84A';
-const PARCHMENT = '#F2E4C4';
-const SAGE = 'rgba(197,217,181,0.75)';
+const NG_YELLOW = '#9fcb8f';
+const PARCHMENT = '#e8f5e9';
+const SAGE = 'rgba(159,203,143,0.75)';
 
 interface CategorySectionProps {
   categories: Category[];

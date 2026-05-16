@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Play, Eye, Heart, ChevronDown, MapPin, MessageCircle, Share2, Send, Trash2 } from 'lucide-react';
+import { Play, Eye, Heart, ArrowRight, MapPin, MessageCircle, Share2, Send, Trash2, CalendarDays } from 'lucide-react';
 import { Video, Comment, Visitor } from '../types';
 
 interface VideoSectionProps {
@@ -11,6 +11,7 @@ interface VideoSectionProps {
   onVisitorLoginClick: () => void;
   isAdmin?: boolean;
   onDeleteComment?: (firestoreId: string) => void;
+  onViewAll?: () => void;
 }
 
 const INITIAL_COUNT = 3;
@@ -22,7 +23,7 @@ const showToast = (msg: string) => {
   Object.assign(t.style, {
     position: 'fixed', bottom: '2rem', left: '50%', transform: 'translateX(-50%)',
     padding: '0.75rem 1.5rem', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '600',
-    background: 'rgba(201,168,76,0.95)', color: '#0a0a0a', zIndex: '9999',
+    background: 'rgba(201,168,76,0.95)', color: '#062013', zIndex: '9999',
     boxShadow: '0 4px 20px rgba(0,0,0,0.4)', transition: 'opacity 0.4s',
   });
   document.body.appendChild(t);
@@ -49,12 +50,12 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
   onVisitorLoginClick,
   isAdmin,
   onDeleteComment,
+  onViewAll,
 }) => {
-  const [showAll, setShowAll] = useState(false);
   const [playingId, setPlayingId] = useState<number | null>(null);
   const [commentInputs, setCommentInputs] = useState<Record<number, string>>({});
   const [expandedComments, setExpandedComments] = useState<Record<number, boolean>>({});
-  const displayVideos = showAll ? videos : videos.slice(0, INITIAL_COUNT);
+  const displayVideos = videos.slice(0, INITIAL_COUNT);
   const hasMore = videos.length > INITIAL_COUNT;
 
   if (videos.length === 0) return null;
@@ -196,7 +197,7 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
                           boxShadow: '0 4px 20px rgba(201,168,76,0.4)',
                           transition: 'transform 0.3s',
                         }}>
-                          <Play size={24} style={{ color: '#0a0a0a', marginLeft: 2 }} fill="#0a0a0a" />
+                          <Play size={24} style={{ color: '#062013', marginLeft: 2 }} fill="#062013" />
                         </div>
                       </div>
                       {/* Duration Badge */}
@@ -276,6 +277,13 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
                     </p>
                   )}
 
+                  {/* Date row */}
+                  {video.createdAt && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.68rem', color: 'var(--wa-gold)', opacity: 0.75, marginBottom: '0.5rem' }}>
+                      <CalendarDays size={11} />
+                      <span>{timeAgo(video.createdAt)}</span>
+                    </div>
+                  )}
                   {/* Stats row — with like, share buttons */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--wa-text-muted)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -415,7 +423,7 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
                       ) : (
                         <div style={{
                           width: 26, height: 26, minWidth: 26, borderRadius: '50%',
-                          background: visitor?.avatarColor || '#4f9f62',
+                          background: visitor?.avatarColor || '#3f7b4a',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           fontSize: '0.65rem', fontWeight: 700, color: '#fff',
                         }}>
@@ -460,38 +468,35 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
           })}
         </div>
 
-        {/* View All Videos Button */}
-        {hasMore && (
+        {/* View All Videos Button — opens grid page */}
+        {hasMore && onViewAll && (
           <div style={{ textAlign: 'center', marginTop: '2.5rem' }}>
             <button
-              onClick={() => setShowAll(!showAll)}
+              onClick={onViewAll}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
                 padding: '0.75rem 2rem',
-                background: 'transparent',
-                border: '2px solid var(--wa-gold)',
-                color: 'var(--wa-gold)',
+                background: 'linear-gradient(135deg, var(--wa-gold), #b8892d)',
+                color: '#062013',
+                border: 'none',
                 borderRadius: '50px',
                 fontSize: '0.9rem',
-                fontWeight: 600,
+                fontWeight: 700,
                 letterSpacing: '0.05em',
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
+                boxShadow: '0 4px 15px rgba(201,168,76,0.3)',
               }}
               onMouseOver={(e) => {
-                e.currentTarget.style.background = 'var(--wa-gold)';
-                e.currentTarget.style.color = '#0a0a0a';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 8px 25px rgba(201,168,76,0.4)';
               }}
               onMouseOut={(e) => {
-                e.currentTarget.style.background = 'transparent';
-                e.currentTarget.style.color = 'var(--wa-gold)';
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 15px rgba(201,168,76,0.3)';
               }}
             >
-              {showAll ? 'Show Less' : 'View All Videos'}
-              <ChevronDown size={16} style={{
-                transform: showAll ? 'rotate(180deg)' : 'rotate(0)',
-                transition: 'transform 0.3s',
-              }} />
+              View All {videos.length} Videos <ArrowRight size={16} />
             </button>
           </div>
         )}

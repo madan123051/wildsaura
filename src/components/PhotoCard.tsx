@@ -1,6 +1,20 @@
 import React from 'react';
-import { Heart, Share2, Download, MapPin, MessageCircle } from 'lucide-react';
+import { Heart, Share2, Download, MapPin, MessageCircle, CalendarDays } from 'lucide-react';
 import { Photo } from '../types';
+
+const formatPhotoDate = (createdAt: any): string => {
+  if (!createdAt) return '';
+  try {
+    if (createdAt?.toDate) {
+      return createdAt.toDate().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+    const d = new Date(createdAt);
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+  } catch { /* ignore */ }
+  return '';
+};
 
 interface PhotoCardProps {
   photo: Photo;
@@ -51,9 +65,9 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, on
             right: 6,
             padding: '2px 6px',
             background: 'rgba(0, 0, 0, 0.5)',
-            border: '1px solid rgba(201, 168, 76, 0.4)',
+            border: '1px solid rgba(63, 123, 74, 0.45)',
             borderRadius: '4px',
-            color: 'rgba(201, 168, 76, 0.8)',
+            color: 'rgba(159, 203, 143, 0.85)',
             fontSize: '0.5rem',
             fontWeight: 700,
             letterSpacing: '0.08em',
@@ -140,6 +154,11 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, on
         {photo.location && (
           <p className="text-wa-muted" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.7rem', marginTop: '0.2rem' }}>
             <MapPin size={10} /> {photo.location}
+          </p>
+        )}
+        {formatPhotoDate(photo.createdAt) && (
+          <p className="text-wa-muted" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.7rem', marginTop: '0.15rem', color: '#9fcb8f' }}>
+            <CalendarDays size={10} /> {formatPhotoDate(photo.createdAt)}
           </p>
         )}
       </div>

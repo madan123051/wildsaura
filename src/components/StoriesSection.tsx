@@ -1,48 +1,58 @@
-import React, { useState } from 'react';
-import { Clock, Eye, Heart, ChevronDown } from 'lucide-react';
+import React from 'react';
+import { Clock, Eye, Heart, ArrowRight, CalendarDays } from 'lucide-react';
+
+const formatStoryDate = (dateStr: string): string => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+};
 import { Story } from '../types';
 
 interface StoriesSectionProps {
   stories: Story[];
   onStoryClick: (story: Story) => void;
+  onViewAll?: () => void;
 }
 
 const INITIAL_COUNT = 3;
 const estimateReadTime = (content: string): number => Math.max(1, Math.ceil(content.split(/\s+/).length / 200));
 
-export const StoriesSection: React.FC<StoriesSectionProps> = ({ stories, onStoryClick }) => {
-  const [showAll, setShowAll] = useState(false);
-  const displayStories = showAll ? stories : stories.slice(0, INITIAL_COUNT);
+export const StoriesSection: React.FC<StoriesSectionProps> = ({ stories, onStoryClick, onViewAll }) => {
+  const displayStories = stories.slice(0, INITIAL_COUNT);
   const hasMore = stories.length > INITIAL_COUNT;
 
   return (
     <section id="stories" style={{ padding: '5rem 0', background: 'var(--wa-dark)' }}>
       <div className="wa-container">
         {/* Section Header */}
-        <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-          <p className="font-cinzel" style={{
-            fontSize: '0.7rem', letterSpacing: '0.3em', textTransform: 'uppercase',
-            color: 'var(--wa-gold)', marginBottom: '0.75rem',
-          }}>
-            Behind The Lens
-          </p>
-          <h2 className="font-playfair" style={{
-            fontSize: 'clamp(1.75rem, 4vw, 2.5rem)', fontWeight: 700,
-            background: 'linear-gradient(135deg, var(--wa-gold), var(--wa-gold-light))',
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-            marginBottom: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-          }}>
-            📖 Stories & Adventures
-            <span style={{
-              fontSize: '0.9rem', fontWeight: 400,
-              WebkitTextFillColor: 'var(--wa-text-muted)',
+        <div style={{ marginBottom: '3rem' }}>
+          <div style={{ textAlign: 'center' }}>
+            <p className="font-cinzel" style={{
+              fontSize: '0.7rem', letterSpacing: '0.3em', textTransform: 'uppercase',
+              color: 'var(--wa-gold)', marginBottom: '0.75rem',
             }}>
-              ({stories.length})
-            </span>
-          </h2>
-          <p style={{ fontSize: '0.9rem', color: 'var(--wa-text-muted)', maxWidth: 500, margin: '0 auto' }}>
-            Dive into the tales behind each expedition — the patience, the thrill, and the untold moments.
-          </p>
+              Behind The Lens
+            </p>
+            <h2 className="font-playfair" style={{
+              fontSize: 'clamp(1.75rem, 4vw, 2.5rem)', fontWeight: 700,
+              background: 'linear-gradient(135deg, var(--wa-gold), var(--wa-gold-light))',
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+              marginBottom: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+            }}>
+              📖 Stories & Adventures
+              <span style={{
+                fontSize: '0.9rem', fontWeight: 400,
+                WebkitTextFillColor: 'var(--wa-text-muted)',
+              }}>
+                ({stories.length})
+              </span>
+            </h2>
+            <p style={{ fontSize: '0.9rem', color: 'var(--wa-text-muted)', maxWidth: 500, margin: '0 auto' }}>
+              Dive into the tales behind each expedition — the patience, the thrill, and the untold moments.
+            </p>
+          </div>
         </div>
 
         {/* Story Cards */}
@@ -110,6 +120,12 @@ export const StoriesSection: React.FC<StoriesSectionProps> = ({ stories, onStory
                   {story.excerpt}
                 </p>
 
+                {story.createdAt && formatStoryDate(story.createdAt) && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.68rem', color: 'var(--wa-gold)', opacity: 0.75, marginBottom: '0.6rem' }}>
+                    <CalendarDays size={11} />
+                    <span>{formatStoryDate(story.createdAt)}</span>
+                  </div>
+                )}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--wa-text-muted)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
@@ -128,38 +144,33 @@ export const StoriesSection: React.FC<StoriesSectionProps> = ({ stories, onStory
           ))}
         </div>
 
-        {/* View All Stories Button */}
-        {hasMore && (
+        {/* View All Stories Button — opens dedicated grid page */}
+        {hasMore && onViewAll && (
           <div style={{ textAlign: 'center', marginTop: '2.5rem' }}>
             <button
-              onClick={() => setShowAll(!showAll)}
+              onClick={onViewAll}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
                 padding: '0.75rem 2rem',
-                background: 'transparent',
-                border: '2px solid var(--wa-gold)',
-                color: 'var(--wa-gold)',
+                background: 'linear-gradient(135deg, var(--wa-gold), #b8892d)',
+                color: '#062013',
+                border: 'none',
                 borderRadius: '50px',
-                fontSize: '0.9rem',
-                fontWeight: 600,
-                letterSpacing: '0.05em',
-                cursor: 'pointer',
+                fontSize: '0.9rem', fontWeight: 700,
+                letterSpacing: '0.05em', cursor: 'pointer',
                 transition: 'all 0.3s ease',
+                boxShadow: '0 4px 15px rgba(201,168,76,0.3)',
               }}
               onMouseOver={(e) => {
-                e.currentTarget.style.background = 'var(--wa-gold)';
-                e.currentTarget.style.color = '#0a0a0a';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 8px 25px rgba(201,168,76,0.4)';
               }}
               onMouseOut={(e) => {
-                e.currentTarget.style.background = 'transparent';
-                e.currentTarget.style.color = 'var(--wa-gold)';
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 15px rgba(201,168,76,0.3)';
               }}
             >
-              {showAll ? 'Show Less' : 'View All Stories'}
-              <ChevronDown size={16} style={{
-                transform: showAll ? 'rotate(180deg)' : 'rotate(0)',
-                transition: 'transform 0.3s',
-              }} />
+              View All {stories.length} Stories <ArrowRight size={16} />
             </button>
           </div>
         )}
