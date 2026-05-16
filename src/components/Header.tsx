@@ -26,6 +26,7 @@ interface HeaderProps {
   isAdmin?: boolean;
   onAdminClick?: () => void;
   onProfileClick?: () => void;
+  onCommunityClick?: () => void;
 }
 
 const THEME_CYCLE: Theme[] = ['system', 'light', 'dark'];
@@ -45,7 +46,7 @@ function themeLabel(theme: Theme) {
 export const Header: React.FC<HeaderProps> = ({
   onScrollToGallery, logoUrl,
   onSearchClick, visitor, onVisitorLoginClick, onVisitorLogout, onStoriesClick, onVisitorUpdate,
-  notificationCount = 0, onNotificationClick, isAdmin, onAdminClick, onProfileClick,
+  notificationCount = 0, onNotificationClick, isAdmin, onAdminClick, onProfileClick, onCommunityClick,
 }) => {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -66,7 +67,7 @@ export const Header: React.FC<HeaderProps> = ({
     { label: 'Stories', href: '#stories', onClick: onStoriesClick },
     { label: 'About', href: '#about' },
     { label: 'Contact', href: '#contact' },
-    { label: 'Join Community', href: '#join-community' },
+    { label: 'Join Community', href: '/community', onClick: onCommunityClick },
   ];
 
   const getAvatarEmoji = () => {
