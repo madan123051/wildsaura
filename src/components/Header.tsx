@@ -51,6 +51,8 @@ export const Header: React.FC<HeaderProps> = ({
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState('');
   const { theme, setTheme } = useTheme();
 
   useEffect(() => {
@@ -259,13 +261,56 @@ export const Header: React.FC<HeaderProps> = ({
                       {getAvatarEmoji() || visitor.displayName.charAt(0).toUpperCase()}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ display: 'block', fontSize: '0.82rem', color: 'var(--wa-gold)', fontWeight: 600 }}>
-                        {visitor.displayName}
-                      </span>
-                      {visitor.email && (
-                        <span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--wa-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {visitor.email}
-                        </span>
+                      {editingName ? (
+                        <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
+                          <input
+                            value={nameInput}
+                            onChange={e => setNameInput(e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter' && nameInput.trim() && onVisitorUpdate) {
+                                onVisitorUpdate({ ...visitor, displayName: nameInput.trim() });
+                                setEditingName(false);
+                              }
+                            }}
+                            autoFocus
+                            style={{
+                              background: 'var(--wa-bg-input)', border: '1px solid var(--wa-border)',
+                              borderRadius: 6, padding: '0.25rem 0.4rem', color: 'var(--wa-text)',
+                              fontSize: '0.78rem', flex: 1, outline: 'none', minWidth: 0,
+                            }}
+                            placeholder="Enter name"
+                            onClick={e => e.stopPropagation()}
+                          />
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (nameInput.trim() && onVisitorUpdate) {
+                                onVisitorUpdate({ ...visitor, displayName: nameInput.trim() });
+                              }
+                              setEditingName(false);
+                            }}
+                            style={{ background: 'linear-gradient(135deg, #3f7b4a 0%, #9fcb8f 55%, #72aa81 100%)', border: 'none', borderRadius: 4, color: '#062013', fontSize: '0.65rem', padding: '0.2rem 0.4rem', cursor: 'pointer', fontWeight: 600 }}
+                          >Save</button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setEditingName(false); }}
+                            style={{ background: 'transparent', border: '1px solid var(--wa-border)', borderRadius: 4, color: 'var(--wa-text)', fontSize: '0.65rem', padding: '0.2rem 0.4rem', cursor: 'pointer' }}
+                          >✕</button>
+                        </div>
+                      ) : (
+                        <div>
+                          <span
+                            onClick={(e) => { e.stopPropagation(); setNameInput(visitor.displayName); setEditingName(true); }}
+                            style={{ display: 'block', fontSize: '0.82rem', color: 'var(--wa-gold)', fontWeight: 600, cursor: 'pointer' }}
+                            title="Tap to edit name"
+                          >
+                            {visitor.displayName} ✏️
+                          </span>
+                          {visitor.email && (
+                            <span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--wa-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {visitor.email}
+                            </span>
+                          )}
+                        </div>
                       )}
                     </div>
                     <button
