@@ -186,7 +186,8 @@ export function CommunityPage({
       });
       resetModal();
     } catch (err) {
-      console.error(err);
+      console.error('Community post failed:', err);
+      alert('Failed to post. Please check your connection and try again.');
     }
     setSubmitting(false);
   };
