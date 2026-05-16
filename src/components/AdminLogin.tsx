@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, Lock, User } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../firebase';
 
 interface AdminLoginProps {
   logoUrl?: string;
@@ -8,25 +10,34 @@ interface AdminLoginProps {
 }
 
 export const AdminLogin: React.FC<AdminLoginProps> = ({ logoUrl, onLogin, onBack }) => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    setTimeout(() => {
-      if (username === 'wildsaura_1225' && password === 'Daisuki@25') {
-        onLogin();
-      } else {
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      onLogin();
+    } catch (err: any) {
+      console.error('Admin login error:', err.code);
+      if (err.code === 'auth/invalid-email') {
+        setError('Invalid email address.');
+      } else if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
         setError('Invalid credentials. Please try again.');
+      } else if (err.code === 'auth/too-many-requests') {
+        setError('Too many attempts. Please wait and try again.');
+      } else {
+        setError('Login failed. Please try again.');
       }
+    } finally {
       setLoading(false);
-    }, 800);
+    }
   };
 
   return (
@@ -94,19 +105,20 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ logoUrl, onLogin, onBack
           backdropFilter: 'blur(20px)',
         }}>
           <form onSubmit={handleSubmit}>
-            {/* Username */}
+            {/* Email */}
             <div style={{ marginBottom: '1.25rem' }}>
               <label className="font-cinzel" style={{ display: 'block', fontSize: '0.7rem', color: 'rgba(235,230,220,0.5)', letterSpacing: '0.1em', marginBottom: '0.5rem' }}>
-                Username
+                Email
               </label>
               <div style={{ position: 'relative' }}>
-                <User size={18} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'rgba(201,168,76,0.4)' }} />
+                <Mail size={18} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'rgba(201,168,76,0.4)' }} />
                 <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Enter username"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter admin email"
                   required
+                  autoComplete="email"
                   style={{
                     width: '100%', padding: '0.75rem 1rem 0.75rem 2.75rem',
                     background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(201,168,76,0.15)',
@@ -132,6 +144,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ logoUrl, onLogin, onBack
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter password"
                   required
+                  autoComplete="current-password"
                   style={{
                     width: '100%', padding: '0.75rem 2.75rem 0.75rem 2.75rem',
                     background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(201,168,76,0.15)',
@@ -169,13 +182,13 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ logoUrl, onLogin, onBack
             {/* Submit */}
             <button
               type="submit"
-              disabled={loading || !username || !password}
+              disabled={loading || !email || !password}
               className="btn-gold"
               style={{
                 width: '100%', padding: '0.85rem', fontSize: '0.85rem',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-                opacity: loading || !username || !password ? 0.5 : 1,
-                cursor: loading || !username || !password ? 'not-allowed' : 'pointer',
+                opacity: loading || !email || !password ? 0.5 : 1,
+                cursor: loading || !email || !password ? 'not-allowed' : 'pointer',
               }}
             >
               {loading ? (
@@ -208,8 +221,6 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ logoUrl, onLogin, onBack
             ← Back to Portfolio
           </button>
         </div>
-
-
       </div>
 
       <style>{`
