@@ -117,26 +117,85 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       setUploadingPhoto(true);
       setError('');
 
-      // Convert to base64 and save to Firestore
+      // Load image and compress to WebP
       const reader = new FileReader();
       reader.onloadend = async () => {
-        const base64 = reader.result as string;
-
         try {
-          // Update profile with photo URL
-          await updateCurrentUserProfile({
-            displayName,
-            bio,
-            location,
-            website,
-            profilePhotoUrl: base64, // Store as data URI or upload URL
-          });
+          const img = new Image();
+          img.onload = async () => {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
 
-          await loadProfile();
-          setSuccess('Profile photo updated! 📸');
+            // Resize if too large (max 600px on longest side)
+            const maxSize = 600;
+            if (width > height) {
+              if (width > maxSize) {
+                height = Math.round((height * maxSize) / width);
+                width = maxSize;
+              }
+            } else {
+              if (height > maxSize) {
+                width = Math.round((width * maxSize) / height);
+                height = maxSize;
+              }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+
+            const ctx = canvas.getContext('2d');
+            if (!ctx) throw new Error('Failed to get canvas context');
+
+            ctx.drawImage(img, 0, 0, width, height);
+
+            // Convert to WebP format with compression (0.7 quality)
+            canvas.toBlob(
+              async (blob) => {
+                if (!blob) {
+                  setError('Failed to compress image');
+                  setUploadingPhoto(false);
+                  return;
+                }
+
+                // Convert blob to base64
+                const blobReader = new FileReader();
+                blobReader.onloadend = async () => {
+                  try {
+                    const compressedBase64 = blobReader.result as string;
+                    const originalSize = (file.size / 1024 / 1024).toFixed(2);
+                    const compressedSize = (blob.size / 1024 / 1024).toFixed(2);
+
+                    // Update profile with compressed photo
+                    await updateCurrentUserProfile({
+                      displayName,
+                      bio,
+                      location,
+                      website,
+                      profilePhotoUrl: compressedBase64,
+                    });
+
+                    await loadProfile();
+                    setSuccess(`✨ Photo updated! (${originalSize}MB → ${compressedSize}MB)`);
+                  } catch (err: any) {
+                    setError('Failed to save photo');
+                  } finally {
+                    setUploadingPhoto(false);
+                  }
+                };
+                blobReader.readAsDataURL(blob);
+              },
+              'image/webp',
+              0.7
+            );
+          };
+          img.onerror = () => {
+            setError('Failed to load image');
+            setUploadingPhoto(false);
+          };
+          img.src = reader.result as string;
         } catch (err: any) {
-          setError('Failed to save photo');
-        } finally {
+          setError(err.message || 'Failed to compress photo');
           setUploadingPhoto(false);
         }
       };
@@ -704,7 +763,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 marginBottom: '0.6rem',
               }}
             >
-              ✏️ Edit Profile
+              Edit Profile
             </button>
 
             {/* Logout */}
