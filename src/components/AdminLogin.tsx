@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, Lock, User } from 'lucide-react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../firebase';
 
 interface AdminLoginProps {
   logoUrl?: string;
@@ -16,19 +14,19 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ logoUrl, onLogin, onBack
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    try {
-      await signInWithEmailAndPassword(auth, username, password);
-      onLogin();
-    } catch (err) {
-      setError('Invalid credentials. Please try again.');
-    } finally {
+    setTimeout(() => {
+      if (username === 'wildsaura_1225' && password === 'Daisuki@25') {
+        onLogin();
+      } else {
+        setError('Invalid credentials. Please try again.');
+      }
       setLoading(false);
-    }
+    }, 800);
   };
 
   return (
@@ -96,18 +94,18 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ logoUrl, onLogin, onBack
           backdropFilter: 'blur(20px)',
         }}>
           <form onSubmit={handleSubmit}>
-            {/* Email */}
+            {/* Username */}
             <div style={{ marginBottom: '1.25rem' }}>
               <label className="font-cinzel" style={{ display: 'block', fontSize: '0.7rem', color: 'rgba(235,230,220,0.5)', letterSpacing: '0.1em', marginBottom: '0.5rem' }}>
-                Email
+                Username
               </label>
               <div style={{ position: 'relative' }}>
                 <User size={18} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'rgba(201,168,76,0.4)' }} />
                 <input
-                  type="email"
+                  type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Enter email"
+                  placeholder="Enter username"
                   required
                   style={{
                     width: '100%', padding: '0.75rem 1rem 0.75rem 2.75rem',
@@ -210,6 +208,8 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ logoUrl, onLogin, onBack
             ← Back to Portfolio
           </button>
         </div>
+
+
       </div>
 
       <style>{`
