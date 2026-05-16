@@ -172,7 +172,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                       bio,
                       location,
                       website,
-                      avatarUrl: compressedBase64,
+                      profilePhotoUrl: compressedBase64,
                     });
 
                     await loadProfile();
