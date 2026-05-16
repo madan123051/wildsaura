@@ -1,6 +1,16 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ArrowLeft, Play, SlidersHorizontal, X, Eye, Heart } from 'lucide-react';
 import { Video, Comment, Visitor } from '../types';
+
+const useWindowSize = () => {
+  const [width, setWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
+  useEffect(() => {
+    const handler = () => setWidth(window.innerWidth);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+  return width;
+};
 
 interface VideoGridPageProps {
   videos: Video[];
@@ -47,6 +57,13 @@ export const VideoGridPage: React.FC<VideoGridPageProps> = ({
   const [selectedMonth, setSelectedMonth] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
   const [playingId, setPlayingId] = useState<number | null>(null);
+  const width = useWindowSize();
+  
+  const getGridCols = () => {
+    if (width < 640) return 2;
+    if (width < 1024) return 2;
+    return 3;
+  };
 
   const years = useMemo(() => {
     const ys = new Set<string>();
@@ -203,7 +220,7 @@ export const VideoGridPage: React.FC<VideoGridPageProps> = ({
         ) : (
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+            gridTemplateColumns: `repeat(${getGridCols()}, 1fr)`,
             gap: '1.25rem',
           }}>
             {filtered.map(video => {
