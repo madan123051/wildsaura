@@ -1,6 +1,16 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ArrowLeft, BookOpen, SlidersHorizontal, X, Clock, Eye, Heart } from 'lucide-react';
 import { Story } from '../types';
+
+const useWindowSize = () => {
+  const [width, setWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
+  useEffect(() => {
+    const handler = () => setWidth(window.innerWidth);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+  return width;
+};
 
 interface StoryGridPageProps {
   stories: Story[];
@@ -35,6 +45,13 @@ export const StoryGridPage: React.FC<StoryGridPageProps> = ({ stories, onBack, o
   const [selectedYear, setSelectedYear] = useState('all');
   const [selectedTag, setSelectedTag] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
+  const width = useWindowSize();
+  
+  const getGridCols = () => {
+    if (width < 640) return 2;
+    if (width < 1024) return 2;
+    return 3;
+  };
 
   const years = useMemo(() => {
     const ys = new Set<string>();
@@ -187,7 +204,7 @@ export const StoryGridPage: React.FC<StoryGridPageProps> = ({ stories, onBack, o
         ) : (
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+            gridTemplateColumns: `repeat(${getGridCols()}, 1fr)`,
             gap: '1.25rem',
           }}>
             {filtered.map(story => (
