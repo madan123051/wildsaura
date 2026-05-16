@@ -5,6 +5,7 @@ interface HeroProps {
   onExplore: () => void;
   logoUrl?: string;
   heroImages?: string[];
+  onCommunityClick?: () => void;
 }
 
 const DEFAULT_HERO = '/photos/tiger-hero.jpg';
@@ -45,7 +46,7 @@ function getNPTDate(): { dateStr: string; timeStr: string } {
   };
 }
 
-export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages }) => {
+export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages, onCommunityClick }) => {
   const images = heroImages && heroImages.length > 0 ? heroImages : [DEFAULT_HERO];
   const [currentIndex, setCurrentIndex] = useState(0);
   const [fade, setFade] = useState(true);
@@ -242,6 +243,7 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages }) => {
 
             <a
               href="/community"
+              onClick={onCommunityClick ? (e) => { e.preventDefault(); onCommunityClick(); } : undefined}
               style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', textDecoration: 'none' }}
             >
               <ChevronDown size={14} style={{ color: C.natgeoYellow, animation: 'bounce 2s infinite' }} />
