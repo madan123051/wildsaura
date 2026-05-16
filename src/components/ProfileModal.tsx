@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, LogOut } from 'lucide-react';
+import { X, LogOut, Upload, Camera, Trash2 } from 'lucide-react';
 import { Visitor } from '../types';
 import {
   getCurrentUserProfile,
@@ -33,6 +33,10 @@ interface ProfileModalProps {
   onVisitorUpdate: (updatedVisitor: Visitor) => void;
   onLogout: () => void;
   downloadCount?: number;
+  communities?: Array<{ id: string; name: string; isMember?: boolean }>; // List of all communities
+  onJoinCommunity?: (communityId: string) => Promise<void>; // Join community callback
+  onLeaveCommunity?: (communityId: string) => Promise<void>; // Leave community callback
+  userCommunities?: string[]; // Array of community IDs user is member of
 }
 
 export const ProfileModal: React.FC<ProfileModalProps> = ({
@@ -42,12 +46,19 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   onVisitorUpdate,
   onLogout,
   downloadCount = 0,
+  communities = [],
+  onJoinCommunity,
+  onLeaveCommunity,
+  userCommunities = [],
 }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoHover, setPhotoHover] = useState(false);
+  const [communityActionLoading, setCommunityActionLoading] = useState<string | null>(null);
 
   // Form states for editing
   const [displayName, setDisplayName] = useState('');
@@ -83,6 +94,105 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       // Silently fail - visitor fallback still works
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Photo must be less than 5MB');
+      return;
+    }
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please upload an image file');
+      return;
+    }
+
+    try {
+      setUploadingPhoto(true);
+      setError('');
+
+      // Convert to base64 and save to Firestore
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64 = reader.result as string;
+
+        try {
+          // Update profile with photo URL
+          await updateCurrentUserProfile({
+            displayName,
+            bio,
+            location,
+            website,
+            profilePhotoUrl: base64, // Store as data URI or upload URL
+          });
+
+          await loadProfile();
+          setSuccess('Profile photo updated! 📸');
+        } catch (err: any) {
+          setError('Failed to save photo');
+        } finally {
+          setUploadingPhoto(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (err: any) {
+      setError(err.message || 'Failed to upload photo');
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handleDeletePhoto = async () => {
+    if (!confirm('Remove profile photo?')) return;
+
+    try {
+      setLoading(true);
+      await updateCurrentUserProfile({
+        displayName,
+        bio,
+        location,
+        website,
+        profilePhotoUrl: '', // Remove photo
+      });
+      await loadProfile();
+      setSuccess('Profile photo removed');
+    } catch (err: any) {
+      setError('Failed to remove photo');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleJoinCommunity = async (communityId: string) => {
+    if (!onJoinCommunity) return;
+
+    try {
+      setCommunityActionLoading(communityId);
+      await onJoinCommunity(communityId);
+      setSuccess('Joined community! 🎉');
+    } catch (err: any) {
+      setError('Failed to join community');
+    } finally {
+      setCommunityActionLoading(null);
+    }
+  };
+
+  const handleLeaveCommunity = async (communityId: string) => {
+    if (!onLeaveCommunity || !confirm('Leave this community?')) return;
+
+    try {
+      setCommunityActionLoading(communityId);
+      await onLeaveCommunity(communityId);
+      setSuccess('Left community');
+    } catch (err: any) {
+      setError('Failed to leave community');
+    } finally {
+      setCommunityActionLoading(null);
     }
   };
 
@@ -201,6 +311,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const currentAnimal = ANIMAL_AVATARS.find((a) => a.id === (visitor.avatarAnimal || spiritAnimal));
   const initial = visitor.displayName?.trim()?.charAt(0)?.toUpperCase() || 'U';
   const avatarBg = currentAnimal ? 'rgba(79,159,98,0.22)' : (profile?.avatarColor || visitor.avatarColor);
+  const profilePhotoUrl = profile?.profilePhotoUrl as string | undefined;
 
   // Shared styles
   const s = {
@@ -266,6 +377,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     }),
   };
 
+  const joinedCommunities = communities.filter((c) => userCommunities.includes(c.id));
+  const availableCommunities = communities.filter((c) => !userCommunities.includes(c.id));
+
   return (
     <div
       role="dialog"
@@ -309,24 +423,102 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
         {/* ─── VIEW MODE ─── */}
         {!editing ? (
           <>
-            {/* Avatar + Identity */}
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1rem' }}>
+            {/* Avatar + Identity with Photo Upload */}
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', marginBottom: '1rem' }}>
+              {/* Photo Upload Area */}
               <div
                 style={{
-                  width: 72,
-                  height: 72,
-                  borderRadius: '50%',
-                  background: avatarBg,
+                  position: 'relative' as const,
                   display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: currentAnimal ? '2rem' : '1.5rem',
-                  border: '2px solid rgba(168,216,162,0.55)',
                   flexShrink: 0,
                 }}
+                onMouseEnter={() => setPhotoHover(true)}
+                onMouseLeave={() => setPhotoHover(false)}
               >
-                {currentAnimal?.emoji || initial}
+                <div
+                  style={{
+                    width: 88,
+                    height: 88,
+                    borderRadius: '50%',
+                    background: profilePhotoUrl ? 'transparent' : avatarBg,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: currentAnimal ? '2.5rem' : '2rem',
+                    border: '2px solid rgba(168,216,162,0.55)',
+                    position: 'relative' as const,
+                    overflow: 'hidden' as const,
+                  }}
+                >
+                  {profilePhotoUrl ? (
+                    <img
+                      src={profilePhotoUrl}
+                      alt={visitor.displayName}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                      }}
+                    />
+                  ) : (
+                    currentAnimal?.emoji || initial
+                  )}
+                </div>
+
+                {/* Photo Upload Overlay */}
+                {photoHover && (
+                  <div
+                    style={{
+                      position: 'absolute' as const,
+                      inset: 0,
+                      background: 'rgba(0, 0, 0, 0.6)',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.3rem',
+                    }}
+                  >
+                    <label
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        color: 'white',
+                      }}
+                      title="Upload photo"
+                    >
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePhotoUpload}
+                        disabled={uploadingPhoto}
+                        style={{ display: 'none' }}
+                      />
+                      <Camera size={18} />
+                    </label>
+                    {profilePhotoUrl && (
+                      <button
+                        onClick={handleDeletePhoto}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'white',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                        }}
+                        title="Delete photo"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
+
+              {/* User Info */}
               <div>
                 <div style={{ color: 'var(--wa-text)', fontWeight: 700, fontSize: '1.05rem' }}>
                   {visitor.displayName}
@@ -334,7 +526,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 <div style={{ color: 'var(--wa-text-muted)', fontSize: '0.88rem' }}>
                   {visitor.email}
                 </div>
-                <div style={{ display: 'flex', gap: '0.4rem', marginTop: 4 }}>
+                <div style={{ display: 'flex', gap: '0.4rem', marginTop: 4, flexWrap: 'wrap' }}>
                   <span
                     style={{
                       background: 'rgba(168,216,162,0.15)',
@@ -380,10 +572,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 { label: 'Liked Photos', value: profile?.totalPhotosLiked ?? 0 },
                 { label: 'Liked Stories', value: profile?.totalStoriesLiked ?? 0 },
                 {
-                  label: 'Member Since',
-                  value: profile?.createdAt
-                    ? new Date((profile.createdAt as any).toDate?.() ?? profile.createdAt).getFullYear()
-                    : '—',
+                  label: 'Communities',
+                  value: userCommunities.length,
                 },
               ].map(({ label, value }) => (
                 <div key={label} style={s.card}>
@@ -428,7 +618,78 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               </div>
             )}
 
-            {/* Edit Button */}
+            {/* Joined Communities */}
+            {joinedCommunities.length > 0 && (
+              <div style={{ ...s.card, marginBottom: '1rem' }}>
+                <div style={{ color: 'var(--wa-text)', fontWeight: 600, marginBottom: '0.6rem', fontSize: '0.9rem' }}>
+                  🏘️ Joined Communities ({joinedCommunities.length})
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  {joinedCommunities.map((community) => (
+                    <div
+                      key={community.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                        background: 'rgba(79,159,98,0.15)',
+                        border: '1px solid rgba(79,159,98,0.3)',
+                        borderRadius: 20,
+                        padding: '0.4rem 0.8rem',
+                        fontSize: '0.85rem',
+                      }}
+                    >
+                      <span style={{ color: 'var(--wa-text)' }}>{community.name}</span>
+                      <button
+                        onClick={() => handleLeaveCommunity(community.id)}
+                        disabled={communityActionLoading === community.id}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'rgba(239,68,68,0.8)',
+                          cursor: 'pointer',
+                          fontSize: '0.75rem',
+                          padding: 0,
+                        }}
+                        title="Leave community"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Available Communities to Join */}
+            {availableCommunities.length > 0 && (
+              <div style={{ ...s.card, marginBottom: '1rem' }}>
+                <div style={{ color: 'var(--wa-text)', fontWeight: 600, marginBottom: '0.6rem', fontSize: '0.9rem' }}>
+                  🌍 Available Communities
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                  {availableCommunities.map((community) => (
+                    <button
+                      key={community.id}
+                      onClick={() => handleJoinCommunity(community.id)}
+                      disabled={communityActionLoading === community.id}
+                      style={{
+                        ...s.button,
+                        width: '100%',
+                        background: 'linear-gradient(135deg, #3f7b4a 0%, #9fcb8f 55%, #72aa81 100%)',
+                        color: '#062013',
+                        fontSize: '0.8rem',
+                        padding: '0.4rem 0.6rem',
+                      }}
+                    >
+                      {communityActionLoading === community.id ? '...' : `+ ${community.name}`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Edit Profile Button */}
             <button
               onClick={() => {
                 setEditing(true);
