@@ -9,11 +9,15 @@ import { db, auth, storage } from '../firebase';
 import { Header } from './Header';
 import { Footer } from './Footer';
 import { Visitor } from '../types';
+import { AvatarDisplay } from './AvatarDisplay';
+import { getCurrentUserProfile } from '../services/userProfileService';
 
 interface Post {
   id: string;
   userId: string;
   username: string;
+  userAvatarUrl?: string;        // NEW: User's profile photo
+  userSpiritAnimal?: string;     // NEW: User's spirit animal
   text: string;
   imageUrl: string | null;
   timestamp: any;
@@ -134,9 +138,25 @@ export function CommunityPage({
         const snapshot = await uploadBytes(sRef, imageFile);
         uploadedImageUrl = await getDownloadURL(snapshot.ref);
       }
+
+      // NEW: Load current user profile to get avatar info
+      let userAvatarUrl = undefined;
+      let userSpiritAnimal = undefined;
+      try {
+        const profile = await getCurrentUserProfile();
+        if (profile) {
+          userAvatarUrl = profile.avatarUrl;
+          userSpiritAnimal = profile.spiritAnimal;
+        }
+      } catch (err) {
+        // Silently fail - use defaults
+      }
+
       await addDoc(collection(db, 'community_posts'), {
         userId: authUid,
         username: visitor.displayName,
+        userAvatarUrl,                    // NEW
+        userSpiritAnimal,                 // NEW
         text: postText.trim(),
         imageUrl: uploadedImageUrl,
         timestamp: serverTimestamp(),
@@ -210,7 +230,6 @@ export function CommunityPage({
     loginLink: { color: '#d4a373', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', fontSize: '0.9rem', background: 'none', border: 'none' },
     card: { background: '#16181c', borderRadius: 18, padding: '1.2rem', border: '1px solid #262a31' },
     cardHeader: { display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.8rem' },
-    avatar: { width: 42, height: 42, borderRadius: '50%', background: '#2a2d35', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: '1.1rem', color: '#d4a373', flexShrink: 0 },
     username: { fontWeight: 600, fontSize: '1rem', color: '#e4e4e7' },
     timestamp: { fontSize: '0.75rem', color: '#8a8f98' },
     postText: { margin: '0.8rem 0 1rem', fontSize: '1rem', lineHeight: 1.6, color: '#d1d5db', whiteSpace: 'pre-wrap' },
@@ -299,9 +318,14 @@ export function CommunityPage({
             return (
               <div key={post.id} style={s.card}>
                 <div style={s.cardHeader}>
-                  <div style={s.avatar}>
-                    {(displayUsername).charAt(0).toUpperCase()}
-                  </div>
+                  {/* NEW: Use AvatarDisplay component */}
+                  <AvatarDisplay
+                    displayName={displayUsername}
+                    avatarUrl={post.userAvatarUrl}
+                    spiritAnimal={post.userSpiritAnimal}
+                    size={42}
+                    style={{ marginRight: '0rem' }}
+                  />
                   <div>
                     <div style={s.username}>{displayUsername}</div>
                     <div style={s.timestamp}>{formatTime(post.timestamp)}</div>
