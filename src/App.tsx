@@ -17,6 +17,9 @@ import { VideoSection } from './components/VideoSection';
 import { TermsConditions } from './components/TermsConditions';
 import { OurAppsSection } from './components/OurAppsSection';
 import { StoryDetail } from './components/StoryDetail';
+import { PhotoGridPage } from './components/PhotoGridPage';
+import { StoryGridPage } from './components/StoryGridPage';
+import { VideoGridPage } from './components/VideoGridPage';
 import { downloadPhoto } from './utils/downloadPhoto';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './firebase';
@@ -28,11 +31,9 @@ import { getVideosFromFirestore, addVideoToFirestore, deleteVideoFromFirestore, 
 import { addCommentToFirestore, deleteCommentFromFirestore, getCommentsForTarget, getAllComments, subscribeToAllComments } from './services/commentService';
 import { saveVisitorToFirestore, getVisitorFromFirestore, updateVisitorDownloadCount, updateVisitorProfile, trackOnlineVisitor, subscribeToOnlineVisitors } from './services/visitorService';
 import { LiveStats } from './components/LiveStats';
-import { CommunityPage } from './components/CommunityPage';
 import { PhotoMap } from './components/PhotoMap';
 import { onSiteSettingsChange, SiteSettings } from './services/siteSettingsService';
 import { NotificationPanel, AppNotification } from './components/NotificationPanel';
-import { ProfileModal } from './components/ProfileModal';
 import { updatePhotoMeta, updateStoryMeta, resetMeta } from './utils/seo';
 
 const logoUrl = '/photos/logo.png';
@@ -168,7 +169,7 @@ const FILTER_TABS: FilterTab[] = [
 ];
 
 // ── App ─────────────────────────────────────────────────────────────────────
-type AppView = 'home' | 'admin-login' | 'admin-dashboard' | 'story-detail' | 'terms' | 'marketplace' | 'community' | 'ngo' | 'about' | 'contact' | 'photos';
+type AppView = 'home' | 'admin-login' | 'admin-dashboard' | 'story-detail' | 'terms' | 'marketplace' | 'community' | 'ngo' | 'about' | 'contact' | 'photos' | 'photo-grid' | 'story-grid' | 'video-grid';
 
 const App: React.FC = () => {
   const [view, setView] = useState<AppView>(() => {
@@ -203,7 +204,6 @@ const App: React.FC = () => {
   const [visitor, setVisitor] = useState<Visitor | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [showVisitorLogin, setShowVisitorLogin] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [photoComments, setPhotoComments] = useState<Record<string, Comment[]>>({});
   const [storyComments, setStoryComments] = useState<Record<string, Comment[]>>({});
@@ -1335,6 +1335,57 @@ const App: React.FC = () => {
 
   // Admin login removed — admin auto-detected by email
 
+  // ── Photo Grid View ──
+  if (view === 'photo-grid') {
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--wa-bg)' }}>
+        <PhotoGridPage
+          photos={photos}
+          filterTabs={FILTER_TABS}
+          onBack={() => { setView('home'); window.history.pushState({}, '', '/'); window.scrollTo(0, 0); }}
+          onPhotoClick={openPhoto}
+          onLike={handleLike}
+          onShare={handleShare}
+          onDownload={handleDownload}
+          isLoggedIn={!!visitor}
+          onLoginRequired={() => setShowVisitorLogin(true)}
+        />
+      </div>
+    );
+  }
+
+  // ── Story Grid View ──
+  if (view === 'story-grid') {
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--wa-bg)' }}>
+        <StoryGridPage
+          stories={stories}
+          onBack={() => { setView('home'); window.history.pushState({}, '', '/'); window.scrollTo(0, 0); }}
+          onStoryClick={handleStoryClick}
+        />
+      </div>
+    );
+  }
+
+  // ── Video Grid View ──
+  if (view === 'video-grid') {
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--wa-bg)' }}>
+        <VideoGridPage
+          videos={videos}
+          onBack={() => { setView('home'); window.history.pushState({}, '', '/'); window.scrollTo(0, 0); }}
+          visitor={visitor}
+          videoComments={videoComments}
+          onAddVideoComment={handleAddVideoComment}
+          onVideoLike={handleVideoLike}
+          onVisitorLoginClick={() => setShowVisitorLogin(true)}
+          isAdmin={isAdmin}
+          onDeleteComment={handleDeleteComment}
+        />
+      </div>
+    );
+  }
+
   // ── Admin Dashboard View ──
   if (view === 'admin-dashboard') {
     return (
@@ -1371,7 +1422,6 @@ const App: React.FC = () => {
           visitor={visitor}
           onVisitorLoginClick={() => setShowVisitorLogin(true)}
           onVisitorLogout={handleVisitorLogout}
-          onProfileClick={() => setShowProfile(true)}
           onVisitorUpdate={handleVisitorUpdate}
           onStoriesClick={handleStoriesNavClick}
           notificationCount={unreadNotifCount}
@@ -1397,14 +1447,6 @@ const App: React.FC = () => {
           onClose={() => setShowVisitorLogin(false)}
           onLogin={handleVisitorLogin}
         />
-        <ProfileModal
-          isOpen={showProfile}
-          visitor={visitor}
-          onClose={() => setShowProfile(false)}
-          onVisitorUpdate={handleVisitorUpdate}
-          onLogout={handleVisitorLogout}
-          downloadCount={downloadCount}
-        />
       </div>
     );
   }
@@ -1420,7 +1462,6 @@ const App: React.FC = () => {
           visitor={visitor}
           onVisitorLoginClick={() => setShowVisitorLogin(true)}
           onVisitorLogout={handleVisitorLogout}
-          onProfileClick={() => setShowProfile(true)}
           onVisitorUpdate={handleVisitorUpdate}
           onStoriesClick={handleStoriesNavClick}
           notificationCount={unreadNotifCount}
@@ -1455,14 +1496,6 @@ const App: React.FC = () => {
           isOpen={showVisitorLogin}
           onClose={() => setShowVisitorLogin(false)}
           onLogin={handleVisitorLogin}
-        />
-        <ProfileModal
-          isOpen={showProfile}
-          visitor={visitor}
-          onClose={() => setShowProfile(false)}
-          onVisitorUpdate={handleVisitorUpdate}
-          onLogout={handleVisitorLogout}
-          downloadCount={downloadCount}
         />
       </div>
     );
@@ -1510,40 +1543,7 @@ const App: React.FC = () => {
     </div>
   );
   if (view === 'marketplace') return <StaticPage title="Buy & Sell Authentic Nepal Photography" text="Support local photographers by purchasing high-quality images. Use them for personal or commercial projects. Option A: Buy Now via Google Form/DM and payment by eSewa or bank. Option B: Stripe or Gumroad links." cta="20% of every purchase supports animal rescue in Nepal." />;
-  if (view === 'community') return (
-    <>
-      <CommunityPage
-        onBack={() => { setView('home'); window.history.pushState({}, '', '/'); window.scrollTo(0, 0); }}
-        logoUrl={logoUrl}
-        onScrollToGallery={scrollToGallery}
-        onSearchClick={() => setShowSearch(true)}
-        visitor={visitor}
-        onVisitorLoginClick={() => setShowVisitorLogin(true)}
-        onVisitorLogout={handleVisitorLogout}
-        onVisitorUpdate={handleVisitorUpdate}
-        onStoriesClick={handleStoriesNavClick}
-        notificationCount={unreadNotifCount}
-        onNotificationClick={() => setShowNotifPanel(p => !p)}
-        isAdmin={isAdmin}
-        onAdminClick={() => { setView('admin-dashboard'); window.history.pushState({}, '', '/admin'); }}
-        onTermsClick={handleTermsClick}
-        onProfileClick={() => setShowProfile(true)}
-      />
-      <ProfileModal
-        isOpen={showProfile}
-        visitor={visitor}
-        onClose={() => setShowProfile(false)}
-        onVisitorUpdate={handleVisitorUpdate}
-        onLogout={handleVisitorLogout}
-        downloadCount={downloadCount}
-      />
-      <VisitorLogin
-        isOpen={showVisitorLogin}
-        onClose={() => setShowVisitorLogin(false)}
-        onLogin={handleVisitorLogin}
-      />
-    </>
-  );
+  if (view === 'community') return <StaticPage title="Join the Photography Community" text="Connect with creators, share your work, and grow your photography journey with Drishya." cta="Photography that makes an impact." />;
   if (view === 'ngo') return <StaticPage title="Save Animal Nepal" text="We are building a system to support injured and abandoned animals across Nepal. Through photography and community support, we aim to create real impact. Mission: rescue, treatment, and feeding. Future plan: transparent monthly reporting and verified rescue partners." />;
   if (view === 'about') return <StaticPage title="About WildSaura" text="WildSaura connects photographers, nature lovers, and a mission to protect animals in Nepal. Start small, grow fast, and use visual storytelling for impact." />;
   if (view === 'contact') return <StaticPage title="Contact" text="For partnerships, volunteering, and media inquiries, message us through the contact form on the homepage." />;
@@ -1638,11 +1638,10 @@ const App: React.FC = () => {
         onVisitorLogout={handleVisitorLogout}
         onVisitorUpdate={handleVisitorUpdate}
         onStoriesClick={handleStoriesNavClick}
-        onProfileClick={() => setShowProfile(true)}
-        notificationCount={unreadNotifCount}
-        onNotificationClick={() => setShowNotifPanel(p => !p)}
-        isAdmin={isAdmin}
-        onAdminClick={() => { setView('admin-dashboard'); window.history.pushState({}, '', '/admin'); }}
+          notificationCount={unreadNotifCount}
+          onNotificationClick={() => setShowNotifPanel(p => !p)}
+          isAdmin={isAdmin}
+          onAdminClick={() => { setView('admin-dashboard'); window.history.pushState({}, '', '/admin'); }}
       />
       <Hero onExplore={scrollToGallery} logoUrl={logoUrl} heroImages={siteSettings.heroImages} />
       <CategorySection categories={dynamicCategories} onCategoryClick={handleCategoryClick} />
@@ -1658,9 +1657,10 @@ const App: React.FC = () => {
         galleryRef={galleryRef}
         isLoggedIn={!!visitor}
         onLoginRequired={() => setShowVisitorLogin(true)}
+        onViewAll={() => { setView('photo-grid'); window.scrollTo(0, 0); }}
       />
       <PhotoGallery photos={galleryPhotos} searchQuery={searchQuery} />
-      <StoriesSection stories={stories} onStoryClick={handleStoryClick} />
+      <StoriesSection stories={stories} onStoryClick={handleStoryClick} onViewAll={() => { setView('story-grid'); window.scrollTo(0, 0); }} />
       <VideoSection 
         videos={videos} 
         visitor={visitor}
@@ -1670,6 +1670,7 @@ const App: React.FC = () => {
         onVisitorLoginClick={() => setShowVisitorLogin(true)}
         isAdmin={isAdmin}
         onDeleteComment={handleDeleteComment}
+        onViewAll={() => { setView('video-grid'); window.scrollTo(0, 0); }}
       />
       <AboutSection onMapClick={() => setShowMap(true)} />
       <OurAppsSection />
@@ -1729,15 +1730,6 @@ const App: React.FC = () => {
         isOpen={showVisitorLogin}
         onClose={() => setShowVisitorLogin(false)}
         onLogin={handleVisitorLogin}
-      />
-
-      <ProfileModal
-        isOpen={showProfile}
-        visitor={visitor}
-        onClose={() => setShowProfile(false)}
-        onVisitorUpdate={handleVisitorUpdate}
-        onLogout={handleVisitorLogout}
-        downloadCount={downloadCount}
       />
 
       <NotificationPanel
