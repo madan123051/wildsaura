@@ -460,7 +460,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
         }}
         >
           <h2 style={{ margin: 0, color: 'var(--wa-gold)', fontSize: '1.2rem' }}>
-            {editing ? '✏️ Edit Profile' : '👤 My Profile'}
+            {editing ? 'Edit Profile' : '👤 My Profile'}
           </h2>
           <button
             onClick={onClose}
