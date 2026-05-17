@@ -618,11 +618,11 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages, onCommunityCl
         @media (max-width: 768px) {
           .hero-market-dropdown {
             position: fixed;
-            left: 1rem;
-            right: 1rem;
-            top: auto;
-            bottom: 4rem;
-            min-width: unset;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: calc(100vw - 40px);
+            max-width: 340px;
           }
         }
 
