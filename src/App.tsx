@@ -651,6 +651,11 @@ const App: React.FC = () => {
     return () => window.removeEventListener('popstate', onPopState);
   }, [photos, stories]);
 
+  // ── Scroll to top on every view/page change ──
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [view]);
+
   useEffect(() => {
     const maxPull = 140;
     const triggerPull = 120;
@@ -1313,6 +1318,7 @@ const App: React.FC = () => {
   const openPhoto = useCallback((photo: Photo | null) => {
     setSelectedPhoto(photo);
     if (photo) {
+      window.scrollTo(0, 0);
       const photoId = photo.firestoreId || String(photo.id);
       window.history.pushState({}, '', '/photo/' + encodeURIComponent(photoId));
       updatePhotoMeta({
