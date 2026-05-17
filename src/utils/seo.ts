@@ -14,7 +14,7 @@ const SITE_URL = 'https://www.wildsaura.com';
 const DEFAULT_TITLE = 'WILDS AURA — Wildlife & Nature Photography | Madan Shrestha';
 const DEFAULT_DESCRIPTION =
   'WILDS AURA — Stunning wildlife & nature photography by Madan Shrestha. Explore breathtaking photos of wild animals, birds, landscapes, and untold stories from the wild.';
-const DEFAULT_IMAGE = `${SITE_URL}/photos/logo.png`;
+const DEFAULT_IMAGE = `${SITE_URL}/photos/photo-wildlife.jpeg`;
 
 // ─── DOM helpers ──────────────────────────────────────────────────────────────
 

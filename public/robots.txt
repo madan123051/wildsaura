@@ -2,3 +2,17 @@ User-agent: *
 Allow: /
 
 Sitemap: https://www.wildsaura.com/sitemap.xml
+
+# Allow crawling of all pages and images
+User-agent: Googlebot
+Allow: /
+Allow: /photo/
+Allow: /story/
+Allow: /photos/
+
+User-agent: Googlebot-Image
+Allow: /
+
+# Block admin paths
+Disallow: /admin
+Disallow: /api/
