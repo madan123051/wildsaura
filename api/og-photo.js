@@ -19,10 +19,18 @@ const SITE_URL = 'https://www.wildsaura.com';
 async function getPhotoFromFirestore(photoId) {
   try {
     const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/photos/${encodeURIComponent(photoId)}?key=${FIREBASE_API_KEY}`;
-    const res = await fetch(url);
-    if (!res.ok) return null;
+    const res = await fetch(url, { 
+      signal: AbortSignal.timeout(5000) // 5 second timeout
+    });
+    if (!res.ok) {
+      console.error(`Firestore fetch failed: ${res.status} ${res.statusText} for photoId: ${photoId}`);
+      return null;
+    }
     const doc = await res.json();
-    if (!doc.fields) return null;
+    if (!doc.fields) {
+      console.error(`No fields in Firestore doc for photoId: ${photoId}`);
+      return null;
+    }
     const f = doc.fields;
     return {
       title: f.title?.stringValue || 'Wildlife Photo',
@@ -37,7 +45,7 @@ async function getPhotoFromFirestore(photoId) {
       published: f.published?.booleanValue !== false,
     };
   } catch (err) {
-    console.error('Firestore fetch failed:', err);
+    console.error('Firestore fetch error:', err?.message || err);
     return null;
   }
 }
@@ -48,15 +56,24 @@ async function getPhotoFromFirestore(photoId) {
  * to a small, fast-loading OG-friendly size (1200x630, JPEG, <200KB).
  * 
  * This solves:
- * - Large thumbnails timing out on WhatsApp
+ * - Large thumbnails timing out on WhatsApp (3s crawler limit)
  * - Missing thumbnailUrl field
  * - Firebase Storage token issues
  */
 function getBestOgImage(photo) {
   const fallback = `${SITE_URL}/photos/photo-wildlife.jpeg`;
   
-  // Get the source image URL (prefer thumbnail, then full image)
-  let sourceUrl = photo.thumbnailUrl || photo.imageUrl || '';
+  // Get the source image URL (prefer thumbnail for speed, then full image)
+  let sourceUrl = '';
+  
+  // Try thumbnailUrl first (smaller, loads faster)
+  if (photo.thumbnailUrl && photo.thumbnailUrl.startsWith('http')) {
+    sourceUrl = photo.thumbnailUrl;
+  }
+  // Fallback to full imageUrl
+  else if (photo.imageUrl && photo.imageUrl.startsWith('http')) {
+    sourceUrl = photo.imageUrl;
+  }
   
   if (!sourceUrl) return fallback;
   
@@ -82,7 +99,7 @@ function esc(str) {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/\"/g, '&quot;')
+    .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 }
 
@@ -108,8 +125,9 @@ export default async function handler(req, res) {
   try {
     const htmlPath = path.join(process.cwd(), 'dist', 'index.html');
     baseHtml = fs.readFileSync(htmlPath, 'utf-8');
-  } catch {
-    // Fall back to a minimal redirect if build HTML not available (local dev)
+  } catch (err) {
+    console.error('Failed to read dist/index.html:', err?.message);
+    // Fall back to a minimal redirect if build HTML not available
     return res.redirect(302, `${SITE_URL}/?photo=${encodeURIComponent(photoId)}`);
   }
 
@@ -117,10 +135,19 @@ export default async function handler(req, res) {
   const photo = await getPhotoFromFirestore(photoId);
 
   if (!photo) {
-    // Photo not found — serve the SPA anyway (it'll handle 404 gracefully)
+    // Photo not found — still serve SPA but with generic OG tags
+    // so at least the site title/description are correct
+    const genericMeta = `
+    <title>Photo — WILDS AURA Photography</title>
+    <meta property="og:title" content="WILDS AURA — Wildlife Photography">
+    <meta property="og:image" content="${SITE_URL}/photos/photo-wildlife.jpeg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    `;
+    const injected = baseHtml.replace('</head>', `${genericMeta}\n</head>`);
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'no-cache');
-    return res.status(200).send(baseHtml);
+    return res.status(200).send(injected);
   }
 
   const pageUrl = `${SITE_URL}/photo/${encodeURIComponent(photoId)}`;
@@ -130,6 +157,13 @@ export default async function handler(req, res) {
   const fullImageUrl = photo.imageUrl || ogImageUrl;
 
   // Build meta tags to inject
+  // IMPORTANT: Remove any existing OG/Twitter tags from base HTML to prevent duplicates
+  let cleanHtml = baseHtml
+    .replace(/<meta\s+property="og:[^"]*"\s+content="[^"]*"\s*\/?>/gi, '')
+    .replace(/<meta\s+name="twitter:[^"]*"\s+content="[^"]*"\s*\/?>/gi, '')
+    .replace(/<meta\s+name="description"\s+content="[^"]*"\s*\/?>/gi, '')
+    .replace(/<title>[^<]*<\/title>/i, '');
+
   const metaTags = `
     <title>${esc(title)}</title>
     <meta name="description" content="${esc(description)}">
@@ -179,7 +213,7 @@ export default async function handler(req, res) {
   `;
 
   // Inject meta tags into <head>
-  const injectedHtml = baseHtml.replace('</head>', `${metaTags}\n</head>`);
+  const injectedHtml = cleanHtml.replace('</head>', `${metaTags}\n</head>`);
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
