@@ -90,30 +90,70 @@ function QRCode({ url, size = 180 }: { url: string; size?: number }) {
   );
 }
 
-// Compress image before upload
+// Compress image before upload — robust for mobile/iOS
 async function compressImage(file: File, maxWidth = 1200, quality = 0.8): Promise<Blob> {
   return new Promise((resolve) => {
     const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    const cleanup = () => { try { URL.revokeObjectURL(objectUrl); } catch {} };
+
+    // Timeout fallback — if canvas fails, use original file
+    const timeout = setTimeout(() => {
+      cleanup();
+      console.warn('[CommunityPost] compressImage timed out, using original');
+      resolve(file);
+    }, 10000);
+
     img.onload = () => {
-      const canvas = document.createElement('canvas');
-      let w = img.width;
-      let h = img.height;
-      if (w > maxWidth) {
-        h = (h * maxWidth) / w;
-        w = maxWidth;
+      try {
+        const canvas = document.createElement('canvas');
+        let w = img.width;
+        let h = img.height;
+        if (w > maxWidth) {
+          h = (h * maxWidth) / w;
+          w = maxWidth;
+        }
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          clearTimeout(timeout);
+          cleanup();
+          resolve(file);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, w, h);
+        canvas.toBlob(
+          (blob) => {
+            clearTimeout(timeout);
+            cleanup();
+            resolve(blob && blob.size > 0 ? blob : file);
+          },
+          'image/jpeg',
+          quality
+        );
+        // Some browsers don't call toBlob callback
+        setTimeout(() => {
+          clearTimeout(timeout);
+          cleanup();
+          resolve(file);
+        }, 5000);
+      } catch (err) {
+        clearTimeout(timeout);
+        cleanup();
+        console.warn('[CommunityPost] compressImage canvas error:', err);
+        resolve(file);
       }
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext('2d')!;
-      ctx.drawImage(img, 0, 0, w, h);
-      canvas.toBlob(
-        (blob) => resolve(blob || file),
-        'image/jpeg',
-        quality
-      );
     };
-    img.onerror = () => resolve(file);
-    img.src = URL.createObjectURL(file);
+    img.onerror = () => {
+      clearTimeout(timeout);
+      cleanup();
+      console.warn('[CommunityPost] compressImage image load error');
+      resolve(file);
+    };
+    // crossOrigin needed for some mobile browsers
+    img.crossOrigin = 'anonymous';
+    img.src = objectUrl;
   });
 }
 
@@ -267,7 +307,7 @@ export function CommunityPage({
     if (!file) return;
     // Validate file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
-      setShareToast('❌ Image too large! Max 10MB');
+      setShareToast('❌ Image too large! Max 10MB. Try a smaller photo.');
       setTimeout(() => setShareToast(''), 3000);
       return;
     }
@@ -289,6 +329,43 @@ export function CommunityPage({
     setShowModal(false);
   };
 
+  // Upload image to Firebase Storage with retry
+  const uploadImageToStorage = async (file: File, uid: string): Promise<string | null> => {
+    const maxRetries = 2;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        setUploadProgress(`📷 Compressing image${attempt > 1 ? ` (retry ${attempt})` : ''}...`);
+        const compressed = await compressImage(file);
+        setUploadProgress(`☁️ Uploading photo${attempt > 1 ? ` (retry ${attempt})` : ''}...`);
+        const sRef = storageRef(storage, `community_posts/${uid}/${Date.now()}_post.jpg`);
+        const snapshot = await uploadBytes(sRef, compressed);
+        const url = await getDownloadURL(snapshot.ref);
+        setUploadProgress('✅ Photo uploaded!');
+        return url;
+      } catch (err: any) {
+        console.error(`[CommunityPost] Upload attempt ${attempt} failed:`, err);
+        if (attempt === maxRetries) {
+          // Check specific Firebase errors
+          const code = err?.code || '';
+          if (code.includes('unauthorized') || code.includes('permission') || code === 'storage/unauthorized') {
+            setShareToast('❌ Photo upload not allowed — check Firebase Storage rules');
+          } else if (code.includes('quota') || code === 'storage/quota-exceeded') {
+            setShareToast('❌ Storage full — cannot upload photo');
+          } else if (code.includes('canceled') || code === 'storage/canceled') {
+            setShareToast('❌ Upload canceled');
+          } else {
+            setShareToast(`❌ Photo upload failed: ${err?.message || 'Unknown error'}`);
+          }
+          setTimeout(() => setShareToast(''), 5000);
+          return null;
+        }
+        // Brief delay before retry
+        await new Promise(r => setTimeout(r, 1000));
+      }
+    }
+    return null;
+  };
+
   const handleSubmitPost = async () => {
     if (!postText.trim() && !imageFile && !editingPost) return;
     if (!visitor || !authUid) { onVisitorLoginClick(); return; }
@@ -300,12 +377,18 @@ export function CommunityPage({
 
         // If new image selected, upload it
         if (imageFile) {
-          setUploadProgress('📷 Compressing image...');
-          const compressed = await compressImage(imageFile);
-          setUploadProgress('☁️ Uploading photo...');
-          const sRef = storageRef(storage, `community_posts/${authUid}/${Date.now()}_post.jpg`);
-          const snapshot = await uploadBytes(sRef, compressed);
-          uploadedImageUrl = await getDownloadURL(snapshot.ref);
+          const uploaded = await uploadImageToStorage(imageFile, authUid);
+          if (uploaded) {
+            uploadedImageUrl = uploaded;
+          } else {
+            // Ask user: post without photo or cancel?
+            const postAnyway = confirm('Photo upload failed. Save changes without new photo?');
+            if (!postAnyway) {
+              setSubmitting(false);
+              setUploadProgress('');
+              return;
+            }
+          }
         }
 
         setUploadProgress('💾 Saving changes...');
@@ -325,13 +408,16 @@ export function CommunityPage({
       // New post
       let uploadedImageUrl: string | null = null;
       if (imageFile) {
-        setUploadProgress('📷 Compressing image...');
-        const compressed = await compressImage(imageFile);
-        setUploadProgress('☁️ Uploading photo...');
-        const sRef = storageRef(storage, `community_posts/${authUid}/${Date.now()}_post.jpg`);
-        const snapshot = await uploadBytes(sRef, compressed);
-        uploadedImageUrl = await getDownloadURL(snapshot.ref);
-        setUploadProgress('✅ Photo uploaded!');
+        uploadedImageUrl = await uploadImageToStorage(imageFile, authUid);
+        if (!uploadedImageUrl) {
+          // Ask user: post text-only or cancel?
+          const postAnyway = confirm('Photo upload failed. Post without photo?');
+          if (!postAnyway) {
+            setSubmitting(false);
+            setUploadProgress('');
+            return;
+          }
+        }
       }
 
       setUploadProgress('📝 Creating post...');
@@ -350,13 +436,18 @@ export function CommunityPage({
         spiritAnimal: visitor.avatarAnimal || '',
       });
       await ensureMember();
-      setShareToast('✅ Post published!');
+      setShareToast(uploadedImageUrl ? '✅ Post published with photo!' : '✅ Post published!');
       setTimeout(() => setShareToast(''), 2500);
       resetModal();
-    } catch (err) {
-      console.error('Post failed:', err);
-      setShareToast('❌ Failed to post. Try again.');
-      setTimeout(() => setShareToast(''), 3000);
+    } catch (err: any) {
+      console.error('[CommunityPost] Post failed:', err);
+      const code = err?.code || '';
+      if (code.includes('permission') || code === 'permission-denied') {
+        setShareToast('❌ Permission denied — check Firestore rules');
+      } else {
+        setShareToast(`❌ Failed to post: ${err?.message || 'Try again'}`);
+      }
+      setTimeout(() => setShareToast(''), 5000);
       setUploadProgress('');
     }
     setSubmitting(false);
@@ -1120,7 +1211,7 @@ export function CommunityPage({
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/*,image/heic,image/heif,.heic,.heif"
               style={{ display: 'none' }}
               onChange={handleImageChange}
             />
