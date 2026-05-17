@@ -339,39 +339,41 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages, onCommunityCl
             min-height: auto;
           }
 
-          /* Image on top — show clearly */
+          /* Image on top — tight fit, no wasted space */
           .hero-split-image {
             position: relative;
-            min-height: 48vh;
-            max-height: 52vh;
+            min-height: 0;
+            max-height: none;
+            height: auto;
+            aspect-ratio: 4/3;
             order: -1;
+            overflow: hidden;
           }
           .hero-image-blend {
-            /* bottom gradient on mobile */
-            top: auto; left: 0; right: 0; bottom: 0;
-            width: 100%; height: 80px;
-            background: linear-gradient(to top, ${C.bg}, transparent);
+            display: none; /* no side gradient on mobile */
           }
 
-          /* Show meta overlay on bottom of image */
+          /* Show meta overlay on bottom of image — tight */
           .hero-meta-mobile {
-            display: block;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
             position: absolute;
             bottom: 0;
             left: 0; right: 0;
             z-index: 4;
-            padding: 0.6rem 1rem 0.5rem;
-            background: linear-gradient(to top, ${C.bg} 0%, rgba(12,30,22,0.85) 40%, transparent 100%);
+            padding: 0.3rem 1rem 0.25rem;
+            background: linear-gradient(to top, ${C.bg} 0%, rgba(12,30,22,0.7) 50%, transparent 100%);
           }
           .hero-meta-mobile .hero-eyebrow {
-            font-size: 0.5rem;
-            margin-bottom: 0.2rem;
+            font-size: 0.45rem;
+            margin-bottom: 0.1rem;
             letter-spacing: 0.18em;
           }
           .hero-meta-mobile .hero-time {
-            font-size: 0.55rem;
+            font-size: 0.48rem;
             margin-bottom: 0;
-            gap: 0.35rem;
+            gap: 0.3rem;
           }
 
           /* Hide desktop meta in text section */
@@ -382,15 +384,17 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages, onCommunityCl
           .hero-split-text {
             width: 100%;
             min-width: unset;
-            padding: 0.6rem 1.2rem 2rem;
-            margin-top: 0;
+            padding: 0.4rem 1rem 1.5rem;
+            margin-top: -2px; /* seamless merge */
             position: relative;
             z-index: 3;
+            background: ${C.bg};
           }
 
           .hero-title {
-            font-size: clamp(1.5rem, 6.5vw, 2rem);
+            font-size: clamp(1.4rem, 6vw, 1.8rem);
             margin-top: 0;
+            margin-bottom: 0.2rem;
           }
 
           .hero-title-bar {
@@ -398,16 +402,16 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages, onCommunityCl
           }
 
           .hero-subtitle {
-            font-size: 0.78rem;
-            margin-bottom: 1rem;
-            line-height: 1.55;
+            font-size: 0.75rem;
+            margin-bottom: 0.6rem;
+            line-height: 1.45;
           }
 
           .hero-cta-row { gap: 0.6rem; }
           .hero-link-btn .font-cinzel { font-size: 0.55rem; }
 
           .hero-dots {
-            bottom: 3.5rem;
+            bottom: 2.2rem;
           }
         }
 
