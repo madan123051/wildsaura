@@ -1,3 +1,6 @@
+// src/components/CommunityPage.tsx - FIXED VERSION (Key changes marked with ✨)
+// Changes: Use shared UserAvatar component for profile display in posts
+
 import React, { useState, useEffect, useRef } from 'react';
 import {
   collection, addDoc, onSnapshot, orderBy, query,
@@ -9,6 +12,7 @@ import { db, auth, storage } from '../firebase';
 import { Header } from './Header';
 import { Footer } from './Footer';
 import { Visitor } from '../types';
+import { UserAvatar } from './UserAvatar'; // ✨ SHARED COMPONENT
 
 interface Post {
   id: string;
@@ -204,7 +208,6 @@ export function CommunityPage({
     backBtn: { background: 'rgba(201,168,76,0.15)', border: '1px solid rgba(201,168,76,0.35)', color: '#d4a373', borderRadius: 8, padding: '0.55rem 0.85rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem' },
     title: { fontSize: '1.5rem', fontWeight: 700, background: 'linear-gradient(135deg, #d4a373, #e9c46a)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' },
     newPostBtn: { background: '#d4a373', color: '#0b0c0e', border: 'none', padding: '0.6rem 1.4rem', borderRadius: 30, fontWeight: 700, cursor: 'pointer', fontSize: '0.95rem' },
-    // Guest Banner
     guestBanner: { background: 'rgba(212,163,115,0.1)', border: '1px solid rgba(212,163,115,0.3)', borderRadius: 14, padding: '0.85rem 1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' as const },
     guestText: { color: '#b0b5c0', fontSize: '0.9rem' },
     loginLink: { color: '#d4a373', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', fontSize: '0.9rem', background: 'none', border: 'none' },
@@ -296,12 +299,37 @@ export function CommunityPage({
               ? visitor.displayName
               : (post.username || 'Anonymous');
 
+            // ✨ Create a minimal visitor object for the UserAvatar component
+            // This ensures consistency with the global visitor object
+            const postVisitor: Visitor | null = post.userId === authUid && visitor
+              ? visitor
+              : {
+                  ...visitor,
+                  displayName: displayUsername,
+                  email: '', // Community posts don't show email
+                } as any || null;
+
             return (
               <div key={post.id} style={s.card}>
+                {/* ✨ UPDATED: Use shared UserAvatar component instead of hardcoded letter avatar */}
                 <div style={s.cardHeader}>
-                  <div style={s.avatar}>
-                    {(displayUsername).charAt(0).toUpperCase()}
-                  </div>
+                  {postVisitor ? (
+                    <UserAvatar
+                      visitor={postVisitor}
+                      size={42}
+                      showBorder={false}
+                      style={{
+                        background: '#2a2d35',
+                        color: '#d4a373',
+                        fontSize: '1.1rem',
+                        fontWeight: 600,
+                      }}
+                    />
+                  ) : (
+                    <div style={s.avatar}>
+                      {displayUsername.charAt(0).toUpperCase()}
+                    </div>
+                  )}
                   <div>
                     <div style={s.username}>{displayUsername}</div>
                     <div style={s.timestamp}>{formatTime(post.timestamp)}</div>
@@ -398,30 +426,32 @@ export function CommunityPage({
                 <img src={imagePreview} alt="Preview" style={s.previewImg} />
                 <button
                   style={s.removeImgBtn}
-                  onClick={() => { setImageFile(null); setImagePreview(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
-                >✕</button>
+                  onClick={() => { setImageFile(null); setImagePreview(null); }}
+                >
+                  ✕
+                </button>
               </div>
             ) : (
-              <button style={s.fileUploadBtn} onClick={() => fileInputRef.current?.click()}>
-                📷 Choose Photo
-              </button>
+              <label style={s.fileUploadBtn}>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  style={{ display: 'none' }}
+                />
+                📸 Click to upload image
+              </label>
             )}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              style={{ display: 'none' }}
-              onChange={handleImageChange}
-            />
 
             <div style={s.modalActions}>
               <button style={s.cancelBtn} onClick={resetModal}>Cancel</button>
               <button
-                style={{ ...s.submitBtn, opacity: submitting ? 0.7 : 1 }}
+                style={s.submitBtn}
                 onClick={handleSubmitPost}
-                disabled={submitting}
+                disabled={submitting || (!postText.trim() && !imageFile)}
               >
-                {submitting ? 'Posting...' : 'Post 🌿'}
+                {submitting ? 'Posting...' : 'Post'}
               </button>
             </div>
           </div>

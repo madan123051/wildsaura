@@ -1,16 +1,12 @@
+// src/components/Header.tsx - FIXED VERSION
+// ✨ Now uses shared ANIMAL_AVATARS and UserAvatar component
+
 import React, { useState, useEffect } from 'react';
 import { Menu, X, Search, LogOut, Bell, Settings, Sun, Moon, Monitor } from 'lucide-react';
 import { Visitor } from '../types';
 import { useTheme, Theme } from '../utils/useTheme';
-
-const ANIMAL_AVATARS = [
-  { id: 'tiger', emoji: '🐯', label: 'Tiger' },
-  { id: 'lion', emoji: '🦁', label: 'Lion' },
-  { id: 'elephant', emoji: '🐘', label: 'Elephant' },
-  { id: 'wolf', emoji: '🐺', label: 'Wolf' },
-  { id: 'eagle', emoji: '🦅', label: 'Eagle' },
-  { id: 'deer', emoji: '🦌', label: 'Deer' },
-];
+import { ANIMAL_AVATARS } from '../constants/avatars'; // ✨ SHARED
+import { UserAvatar } from './UserAvatar'; // ✨ SHARED
 
 interface HeaderProps {
   onScrollToGallery: () => void;
@@ -27,6 +23,7 @@ interface HeaderProps {
   onAdminClick?: () => void;
   onProfileClick?: () => void;
   onCommunityClick?: () => void;
+  profilePhotoUrl?: string; // ✨ NEW: Pass profile photo from parent
 }
 
 const THEME_CYCLE: Theme[] = ['system', 'light', 'dark'];
@@ -47,6 +44,7 @@ export const Header: React.FC<HeaderProps> = ({
   onScrollToGallery, logoUrl,
   onSearchClick, visitor, onVisitorLoginClick, onVisitorLogout, onStoriesClick, onVisitorUpdate,
   notificationCount = 0, onNotificationClick, isAdmin, onAdminClick, onProfileClick, onCommunityClick,
+  profilePhotoUrl, // ✨ NEW
 }) => {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -67,11 +65,6 @@ export const Header: React.FC<HeaderProps> = ({
     { label: 'Contact', href: '#contact' },
     { label: 'Join Community', href: '/community', onClick: onCommunityClick },
   ];
-
-  const getAvatarEmoji = () => {
-    if (!visitor?.avatarAnimal) return null;
-    return ANIMAL_AVATARS.find(a => a.id === visitor.avatarAnimal)?.emoji;
-  };
 
   const cycleTheme = () => {
     const idx = THEME_CYCLE.indexOf(theme);
@@ -104,7 +97,6 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Right: Icons */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-
           {/* ── Theme Toggle ── */}
           <button
             onClick={cycleTheme}
@@ -242,31 +234,16 @@ export const Header: React.FC<HeaderProps> = ({
             <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid var(--wa-dropdown-border)' }}>
               {visitor ? (
                 <div style={{ padding: '0.5rem 0' }}>
-                  {/* Profile row */}
+                  {/* Profile row - using shared UserAvatar ✨ */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                    {/* Avatar circle - Shows profile photo if available */}
-                    <div
-                      style={{
-                        width: 44, height: 44, borderRadius: '50%',
-                        background: visitor.avatarUrl ? 'transparent' : (getAvatarEmoji() ? 'rgba(79,159,98,0.22)' : visitor.avatarColor),
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: getAvatarEmoji() ? '1.5rem' : '1rem',
-                        fontWeight: 700, color: getAvatarEmoji() ? undefined : '#000',
-                        border: '2px solid rgba(168,216,162,0.55)',
-                        flexShrink: 0,
-                        overflow: 'hidden',
-                      }}
-                    >
-                      {visitor.avatarUrl ? (
-                        <img
-                          src={visitor.avatarUrl}
-                          alt={visitor.displayName}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        />
-                      ) : (
-                        getAvatarEmoji() || visitor.displayName.charAt(0).toUpperCase()
-                      )}
-                    </div>
+                    {/* ✨ NOW USING SHARED COMPONENT */}
+                    <UserAvatar
+                      visitor={visitor}
+                      profilePhotoUrl={profilePhotoUrl}
+                      size={44}
+                      showBorder={true}
+                    />
+
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <span style={{ display: 'block', fontSize: '0.82rem', color: 'var(--wa-gold)', fontWeight: 600 }}>
                         {visitor.displayName}
@@ -318,7 +295,7 @@ export const Header: React.FC<HeaderProps> = ({
                     🐾 {showAvatarPicker ? 'Close Avatar Picker' : 'Change Spirit Animal'}
                   </button>
 
-                  {/* Animal Avatar Picker */}
+                  {/* Animal Avatar Picker - using shared ANIMAL_AVATARS ✨ */}
                   {showAvatarPicker && (
                     <div
                       onClick={(e) => e.stopPropagation()}
@@ -361,7 +338,8 @@ export const Header: React.FC<HeaderProps> = ({
                               </span>
                             </button>
                           );
-                        })}</div>
+                        })}
+                      </div>
                     </div>
                   )}
                 </div>
