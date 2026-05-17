@@ -623,6 +623,16 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages, onCommunityCl
             transform: translate(-50%, -50%);
             width: calc(100vw - 40px);
             max-width: 340px;
+            max-height: calc(100vh - 100px);
+            padding: 18px 16px 14px;
+          }
+          .hero-market-note {
+            font-size: 11.5px;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+          }
+          .hero-market-link {
+            padding: 8px 10px;
           }
         }
 
