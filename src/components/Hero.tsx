@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, ChevronUp, ShoppingBag, Camera, Sparkles } from 'lucide-react';
 
 interface HeroProps {
   onExplore: () => void;
@@ -45,6 +45,7 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages, onCommunityCl
   const [currentIndex, setCurrentIndex] = useState(0);
   const [fade, setFade] = useState(true);
   const [nptTime, setNptTime] = useState<{ dateStr: string; timeStr: string }>(getNPTDate);
+  const [marketOpen, setMarketOpen] = useState(false);
 
   useEffect(() => {
     const tick = setInterval(() => setNptTime(getNPTDate()), 1000);
@@ -100,10 +101,51 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages, onCommunityCl
           <div className="hero-cta-row animate-fade-in-up anim-delay-600">
             <button className="btn-gold" onClick={onExplore}>Explore Photos</button>
 
-            <a href="/marketplace" className="hero-link-btn">
-              <ChevronDown size={14} style={{ color: C.natgeoYellow, animation: 'bounce 2s infinite' }} />
-              <span className="font-cinzel">Visit Marketplace</span>
-            </a>
+            <div className="hero-market-wrapper" style={{ position: 'relative' }}>
+              <button
+                className="hero-link-btn"
+                onClick={() => setMarketOpen(!marketOpen)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+              >
+                {marketOpen
+                  ? <ChevronUp size={14} style={{ color: C.natgeoYellow }} />
+                  : <ChevronDown size={14} style={{ color: C.natgeoYellow, animation: 'bounce 2s infinite' }} />
+                }
+                <span className="font-cinzel">Visit Marketplace</span>
+              </button>
+
+              {marketOpen && (
+                <div className="hero-market-dropdown">
+                  <p className="hero-market-note">
+                    Nepal's stock photography marketplace — buy authentic photos from local photographers, 
+                    upload your work through Drishya, or edit with ProStudio.
+                  </p>
+                  <div className="hero-market-links">
+                    <a href="https://market.wildsaura.com" target="_blank" rel="noopener noreferrer" className="hero-market-link">
+                      <ShoppingBag size={16} />
+                      <div>
+                        <span className="hero-market-link-title">Market</span>
+                        <span className="hero-market-link-desc">Buy & sell stock photos</span>
+                      </div>
+                    </a>
+                    <a href="https://drishya.wildsaura.com" target="_blank" rel="noopener noreferrer" className="hero-market-link">
+                      <Camera size={16} />
+                      <div>
+                        <span className="hero-market-link-title">Drishya</span>
+                        <span className="hero-market-link-desc">Upload & manage your work</span>
+                      </div>
+                    </a>
+                    <a href="https://prostudio.wildsaura.com" target="_blank" rel="noopener noreferrer" className="hero-market-link">
+                      <Sparkles size={16} />
+                      <div>
+                        <span className="hero-market-link-title">ProStudio</span>
+                        <span className="hero-market-link-desc">AI photo editing tools</span>
+                      </div>
+                    </a>
+                  </div>
+                </div>
+              )}
+            </div>
 
             <a
               href="/community"
@@ -441,6 +483,87 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages, onCommunityCl
           0%, 100% { transform: translateY(0); }
           50% { transform: translateY(4px); }
         }
+
+        /* ── MARKETPLACE DROPDOWN ── */
+        .hero-market-wrapper {
+          position: relative;
+        }
+        .hero-market-dropdown {
+          position: absolute;
+          top: calc(100% + 0.5rem);
+          left: 0;
+          z-index: 50;
+          background: rgba(12, 30, 22, 0.95);
+          backdrop-filter: blur(12px);
+          border: 1px solid rgba(159, 203, 143, 0.2);
+          border-radius: 12px;
+          padding: 0.9rem;
+          min-width: 260px;
+          box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+          animation: dropIn 0.2s ease-out;
+        }
+        .hero-market-note {
+          margin: 0 0 0.7rem 0;
+          font-size: 0.7rem;
+          line-height: 1.5;
+          color: rgba(159, 203, 143, 0.7);
+          border-bottom: 1px solid rgba(159, 203, 143, 0.12);
+          padding-bottom: 0.6rem;
+        }
+        .hero-market-links {
+          display: flex;
+          flex-direction: column;
+          gap: 0.35rem;
+        }
+        .hero-market-link {
+          display: flex;
+          align-items: center;
+          gap: 0.6rem;
+          padding: 0.5rem 0.6rem;
+          border-radius: 8px;
+          text-decoration: none;
+          color: #e8f5e9;
+          transition: background 0.2s;
+        }
+        .hero-market-link:hover {
+          background: rgba(159, 203, 143, 0.12);
+        }
+        .hero-market-link svg {
+          color: #9fcb8f;
+          flex-shrink: 0;
+        }
+        .hero-market-link div {
+          display: flex;
+          flex-direction: column;
+        }
+        .hero-market-link-title {
+          font-family: 'Cinzel', serif;
+          font-size: 0.72rem;
+          font-weight: 600;
+          letter-spacing: 0.06em;
+          color: #e8f5e9;
+        }
+        .hero-market-link-desc {
+          font-size: 0.6rem;
+          color: rgba(159, 203, 143, 0.55);
+          margin-top: 0.05rem;
+        }
+        @keyframes dropIn {
+          from { opacity: 0; transform: translateY(-6px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        @media (max-width: 768px) {
+          .hero-market-dropdown {
+            position: fixed;
+            left: 1rem;
+            right: 1rem;
+            top: auto;
+            bottom: 4rem;
+            min-width: unset;
+          }
+        }
+
         @keyframes livePulse {
           0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 6px rgba(74,222,128,0.7); }
           50% { opacity: 0.5; transform: scale(0.75); box-shadow: 0 0 3px rgba(74,222,128,0.3); }
