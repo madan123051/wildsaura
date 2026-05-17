@@ -1316,6 +1316,12 @@ const App: React.FC = () => {
     window.scrollTo(0, 0);
   }, []);
 
+  const handleLogoClick = useCallback(() => {
+    setView('home');
+    window.history.pushState({}, '', '/');
+    window.scrollTo(0, 0);
+  }, []);
+
   // ── Helper: Open/Close Photo with URL ────────────────────────────────────
   const openPhoto = useCallback((photo: Photo | null) => {
     setSelectedPhoto(photo);
@@ -1463,6 +1469,7 @@ const App: React.FC = () => {
         <Header
           onScrollToGallery={scrollToGallery}
           logoUrl={logoUrl}
+          onLogoClick={handleLogoClick}
           onSearchClick={() => setShowSearch(true)}
           visitor={visitor}
           onVisitorLoginClick={() => setShowVisitorLogin(true)}
@@ -1503,6 +1510,7 @@ const App: React.FC = () => {
         <Header
           onScrollToGallery={scrollToGallery}
           logoUrl={logoUrl}
+          onLogoClick={handleLogoClick}
           onSearchClick={() => setShowSearch(true)}
           visitor={visitor}
           onVisitorLoginClick={() => setShowVisitorLogin(true)}
@@ -1551,6 +1559,7 @@ const App: React.FC = () => {
       <Header
         onScrollToGallery={scrollToGallery}
         logoUrl={logoUrl}
+        onLogoClick={handleLogoClick}
         onSearchClick={() => setShowSearch(true)}
         visitor={visitor}
         onVisitorLoginClick={() => setShowVisitorLogin(true)}
@@ -1711,6 +1720,7 @@ const App: React.FC = () => {
       <Header
         onScrollToGallery={scrollToGallery}
         logoUrl={logoUrl}
+        onLogoClick={handleLogoClick}
         onSearchClick={() => setShowSearch(true)}
         visitor={visitor}
         onVisitorLoginClick={() => setShowVisitorLogin(true)}

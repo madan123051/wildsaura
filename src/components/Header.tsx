@@ -8,6 +8,7 @@ import { AvatarDisplay } from './AvatarDisplay';
 interface HeaderProps {
   onScrollToGallery: () => void;
   logoUrl?: string;
+  onLogoClick?: () => void;
   onSearchClick?: () => void;
   visitor: Visitor | null;
   onVisitorLoginClick: () => void;
@@ -38,6 +39,7 @@ function themeLabel(theme: Theme) {
 
 export const Header: React.FC<HeaderProps> = ({
   onScrollToGallery, logoUrl,
+  onLogoClick,
   onSearchClick, visitor, onVisitorLoginClick, onVisitorLogout, onStoriesClick, onVisitorUpdate,
   notificationCount = 0, onNotificationClick, isAdmin, onAdminClick, onProfileClick, onCommunityClick,
 }) => {
@@ -81,7 +83,16 @@ export const Header: React.FC<HeaderProps> = ({
     >
       <div className="wa-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '72px' }}>
         {/* Left: Logo */}
-        <a href="#top" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none' }}>
+        <a
+          href="#top"
+          onClick={(e) => {
+            if (onLogoClick) {
+              e.preventDefault();
+              onLogoClick();
+            }
+          }}
+          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none' }}
+        >
           {logoUrl && (
             <img
               src={logoUrl} alt="Wilds Aura"
