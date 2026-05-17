@@ -2664,14 +2664,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </button>
               {/* Self Ads */}
               <button
-                onClick={() => setActiveView('self-ads')}
+                onClick={() => setView('self-ads')}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '0.75rem',
                   padding: '0.75rem 1rem', width: '100%', border: 'none',
-                  background: activeView === 'self-ads' ? 'rgba(201,168,76,0.15)' : 'transparent',
-                  color: activeView === 'self-ads' ? '#c9a84c' : 'rgba(255,255,255,0.6)',
+                  background: view === 'self-ads' ? 'rgba(201,168,76,0.15)' : 'transparent',
+                  color: view === 'self-ads' ? '#c9a84c' : 'rgba(255,255,255,0.6)',
                   borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 500,
-                  borderLeft: activeView === 'self-ads' ? '3px solid #c9a84c' : '3px solid transparent',
+                  borderLeft: view === 'self-ads' ? '3px solid #c9a84c' : '3px solid transparent',
                   transition: 'all 0.2s',
                 }}
               >

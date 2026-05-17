@@ -51,6 +51,16 @@ const AdSenseHead: React.FC = () => {
       });
     }
 
+
+    // Inject AdSense account meta tag for ownership verification when publisher ID is available
+    if (publisherId) {
+      const meta = document.createElement('meta');
+      meta.name = 'google-adsense-account';
+      meta.content = publisherId;
+      meta.setAttribute('data-adsense-head', 'meta');
+      document.head.appendChild(meta);
+    }
+
     // Fallback: if no verification code but publisherId exists, inject the standard script
     if (!verificationCode && publisherId) {
       const existing = document.querySelector(`script[src*="adsbygoogle.js?client=${publisherId}"]`);
