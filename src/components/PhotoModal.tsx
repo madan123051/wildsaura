@@ -413,28 +413,17 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
             )}
           </div>
 
-          {/* Download info banner */}
-          {visitor && (
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem',
-              padding: '0.6rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.75rem',
-              background: freeDownloadsLeft > 0 ? 'rgba(201,168,76,0.1)' : 'rgba(255,100,100,0.1)',
-              border: `1px solid ${freeDownloadsLeft > 0 ? 'rgba(201,168,76,0.25)' : 'rgba(255,100,100,0.25)'}`,
-              color: freeDownloadsLeft > 0 ? 'var(--wa-gold)' : 'rgba(255,150,150,1)',
-            }}>
-              {freeDownloadsLeft > 0 ? (
-                <>
-                  <Download size={14} />
-                  <span>{freeDownloadsLeft} free download{freeDownloadsLeft !== 1 ? 's' : ''} remaining (without watermark)</span>
-                </>
-              ) : (
-                <>
-                  <ImageOff size={14} />
-                  <span>Free downloads used — downloads will include watermark</span>
-                </>
-              )}
-            </div>
-          )}
+          {/* Free unlimited downloads badge */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem',
+            padding: '0.6rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.75rem',
+            background: 'rgba(159,203,143,0.1)',
+            border: '1px solid rgba(159,203,143,0.25)',
+            color: '#9fcb8f',
+          }}>
+            <Download size={14} />
+            <span>Free unlimited downloads — no watermark! 🎉</span>
+          </div>
 
           {/* Tabs */}
           <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '1.25rem', padding: '0.25rem', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.04)' }}>
