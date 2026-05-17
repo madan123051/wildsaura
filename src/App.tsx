@@ -38,6 +38,7 @@ import { onSiteSettingsChange, SiteSettings } from './services/siteSettingsServi
 import { NotificationPanel, AppNotification } from './components/NotificationPanel';
 import { updatePhotoMeta, updateStoryMeta, resetMeta } from './utils/seo';
 
+import SelfAdPopup from './components/SelfAdPopup';
 const logoUrl = '/photos/logo.png';
 const ADMIN_EMAIL = 'madan123050@gmail.com';
 
@@ -1818,6 +1819,8 @@ const App: React.FC = () => {
         onLogout={handleVisitorLogout}
         downloadCount={downloadCount}
       />
+
+      <SelfAdPopup />
 
       <NotificationPanel
         isOpen={showNotifPanel}
