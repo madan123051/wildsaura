@@ -2,15 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Menu, X, Search, LogOut, Bell, Settings, Sun, Moon, Monitor } from 'lucide-react';
 import { Visitor } from '../types';
 import { useTheme, Theme } from '../utils/useTheme';
-
-const ANIMAL_AVATARS = [
-  { id: 'tiger', emoji: '🐯', label: 'Tiger' },
-  { id: 'lion', emoji: '🦁', label: 'Lion' },
-  { id: 'elephant', emoji: '🐘', label: 'Elephant' },
-  { id: 'wolf', emoji: '🐺', label: 'Wolf' },
-  { id: 'eagle', emoji: '🦅', label: 'Eagle' },
-  { id: 'deer', emoji: '🦌', label: 'Deer' },
-];
+import { ANIMAL_AVATARS } from '../constants/avatarConstants';
 
 interface HeaderProps {
   onScrollToGallery: () => void;

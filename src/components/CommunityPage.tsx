@@ -9,6 +9,7 @@ import { db, auth, storage } from '../firebase';
 import { Header } from './Header';
 import { Footer } from './Footer';
 import { Visitor } from '../types';
+import { ANIMAL_AVATARS } from '../constants/avatarConstants';
 
 interface Post {
   id: string;
@@ -299,8 +300,16 @@ export function CommunityPage({
             return (
               <div key={post.id} style={s.card}>
                 <div style={s.cardHeader}>
-                  <div style={s.avatar}>
-                    {(displayUsername).charAt(0).toUpperCase()}
+                  {/* Avatar - Show photo/emoji like Header does */}
+                  <div style={{
+                    ...s.avatar,
+                    background: visitor?.avatarColor,
+                    fontSize: '1.1rem',
+                    position: 'relative',
+                  }}>
+                    {visitor && authUid === post.userId
+                      ? visitor.displayName?.charAt(0)?.toUpperCase() 
+                      : displayUsername.charAt(0).toUpperCase()}
                   </div>
                   <div>
                     <div style={s.username}>{displayUsername}</div>
