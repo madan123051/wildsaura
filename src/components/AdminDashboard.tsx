@@ -3,8 +3,9 @@ import {
   LayoutDashboard, Image, Plus, Pencil, Trash2, LogOut, Eye, EyeOff, CheckSquare, Check,
   MapPin, Heart, BarChart3, TrendingUp, X, Save, Search, BookOpen,
   Upload, Sparkles, Film, Camera, FileImage, Loader2, Info,
-  Settings, Cpu, MessageCircle, Globe, Mail
+  Settings, Cpu, MessageCircle, Globe, Mail, DollarSign, Users, Activity, Share2, Wifi, Download, MessageSquare
 } from 'lucide-react';
+import { fetchSiteAnalytics, fetchRecentVisitors, getAdSenseSettings, saveAdSenseSettings, subscribeToOnlineCount, SiteAnalytics, AdSenseSettings, VisitorRecord } from '../services/analyticsService';
 import { Photo, Story, Video, GalleryPhoto, GalleryCategory } from '../types';
 import { analyzePhoto, getAnimalInfo } from '../utils/aiService';
 import { uploadPhotoToStorage, uploadThumbnailToStorage, addPhotoToFirestore, updatePhotoInFirestore } from '../services/photoService';
@@ -20,7 +21,7 @@ import { addGalleryPhotoToFirestore, deleteGalleryPhoto, subscribeToGalleryPhoto
 
 
 
-type AdminView = 'dashboard' | 'photos' | 'add' | 'gallery' | 'stories' | 'add-story' | 'videos' | 'add-video' | 'comments' | 'messages' | 'ai-settings' | 'site-settings';
+type AdminView = 'dashboard' | 'photos' | 'add' | 'gallery' | 'stories' | 'add-story' | 'videos' | 'add-video' | 'comments' | 'messages' | 'ai-settings' | 'site-settings' | 'monetization';
 
 interface AdminDashboardProps {
   logoUrl?: string;
@@ -2328,6 +2329,65 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const closeSidebarOnMobile = () => { if (isMobile) setSidebarOpen(false); };
 
   const totalLikes = photos.reduce((sum, p) => sum + p.likeCount, 0);
+
+  // Real Firebase Analytics
+  const [analytics, setAnalytics] = useState<SiteAnalytics | null>(null);
+  const [recentVisitors, setRecentVisitors] = useState<VisitorRecord[]>([]);
+  const [onlineCount, setOnlineCount] = useState(0);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  
+  // AdSense Settings
+  const [adsenseSettings, setAdsenseSettings] = useState<AdSenseSettings>({
+    publisherId: '', bannerSlot: '', inFeedSlot: '', inArticleSlot: '',
+    sidebarSlot: '', multiplexSlot: '', enabled: false,
+  });
+  const [adsenseSaving, setAdsenseSaving] = useState(false);
+
+  // Load analytics on dashboard view
+  React.useEffect(() => {
+    if (view !== 'dashboard' && view !== 'monetization') return;
+    let cancelled = false;
+    
+    const loadAnalytics = async () => {
+      setAnalyticsLoading(true);
+      try {
+        const [data, visitors] = await Promise.all([
+          fetchSiteAnalytics(),
+          fetchRecentVisitors(8),
+        ]);
+        if (!cancelled) {
+          setAnalytics(data);
+          setRecentVisitors(visitors);
+        }
+      } catch (err) { console.error('Analytics load failed:', err); }
+      if (!cancelled) setAnalyticsLoading(false);
+    };
+    loadAnalytics();
+
+    // Subscribe to online count
+    const unsub = subscribeToOnlineCount((count) => {
+      if (!cancelled) setOnlineCount(count);
+    });
+
+    return () => { cancelled = true; unsub(); };
+  }, [view]);
+
+  // Load AdSense settings
+  React.useEffect(() => {
+    if (view !== 'monetization') return;
+    getAdSenseSettings().then(setAdsenseSettings).catch(console.warn);
+  }, [view]);
+
+  const handleSaveAdsense = async () => {
+    setAdsenseSaving(true);
+    try {
+      await saveAdSenseSettings(adsenseSettings);
+      alert('✅ AdSense settings saved!');
+    } catch (err: any) {
+      alert('❌ Failed: ' + (err?.message || 'Unknown error'));
+    }
+    setAdsenseSaving(false);
+  };
   const nextPhotoId = Math.max(0, ...photos.map((p) => p.id)) + 1;
   const nextStoryId = Math.max(0, ...stories.map((s) => s.id)) + 1;
   const nextVideoId = Math.max(0, ...videos.map((v) => v.id)) + 1;
@@ -2368,6 +2428,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const getViewTitle = () => {
     if (view === 'dashboard') return 'Dashboard Home';
+    if (view === 'monetization') return 'Monetization / AdSense';
     if (view === 'photos') return editingPhoto ? 'Edit Photo' : 'Manage Photos';
     if (view === 'add') return 'Add New Photo';
     if (view === 'gallery') return 'Gallery Management';
@@ -2486,6 +2547,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <button style={sidebarItemStyle(view === 'site-settings')} onClick={() => { setView('site-settings'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); closeSidebarOnMobile(); }}>
             <Globe size={18} /> Site Settings
           </button>
+          <button style={sidebarItemStyle(view === 'monetization')} onClick={() => { setView('monetization'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); closeSidebarOnMobile(); }}>
+            <DollarSign size={18} /> Monetization
+          </button>
         </nav>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', borderTop: '1px solid rgba(201,168,76,0.08)', paddingTop: '0.75rem' }}>
@@ -2559,14 +2623,96 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           {/* Dashboard View */}
           {view === 'dashboard' && (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-                <StatCard icon={<Image size={24} />} label="Total Photos" value={photos.length} color="blue" />
-                <StatCard icon={<Heart size={24} />} label="Total Likes" value={totalLikes} color="red" />
-                <StatCard icon={<BookOpen size={24} />} label="Stories" value={stories.length} color="green" />
-                <StatCard icon={<Film size={24} />} label="Videos" value={videos.length} color="gold" />
+              {/* Real-time Analytics Cards */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                <StatCard icon={<Users size={24} />} label="Total Visitors" value={analytics?.totalVisitors ?? '...'} color="blue" />
+                <StatCard icon={<Wifi size={24} />} label="Online Now" value={onlineCount} color="green" />
+                <StatCard icon={<Heart size={24} />} label="Total Likes" value={analytics?.totalLikes ?? totalLikes} color="red" />
+                <StatCard icon={<Share2 size={24} />} label="Total Shares" value={analytics?.totalShares ?? 0} color="gold" />
               </div>
 
-              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.1)', borderRadius: '12px', padding: '1.5rem', marginBottom: '2rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                <StatCard icon={<Image size={24} />} label="Photos" value={photos.length} color="blue" />
+                <StatCard icon={<BookOpen size={24} />} label="Stories" value={stories.length} color="green" />
+                <StatCard icon={<Film size={24} />} label="Videos" value={videos.length} color="gold" />
+                <StatCard icon={<Download size={24} />} label="Downloads" value={analytics?.totalDownloads ?? 0} color="red" />
+                <StatCard icon={<MessageSquare size={24} />} label="Comments" value={analytics?.totalComments ?? 0} color="blue" />
+                <StatCard icon={<Activity size={24} />} label="Community Posts" value={analytics?.totalCommunityPosts ?? 0} color="green" />
+              </div>
+
+              {/* Visitor Growth - Today/Week/Month */}
+              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.1)', borderRadius: '12px', padding: '1.25rem', marginBottom: '1.5rem' }}>
+                <h3 className="font-cinzel" style={{ fontSize: '0.85rem', color: 'var(--wa-gold)', marginBottom: '1rem', letterSpacing: '0.08em' }}>
+                  <TrendingUp size={16} style={{ marginRight: '0.4rem', verticalAlign: '-3px' }} />
+                  Visitor Growth
+                </h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
+                  {[
+                    { label: 'Today', value: analytics?.todayVisitors ?? 0, color: '#4ade80' },
+                    { label: 'This Week', value: analytics?.weekVisitors ?? 0, color: '#60a5fa' },
+                    { label: 'This Month', value: analytics?.monthVisitors ?? 0, color: 'var(--wa-gold)' },
+                  ].map((item) => (
+                    <div key={item.label} style={{
+                      textAlign: 'center', padding: '1rem', borderRadius: '10px',
+                      background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.05)',
+                    }}>
+                      <p style={{ fontSize: '1.5rem', fontWeight: 700, color: item.color, lineHeight: 1 }}>
+                        {analyticsLoading ? '...' : item.value}
+                      </p>
+                      <p style={{ fontSize: '0.7rem', color: 'rgba(235,230,220,0.4)', marginTop: '0.3rem' }}>{item.label}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Recent Visitors */}
+              {recentVisitors.length > 0 && (
+                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.1)', borderRadius: '12px', padding: '1.25rem', marginBottom: '1.5rem' }}>
+                  <h3 className="font-cinzel" style={{ fontSize: '0.85rem', color: 'var(--wa-gold)', marginBottom: '1rem', letterSpacing: '0.08em' }}>
+                    <Users size={16} style={{ marginRight: '0.4rem', verticalAlign: '-3px' }} />
+                    Recent Visitors
+                  </h3>
+                  <div style={{ display: 'grid', gap: '0.5rem' }}>
+                    {recentVisitors.map((v, idx) => (
+                      <div key={idx} style={{
+                        display: 'flex', alignItems: 'center', gap: '0.75rem',
+                        padding: '0.5rem 0.75rem', borderRadius: '8px',
+                        background: 'rgba(0,0,0,0.15)',
+                      }}>
+                        <div style={{
+                          width: 32, height: 32, borderRadius: '50%', overflow: 'hidden',
+                          background: 'rgba(201,168,76,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          flexShrink: 0,
+                        }}>
+                          {v.avatarUrl ? (
+                            <img src={v.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            <span style={{ fontSize: '0.75rem', color: 'var(--wa-gold)', fontWeight: 700 }}>
+                              {(v.displayName || v.email || '?')[0].toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ fontSize: '0.8rem', color: 'var(--wa-light)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {v.displayName || 'Visitor'}
+                          </p>
+                          <p style={{ fontSize: '0.65rem', color: 'rgba(235,230,220,0.35)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {v.email || ''}
+                          </p>
+                        </div>
+                        {(v.downloadCount ?? 0) > 0 && (
+                          <span style={{ fontSize: '0.65rem', color: 'rgba(201,168,76,0.6)', whiteSpace: 'nowrap' }}>
+                            {v.downloadCount} downloads
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Category Breakdown */}
+              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.1)', borderRadius: '12px', padding: '1.25rem', marginBottom: '1.5rem' }}>
                 <h3 className="font-cinzel" style={{ fontSize: '0.85rem', color: 'var(--wa-gold)', marginBottom: '1rem', letterSpacing: '0.08em' }}>Category Breakdown</h3>
                 {['wildlife', 'landscape', 'street', 'nature', 'other'].map((cat) => {
                   const count = photos.filter((p) => p.category === cat).length;
@@ -2583,7 +2729,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 })}
               </div>
 
-              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.1)', borderRadius: '12px', padding: '1.5rem' }}>
+              {/* Recent Photos */}
+              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.1)', borderRadius: '12px', padding: '1.25rem' }}>
                 <h3 className="font-cinzel" style={{ fontSize: '0.85rem', color: 'var(--wa-gold)', marginBottom: '1rem', letterSpacing: '0.08em' }}>Recent Photos</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.75rem' }}>
                   {photos.slice(-4).reverse().map((p) => (
@@ -2598,6 +2745,114 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
               </div>
             </>
+          )}
+
+          {/* Monetization / AdSense Settings View */}
+          {view === 'monetization' && (
+            <div style={{ maxWidth: 700 }}>
+              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.1)', borderRadius: '12px', padding: '1.5rem', marginBottom: '1.5rem' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--wa-gold)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <DollarSign size={22} /> Google AdSense Settings
+                </h3>
+                <p style={{ fontSize: '0.78rem', color: 'rgba(235,230,220,0.45)', marginBottom: '1.5rem' }}>
+                  Set up your AdSense Publisher ID and Ad Slot IDs to monetize your website.
+                  Sign up at <a href="https://www.google.com/adsense/" target="_blank" rel="noopener" style={{ color: 'var(--wa-gold)' }}>google.com/adsense</a>
+                </p>
+
+                {/* Enable/Disable Toggle */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem', padding: '0.75rem 1rem', borderRadius: '10px', background: adsenseSettings.enabled ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.05)', border: '1px solid ' + (adsenseSettings.enabled ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.15)') }}>
+                  <button
+                    onClick={() => setAdsenseSettings(prev => ({ ...prev, enabled: !prev.enabled }))}
+                    style={{
+                      width: 48, height: 26, borderRadius: 13, border: 'none', cursor: 'pointer',
+                      background: adsenseSettings.enabled ? '#4ade80' : 'rgba(255,255,255,0.15)',
+                      position: 'relative', transition: 'background 0.3s',
+                    }}
+                  >
+                    <div style={{
+                      width: 20, height: 20, borderRadius: '50%', background: '#fff',
+                      position: 'absolute', top: 3,
+                      left: adsenseSettings.enabled ? 25 : 3, transition: 'left 0.3s',
+                    }} />
+                  </button>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: adsenseSettings.enabled ? '#4ade80' : 'rgba(235,230,220,0.5)' }}>
+                    {adsenseSettings.enabled ? 'Ads Enabled' : 'Ads Disabled'}
+                  </span>
+                </div>
+
+                <div style={{ display: 'grid', gap: '1rem' }}>
+                  <div>
+                    <label style={labelStyle}>Publisher ID *</label>
+                    <input
+                      value={adsenseSettings.publisherId}
+                      onChange={(e) => setAdsenseSettings(prev => ({ ...prev, publisherId: e.target.value }))}
+                      placeholder="ca-pub-XXXXXXXXXXXXXXXX"
+                      style={inputStyle}
+                    />
+                    <p style={{ fontSize: '0.68rem', color: 'rgba(235,230,220,0.3)', marginTop: '0.3rem' }}>
+                      Find this in your AdSense account → Account → Publisher ID
+                    </p>
+                  </div>
+
+                  <div style={{ borderTop: '1px solid rgba(201,168,76,0.08)', paddingTop: '1rem' }}>
+                    <p style={{ fontSize: '0.72rem', color: 'var(--wa-gold)', letterSpacing: '0.08em', marginBottom: '0.75rem', fontWeight: 600 }}>
+                      AD SLOT IDs (from AdSense → Ads → By ad unit)
+                    </p>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '0.75rem' }}>
+                    <div>
+                      <label style={labelStyle}>Banner Ad Slot</label>
+                      <input value={adsenseSettings.bannerSlot} onChange={(e) => setAdsenseSettings(prev => ({ ...prev, bannerSlot: e.target.value }))} placeholder="1234567890" style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>In-Feed Ad Slot</label>
+                      <input value={adsenseSettings.inFeedSlot} onChange={(e) => setAdsenseSettings(prev => ({ ...prev, inFeedSlot: e.target.value }))} placeholder="1234567890" style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>In-Article Ad Slot</label>
+                      <input value={adsenseSettings.inArticleSlot} onChange={(e) => setAdsenseSettings(prev => ({ ...prev, inArticleSlot: e.target.value }))} placeholder="1234567890" style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Sidebar Ad Slot</label>
+                      <input value={adsenseSettings.sidebarSlot} onChange={(e) => setAdsenseSettings(prev => ({ ...prev, sidebarSlot: e.target.value }))} placeholder="1234567890" style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Multiplex Ad Slot</label>
+                      <input value={adsenseSettings.multiplexSlot} onChange={(e) => setAdsenseSettings(prev => ({ ...prev, multiplexSlot: e.target.value }))} placeholder="1234567890" style={inputStyle} />
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleSaveAdsense}
+                  disabled={adsenseSaving}
+                  style={{
+                    marginTop: '1.5rem', padding: '0.75rem 2rem',
+                    background: adsenseSaving ? 'rgba(201,168,76,0.3)' : 'linear-gradient(135deg, #c9a84c, #b8943f)',
+                    border: 'none', borderRadius: '10px',
+                    color: adsenseSaving ? 'rgba(255,255,255,0.5)' : '#000',
+                    fontWeight: 700, fontSize: '0.9rem', cursor: adsenseSaving ? 'not-allowed' : 'pointer',
+                    display: 'flex', alignItems: 'center', gap: '0.5rem',
+                  }}
+                >
+                  {adsenseSaving ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Saving...</> : <><Save size={16} /> Save AdSense Settings</>}
+                </button>
+              </div>
+
+              {/* How it works */}
+              <div style={{ background: 'rgba(59,130,246,0.05)', border: '1px solid rgba(59,130,246,0.15)', borderRadius: '12px', padding: '1.25rem' }}>
+                <h4 style={{ fontSize: '0.9rem', color: '#60a5fa', marginBottom: '0.75rem' }}>📋 How to Set Up</h4>
+                <ol style={{ fontSize: '0.78rem', color: 'rgba(235,230,220,0.6)', lineHeight: 1.8, paddingLeft: '1.2rem', margin: 0 }}>
+                  <li>Sign up at <a href="https://www.google.com/adsense/" target="_blank" rel="noopener" style={{ color: 'var(--wa-gold)' }}>Google AdSense</a></li>
+                  <li>Add your website URL: <code style={{ color: 'var(--wa-gold)', background: 'rgba(0,0,0,0.3)', padding: '1px 6px', borderRadius: 4 }}>wildsaura.com</code></li>
+                  <li>Copy your Publisher ID (starts with <code style={{ color: 'var(--wa-gold)', background: 'rgba(0,0,0,0.3)', padding: '1px 6px', borderRadius: 4 }}>ca-pub-</code>)</li>
+                  <li>Create ad units → Copy each Slot ID</li>
+                  <li>Paste all IDs here and enable ads</li>
+                  <li>Google will review your site (1-2 weeks)</li>
+                </ol>
+              </div>
+            </div>
           )}
 
           {/* Photos View */}
