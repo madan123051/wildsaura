@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   collection, addDoc, onSnapshot, orderBy, query,
-  doc, updateDoc, serverTimestamp, arrayUnion, arrayRemove, getDoc
+  doc, updateDoc, serverTimestamp, arrayUnion, arrayRemove, getDoc, setDoc, getDocs
 } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -21,7 +21,6 @@ interface Post {
   timestamp: any;
   likes: string[];
   comments: CommentItem[];
-  // Avatar data stored per post for consistent display
   avatarUrl?: string;
   avatarColor?: string;
   spiritAnimal?: string;
@@ -55,6 +54,20 @@ interface CommunityPageProps {
   onProfileClick?: () => void;
 }
 
+// Simple QR code component using Google Charts API
+function QRCode({ url, size = 180 }: { url: string; size?: number }) {
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(url)}&bgcolor=16181c&color=d4a373&format=png`;
+  return (
+    <img
+      src={qrUrl}
+      alt="QR Code"
+      width={size}
+      height={size}
+      style={{ borderRadius: 12, border: '2px solid #2e323a' }}
+    />
+  );
+}
+
 export function CommunityPage({
   onBack,
   logoUrl,
@@ -76,13 +89,22 @@ export function CommunityPage({
   const [loading, setLoading] = useState(true);
   const [authUid, setAuthUid] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const [postText, setPostText] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [openComments, setOpenComments] = useState<Set<string>>(new Set());
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
+  const [memberCount, setMemberCount] = useState(0);
+  const [isMember, setIsMember] = useState(false);
+  const [joining, setJoining] = useState(false);
+  const [shareToast, setShareToast] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const communityUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/community`
+    : 'https://wildsaura.com/community';
 
   // Track Firebase auth state for uid
   useEffect(() => {
@@ -92,7 +114,7 @@ export function CommunityPage({
     return () => unsub();
   }, []);
 
-  // Load posts — no login required
+  // Load posts — no login required (public!)
   useEffect(() => {
     const q = query(collection(db, 'community_posts'), orderBy('timestamp', 'desc'));
     const unsub = onSnapshot(q, (snap) => {
@@ -105,6 +127,57 @@ export function CommunityPage({
     }, () => setLoading(false));
     return () => unsub();
   }, []);
+
+  // Subscribe to community members count (real-time)
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'community_members'), (snap) => {
+      setMemberCount(snap.size);
+      // Check if current user is a member
+      if (authUid) {
+        const isMem = snap.docs.some(d => d.id === authUid);
+        setIsMember(isMem);
+      }
+    }, () => {});
+    return () => unsub();
+  }, [authUid]);
+
+  // Join Community
+  const handleJoinCommunity = async () => {
+    if (!visitor || !authUid) { onVisitorLoginClick(); return; }
+    setJoining(true);
+    try {
+      await setDoc(doc(db, 'community_members', authUid), {
+        userId: authUid,
+        displayName: visitor.displayName,
+        email: visitor.email || '',
+        avatarUrl: visitor.avatarUrl || '',
+        avatarColor: visitor.avatarColor || '#4ECDC4',
+        spiritAnimal: visitor.avatarAnimal || '',
+        joinedAt: serverTimestamp(),
+      });
+      setIsMember(true);
+    } catch (err) {
+      console.error('Join failed:', err);
+    }
+    setJoining(false);
+  };
+
+  // Auto-join on first post
+  const ensureMember = async () => {
+    if (!isMember && authUid && visitor) {
+      try {
+        await setDoc(doc(db, 'community_members', authUid), {
+          userId: authUid,
+          displayName: visitor.displayName,
+          email: visitor.email || '',
+          avatarUrl: visitor.avatarUrl || '',
+          avatarColor: visitor.avatarColor || '#4ECDC4',
+          spiritAnimal: visitor.avatarAnimal || '',
+          joinedAt: serverTimestamp(),
+        });
+      } catch {}
+    }
+  };
 
   // Require login gate
   const requireLogin = (action: () => void) => {
@@ -151,11 +224,12 @@ export function CommunityPage({
         timestamp: serverTimestamp(),
         likes: [],
         comments: [],
-        // Store avatar data so all posts show consistent avatars
         avatarUrl: visitor.avatarUrl || '',
         avatarColor: visitor.avatarColor || '#4ECDC4',
         spiritAnimal: visitor.avatarAnimal || '',
       });
+      // Auto-join on first post
+      await ensureMember();
       resetModal();
     } catch (err) {
       console.error(err);
@@ -213,17 +287,85 @@ export function CommunityPage({
     catch { return 'Just now'; }
   };
 
+  // Share handlers
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(communityUrl);
+      setShareToast('✅ Link copied!');
+      setTimeout(() => setShareToast(''), 2500);
+    } catch {
+      window.prompt('Copy this link:', communityUrl);
+    }
+  };
+
+  const handleWhatsAppShare = () => {
+    const text = `🌿 Join WildSaura Community! Share your love for wildlife and nature photography 📸\n${communityUrl}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  };
+
+  const handleTwitterShare = () => {
+    const text = `🌿 Join WildSaura Community! Wildlife & nature photography lovers unite 📸🐯`;
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(communityUrl)}`, '_blank');
+  };
+
+  const handleFacebookShare = () => {
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(communityUrl)}`, '_blank');
+  };
+
+  const handleNativeShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'WildSaura Community 🌿',
+          text: 'Join WildSaura Community! Share your love for wildlife and nature photography 📸',
+          url: communityUrl,
+        });
+      } catch {}
+    }
+  };
+
   const s: Record<string, React.CSSProperties> = {
     page: { minHeight: '100vh', background: 'var(--wa-bg, #0b0c0e)', display: 'flex', flexDirection: 'column', fontFamily: "'Segoe UI', 'Inter', system-ui, sans-serif" },
     feed: { flex: 1, maxWidth: 700, margin: '0 auto', width: '100%', padding: '8rem 1rem 3rem', display: 'flex', flexDirection: 'column', gap: '1.8rem' },
-    topBar: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' },
+    topBar: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.75rem' },
     backBtn: { background: 'rgba(201,168,76,0.15)', border: '1px solid rgba(201,168,76,0.35)', color: '#d4a373', borderRadius: 8, padding: '0.55rem 0.85rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem' },
     title: { fontSize: '1.5rem', fontWeight: 700, background: 'linear-gradient(135deg, #d4a373, #e9c46a)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' },
     newPostBtn: { background: '#d4a373', color: '#0b0c0e', border: 'none', padding: '0.6rem 1.4rem', borderRadius: 30, fontWeight: 700, cursor: 'pointer', fontSize: '0.95rem' },
+
+    // Stats bar
+    statsBar: {
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' as const, gap: '0.75rem',
+      background: 'linear-gradient(135deg, rgba(212,163,115,0.08), rgba(233,196,106,0.06))',
+      border: '1px solid rgba(212,163,115,0.2)', borderRadius: 16, padding: '0.9rem 1.2rem',
+    },
+    statsLeft: { display: 'flex', alignItems: 'center', gap: '1.2rem', flexWrap: 'wrap' as const },
+    statItem: { display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.95rem', color: '#b0b5c0' },
+    statNumber: { fontWeight: 700, color: '#e9c46a', fontSize: '1.1rem' },
+    statsRight: { display: 'flex', alignItems: 'center', gap: '0.6rem' },
+    joinBtn: {
+      background: 'linear-gradient(135deg, #d4a373, #e9c46a)', color: '#0b0c0e', border: 'none',
+      padding: '0.55rem 1.4rem', borderRadius: 30, fontWeight: 700, cursor: 'pointer', fontSize: '0.9rem',
+      boxShadow: '0 2px 12px rgba(212,163,115,0.3)',
+    },
+    joinedBadge: {
+      display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(76,205,196,0.12)',
+      border: '1px solid rgba(76,205,196,0.3)', padding: '0.5rem 1rem', borderRadius: 30,
+      color: '#4ECDC4', fontWeight: 600, fontSize: '0.9rem',
+    },
+    shareBtn: {
+      background: 'rgba(212,163,115,0.12)', border: '1px solid rgba(212,163,115,0.3)',
+      color: '#d4a373', borderRadius: 30, padding: '0.55rem 1rem', cursor: 'pointer',
+      fontWeight: 600, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: 6,
+    },
+
     // Guest Banner
-    guestBanner: { background: 'rgba(212,163,115,0.1)', border: '1px solid rgba(212,163,115,0.3)', borderRadius: 14, padding: '0.85rem 1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' as const },
-    guestText: { color: '#b0b5c0', fontSize: '0.9rem' },
+    guestBanner: { background: 'rgba(212,163,115,0.1)', border: '1px solid rgba(212,163,115,0.3)', borderRadius: 14, padding: '1rem 1.2rem', display: 'flex', flexDirection: 'column' as const, gap: '0.8rem', alignItems: 'center', textAlign: 'center' as const },
+    guestTitle: { color: '#e9c46a', fontWeight: 700, fontSize: '1.1rem' },
+    guestText: { color: '#b0b5c0', fontSize: '0.9rem', lineHeight: 1.5 },
+    guestActions: { display: 'flex', gap: '0.8rem', flexWrap: 'wrap' as const, justifyContent: 'center' },
+    loginBtn: { background: 'linear-gradient(135deg, #d4a373, #e9c46a)', color: '#0b0c0e', fontWeight: 700, cursor: 'pointer', border: 'none', padding: '0.6rem 1.6rem', borderRadius: 30, fontSize: '0.95rem' },
     loginLink: { color: '#d4a373', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', fontSize: '0.9rem', background: 'none', border: 'none' },
+
     card: { background: '#16181c', borderRadius: 18, padding: '1.2rem', border: '1px solid #262a31' },
     cardHeader: { display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.8rem' },
     username: { fontWeight: 600, fontSize: '1rem', color: '#e4e4e7' },
@@ -240,6 +382,8 @@ export function CommunityPage({
     commentInput: { flex: 1, background: '#1f2126', border: '1px solid #2e323a', borderRadius: 20, padding: '0.6rem 1rem', color: '#e4e4e7', outline: 'none', fontSize: '0.9rem' },
     commentSubmitBtn: { background: '#d4a373', color: '#0b0c0e', border: 'none', borderRadius: 20, padding: '0.5rem 1.2rem', fontWeight: 700, cursor: 'pointer' },
     emptyState: { textAlign: 'center', padding: '3rem 1rem', color: '#6b7280', fontSize: '1rem' },
+
+    // Modals
     overlay: { position: 'fixed' as const, top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 },
     modal: { background: '#16181c', width: '90%', maxWidth: 520, borderRadius: 24, padding: '2rem', border: '1px solid #2e323a' },
     modalTitle: { marginBottom: '1.5rem', fontWeight: 700, color: '#d4a373', fontSize: '1.3rem' },
@@ -252,6 +396,31 @@ export function CommunityPage({
     modalActions: { display: 'flex', gap: '1rem', justifyContent: 'flex-end' },
     cancelBtn: { background: '#1f2126', border: 'none', color: '#e4e4e7', padding: '0.6rem 1.4rem', borderRadius: 30, fontWeight: 600, cursor: 'pointer' },
     submitBtn: { background: '#d4a373', color: '#0b0c0e', border: 'none', padding: '0.6rem 1.6rem', borderRadius: 30, fontWeight: 700, cursor: 'pointer' },
+
+    // Share Modal
+    shareModal: { background: '#16181c', width: '90%', maxWidth: 420, borderRadius: 24, padding: '2rem', border: '1px solid #2e323a', textAlign: 'center' as const },
+    shareTitle: { marginBottom: '0.5rem', fontWeight: 700, color: '#d4a373', fontSize: '1.3rem' },
+    shareSubtitle: { color: '#8a8f98', fontSize: '0.9rem', marginBottom: '1.5rem' },
+    qrContainer: { display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' },
+    shareGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem', marginBottom: '1.2rem' },
+    shareOption: {
+      display: 'flex', alignItems: 'center', gap: '0.6rem',
+      background: '#1f2126', border: '1px solid #2e323a', borderRadius: 14,
+      padding: '0.8rem 1rem', cursor: 'pointer', color: '#e4e4e7',
+      fontSize: '0.9rem', fontWeight: 500, transition: 'all 0.2s',
+    },
+    shareOptionIcon: { fontSize: '1.3rem', width: 28, textAlign: 'center' as const },
+    linkPreview: {
+      background: '#1f2126', border: '1px solid #2e323a', borderRadius: 12,
+      padding: '0.7rem 1rem', color: '#8a8f98', fontSize: '0.8rem',
+      marginBottom: '1.2rem', wordBreak: 'break-all' as const, textAlign: 'left' as const,
+    },
+    toast: {
+      position: 'fixed' as const, bottom: '2rem', left: '50%', transform: 'translateX(-50%)',
+      background: '#1a1a1a', color: '#4ECDC4', border: '1px solid rgba(76,205,196,0.4)',
+      borderRadius: 10, padding: '0.7rem 1.4rem', fontSize: '0.9rem', fontWeight: 600,
+      zIndex: 9999, boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+    },
   };
 
   return (
@@ -285,13 +454,60 @@ export function CommunityPage({
           </button>
         </div>
 
+        {/* Stats Bar — Member count, Join, Share */}
+        <div style={s.statsBar}>
+          <div style={s.statsLeft}>
+            <div style={s.statItem}>
+              <span>👥</span>
+              <span style={s.statNumber}>{memberCount}</span>
+              <span>Members</span>
+            </div>
+            <div style={s.statItem}>
+              <span>📝</span>
+              <span style={s.statNumber}>{posts.length}</span>
+              <span>Posts</span>
+            </div>
+          </div>
+          <div style={s.statsRight}>
+            {visitor ? (
+              isMember ? (
+                <div style={s.joinedBadge}>✅ Joined</div>
+              ) : (
+                <button
+                  style={{ ...s.joinBtn, opacity: joining ? 0.7 : 1 }}
+                  onClick={handleJoinCommunity}
+                  disabled={joining}
+                >
+                  {joining ? 'Joining...' : '🤝 Join Community'}
+                </button>
+              )
+            ) : (
+              <button style={s.joinBtn} onClick={onVisitorLoginClick}>
+                🔑 Login to Join
+              </button>
+            )}
+            <button style={s.shareBtn} onClick={() => setShowShareModal(true)}>
+              📤 Share
+            </button>
+          </div>
+        </div>
+
         {/* Guest banner — visible only when not logged in */}
         {!visitor && (
           <div style={s.guestBanner}>
-            <span style={s.guestText}>👀 You're browsing as a guest — posts are public!</span>
-            <button style={s.loginLink} onClick={onVisitorLoginClick}>
-              Login to post, like &amp; comment →
-            </button>
+            <div style={s.guestTitle}>🌍 Welcome to WildSaura Community!</div>
+            <div style={s.guestText}>
+              Browse posts freely — no login needed! 🎉<br />
+              Join to post, like, comment, and connect with wildlife lovers.
+            </div>
+            <div style={s.guestActions}>
+              <button style={s.loginBtn} onClick={onVisitorLoginClick}>
+                🔑 Login to Join
+              </button>
+              <button style={s.shareBtn} onClick={() => setShowShareModal(true)}>
+                📤 Share with Friends
+              </button>
+            </div>
           </div>
         )}
 
@@ -306,12 +522,10 @@ export function CommunityPage({
             const likeCount = post.likes?.length || 0;
             const commentCount = post.comments?.length || 0;
             const showComments = openComments.has(post.id);
-            // Show current displayName for own posts so it stays in sync with the profile
             const displayUsername = (authUid && post.userId === authUid && visitor)
               ? visitor.displayName
               : (post.username || 'Anonymous');
 
-            // For own posts use live visitor avatar; for others use stored post data
             const postAvatarUrl = (authUid && post.userId === authUid && visitor)
               ? visitor.avatarUrl
               : post.avatarUrl;
@@ -325,7 +539,6 @@ export function CommunityPage({
             return (
               <div key={post.id} style={s.card}>
                 <div style={s.cardHeader}>
-                  {/* Unified Avatar for post author */}
                   <AvatarDisplay
                     displayName={displayUsername}
                     avatarUrl={postAvatarUrl}
@@ -371,7 +584,6 @@ export function CommunityPage({
                   <div style={s.commentSection}>
                     <ul style={s.commentList}>
                       {(post.comments || []).map((c, i) => {
-                        // For own comments use live visitor avatar; for others use stored comment data
                         const commentAvatarUrl = (authUid && c.userId === authUid && visitor)
                           ? visitor.avatarUrl
                           : c.avatarUrl;
@@ -493,6 +705,82 @@ export function CommunityPage({
           </div>
         </div>
       )}
+
+      {/* Share Modal */}
+      {showShareModal && (
+        <div style={s.overlay} onClick={(e) => { if (e.target === e.currentTarget) setShowShareModal(false); }}>
+          <div style={s.shareModal}>
+            <div style={s.shareTitle}>📤 Share Community</div>
+            <div style={s.shareSubtitle}>Invite friends to join WildSaura Community!</div>
+
+            {/* QR Code */}
+            <div style={s.qrContainer}>
+              <QRCode url={communityUrl} size={160} />
+            </div>
+
+            {/* Share Options Grid */}
+            <div style={s.shareGrid}>
+              <button
+                style={s.shareOption}
+                onClick={handleCopyLink}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#d4a373'; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#2e323a'; }}
+              >
+                <span style={s.shareOptionIcon}>🔗</span> Copy Link
+              </button>
+              <button
+                style={s.shareOption}
+                onClick={handleWhatsAppShare}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#25D366'; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#2e323a'; }}
+              >
+                <span style={s.shareOptionIcon}>💬</span> WhatsApp
+              </button>
+              <button
+                style={s.shareOption}
+                onClick={handleTwitterShare}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#1DA1F2'; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#2e323a'; }}
+              >
+                <span style={s.shareOptionIcon}>🐦</span> Twitter / X
+              </button>
+              <button
+                style={s.shareOption}
+                onClick={handleFacebookShare}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#4267B2'; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#2e323a'; }}
+              >
+                <span style={s.shareOptionIcon}>📘</span> Facebook
+              </button>
+            </div>
+
+            {/* Native share (mobile) */}
+            {typeof navigator !== 'undefined' && 'share' in navigator && (
+              <button
+                style={{ ...s.shareOption, justifyContent: 'center', marginBottom: '1rem' }}
+                onClick={handleNativeShare}
+              >
+                <span style={s.shareOptionIcon}>📱</span> More Options...
+              </button>
+            )}
+
+            {/* Link preview */}
+            <div style={s.linkPreview}>
+              🔗 {communityUrl}
+            </div>
+
+            <button
+              style={s.cancelBtn}
+              onClick={() => setShowShareModal(false)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Toast */}
+      {shareToast && <div style={s.toast}>{shareToast}</div>}
     </div>
   );
 }
