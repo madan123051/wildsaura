@@ -66,23 +66,21 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages, onCommunityCl
   return (
     <>
       <section id="top" className="hero-split-section">
-        {/* ── LEFT: Text Content ── */}
+        {/* ── LEFT: Text Content (Desktop) ── */}
         <div className="hero-split-text">
-          {/* Top accent line */}
-          <div className="hero-accent-line" />
-
-          {/* Eyebrow */}
-          <div className="hero-eyebrow animate-fade-in-up anim-delay-200">
-            <span className="hero-eyebrow-dash" />
-            Nature &nbsp;·&nbsp; Stories &nbsp;·&nbsp; Conservation
-          </div>
-
-          {/* Live time */}
-          <div className="hero-time animate-fade-in-up anim-delay-200">
-            <span className="hero-live-dot" />
-            <span style={{ color: C.natgeoYellow, fontWeight: 700 }}>{nptTime.dateStr}</span>
-            <span style={{ color: 'rgba(197,217,181,0.4)' }}>·</span>
-            <span>{nptTime.timeStr}</span>
+          {/* Eyebrow + Time — visible on desktop, hidden on mobile (shown on image instead) */}
+          <div className="hero-meta-desktop">
+            <div className="hero-accent-line" />
+            <div className="hero-eyebrow animate-fade-in-up anim-delay-200">
+              <span className="hero-eyebrow-dash" />
+              Nature &nbsp;·&nbsp; Stories &nbsp;·&nbsp; Conservation
+            </div>
+            <div className="hero-time animate-fade-in-up anim-delay-200">
+              <span className="hero-live-dot" />
+              <span style={{ color: C.natgeoYellow, fontWeight: 700 }}>{nptTime.dateStr}</span>
+              <span style={{ color: 'rgba(197,217,181,0.4)' }}>·</span>
+              <span>{nptTime.timeStr}</span>
+            </div>
           </div>
 
           {/* Title */}
@@ -134,8 +132,22 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages, onCommunityCl
               opacity: fade ? 1 : 0,
             }}
           />
-          {/* Subtle left gradient blend on desktop */}
+          {/* Gradient blend */}
           <div className="hero-image-blend" />
+
+          {/* ── Mobile-only: meta overlay on bottom of image ── */}
+          <div className="hero-meta-mobile">
+            <div className="hero-eyebrow">
+              <span className="hero-eyebrow-dash" />
+              Nature &nbsp;·&nbsp; Stories &nbsp;·&nbsp; Conservation
+            </div>
+            <div className="hero-time">
+              <span className="hero-live-dot" />
+              <span style={{ color: C.natgeoYellow, fontWeight: 700 }}>{nptTime.dateStr}</span>
+              <span style={{ color: 'rgba(197,217,181,0.4)' }}>·</span>
+              <span>{nptTime.timeStr}</span>
+            </div>
+          </div>
 
           {/* Slide dots */}
           {images.length > 1 && (
@@ -311,6 +323,15 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages, onCommunityCl
           background: ${C.natgeoYellow};
         }
 
+        /* ── Mobile meta overlay — HIDDEN on desktop ── */
+        .hero-meta-mobile {
+          display: none;
+        }
+        /* ── Desktop meta — VISIBLE on desktop ── */
+        .hero-meta-desktop {
+          display: block;
+        }
+
         /* ── MOBILE LAYOUT (<768px) ── */
         @media (max-width: 768px) {
           .hero-split-section {
@@ -318,48 +339,75 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages, onCommunityCl
             min-height: auto;
           }
 
-          /* Image on top — show clearly, not blocked */
+          /* Image on top — show clearly */
           .hero-split-image {
             position: relative;
-            min-height: 52vh;
-            max-height: 55vh;
-            order: -1; /* image first on mobile */
+            min-height: 48vh;
+            max-height: 52vh;
+            order: -1;
           }
           .hero-image-blend {
-            /* bottom gradient instead of left on mobile */
+            /* bottom gradient on mobile */
             top: auto; left: 0; right: 0; bottom: 0;
-            width: 100%; height: 100px;
+            width: 100%; height: 80px;
             background: linear-gradient(to top, ${C.bg}, transparent);
+          }
+
+          /* Show meta overlay on bottom of image */
+          .hero-meta-mobile {
+            display: block;
+            position: absolute;
+            bottom: 0;
+            left: 0; right: 0;
+            z-index: 4;
+            padding: 0.6rem 1rem 0.5rem;
+            background: linear-gradient(to top, ${C.bg} 0%, rgba(12,30,22,0.85) 40%, transparent 100%);
+          }
+          .hero-meta-mobile .hero-eyebrow {
+            font-size: 0.5rem;
+            margin-bottom: 0.2rem;
+            letter-spacing: 0.18em;
+          }
+          .hero-meta-mobile .hero-time {
+            font-size: 0.55rem;
+            margin-bottom: 0;
+            gap: 0.35rem;
+          }
+
+          /* Hide desktop meta in text section */
+          .hero-meta-desktop {
+            display: none;
           }
 
           .hero-split-text {
             width: 100%;
             min-width: unset;
-            padding: 1.2rem 1.2rem 2rem;
-            margin-top: -2rem; /* slight overlap */
+            padding: 0.6rem 1.2rem 2rem;
+            margin-top: 0;
             position: relative;
             z-index: 3;
           }
 
-          .hero-accent-line { margin-bottom: 0.8rem; }
-          .hero-eyebrow { font-size: 0.58rem; margin-bottom: 0.4rem; }
-          .hero-time { font-size: 0.6rem; margin-bottom: 0.6rem; }
-
           .hero-title {
-            font-size: clamp(1.6rem, 7vw, 2.2rem);
+            font-size: clamp(1.5rem, 6.5vw, 2rem);
+            margin-top: 0;
+          }
+
+          .hero-title-bar {
+            margin: 0.4rem 0;
           }
 
           .hero-subtitle {
-            font-size: 0.82rem;
-            margin-bottom: 1.2rem;
-            line-height: 1.6;
+            font-size: 0.78rem;
+            margin-bottom: 1rem;
+            line-height: 1.55;
           }
 
-          .hero-cta-row { gap: 0.7rem; }
-          .hero-link-btn .font-cinzel { font-size: 0.58rem; }
+          .hero-cta-row { gap: 0.6rem; }
+          .hero-link-btn .font-cinzel { font-size: 0.55rem; }
 
           .hero-dots {
-            bottom: 1.2rem;
+            bottom: 3.5rem;
           }
         }
 
