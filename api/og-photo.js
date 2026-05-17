@@ -27,8 +27,8 @@ async function getPhotoFromFirestore(photoId) {
     return {
       title: f.title?.stringValue || 'Wildlife Photo',
       caption: f.caption?.stringValue || '',
-      imageUrl: f.imageUrl?.stringValue || `${SITE_URL}/photos/logo.png`,
-      thumbnailUrl: f.thumbnailUrl?.stringValue || f.imageUrl?.stringValue || `${SITE_URL}/photos/logo.png`,
+      imageUrl: f.imageUrl?.stringValue || '',
+      thumbnailUrl: f.thumbnailUrl?.stringValue || '',
       category: f.category?.stringValue || 'wildlife',
       photographer: f.photographer?.stringValue || 'Madan Shrestha',
       location: f.location?.stringValue || '',
@@ -42,25 +42,49 @@ async function getPhotoFromFirestore(photoId) {
   }
 }
 
+/**
+ * Pick the best OG image URL for social crawlers.
+ * Priority:
+ *   1. thumbnailUrl — smaller, loads faster for WhatsApp/Facebook/Twitter crawlers
+ *   2. imageUrl — full resolution (may be slow for crawlers but works)
+ *   3. Default wildlife photo fallback
+ *
+ * Also converts Firebase Storage URLs to direct download URLs
+ * for better crawler compatibility.
+ */
+function getBestOgImage(photo) {
+  const fallback = `${SITE_URL}/photos/photo-wildlife.jpeg`;
+  
+  // Prefer thumbnail for OG (smaller = faster for crawlers)
+  let ogUrl = photo.thumbnailUrl || photo.imageUrl || fallback;
+  
+  // Ensure Firebase Storage URLs have alt=media for direct access
+  if (ogUrl.includes('firebasestorage.googleapis.com') && !ogUrl.includes('alt=media')) {
+    ogUrl += (ogUrl.includes('?') ? '&' : '?') + 'alt=media';
+  }
+  
+  return ogUrl;
+}
+
 function esc(str) {
   if (!str) return '';
   return String(str)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
+    .replace(/\"/g, '&quot;')
     .replace(/'/g, '&#39;');
 }
 
 function buildDescription(photo) {
   const parts = [];
+  if (photo.caption) return photo.caption.slice(0, 200);
   if (photo.animalName) parts.push(photo.animalName);
-  if (photo.caption) return photo.caption;
   parts.push(`${photo.category.charAt(0).toUpperCase() + photo.category.slice(1)} photography`);
   if (photo.location) parts.push(`photographed at ${photo.location}`);
   parts.push(`by ${photo.photographer}`);
   parts.push('on WILDS AURA');
-  return parts.join(' ');
+  return parts.join(' ').slice(0, 200);
 }
 
 export default async function handler(req, res) {
@@ -92,7 +116,8 @@ export default async function handler(req, res) {
   const pageUrl = `${SITE_URL}/photo/${encodeURIComponent(photoId)}`;
   const title = `${photo.title} — WILDS AURA Photography`;
   const description = buildDescription(photo);
-  const imageUrl = photo.imageUrl;
+  const ogImageUrl = getBestOgImage(photo);
+  const fullImageUrl = photo.imageUrl || ogImageUrl;
   const keywords = [photo.category, photo.animalName, photo.location, ...photo.tags]
     .filter(Boolean)
     .join(', ');
@@ -103,7 +128,8 @@ export default async function handler(req, res) {
     '@type': 'ImageObject',
     name: photo.title,
     description: description,
-    contentUrl: imageUrl,
+    contentUrl: fullImageUrl,
+    thumbnailUrl: ogImageUrl,
     url: pageUrl,
     representativeOfPage: true,
     author: { '@type': 'Person', name: photo.photographer },
@@ -158,25 +184,27 @@ export default async function handler(req, res) {
     `<link rel="canonical" href="${esc(pageUrl)}" />`,
   );
 
-  // 4. Replace OG tags
+  // 4. Replace OG tags — with additional image metadata for WhatsApp/Facebook
   html = html
     .replace(/<meta\s+property="og:type"[^>]*>/, `<meta property="og:type" content="article" />`)
     .replace(/<meta\s+property="og:title"[^>]*>/, `<meta property="og:title" content="${esc(title)}" />`)
     .replace(/<meta\s+property="og:description"[^>]*>/, `<meta property="og:description" content="${esc(description)}" />`)
-    .replace(/<meta\s+property="og:image"[^>]*>/, `<meta property="og:image" content="${esc(imageUrl)}" />`)
+    .replace(/<meta\s+property="og:image"[^>]*>/, `<meta property="og:image" content="${esc(ogImageUrl)}" />\n    <meta property="og:image:width" content="1200" />\n    <meta property="og:image:height" content="630" />\n    <meta property="og:image:type" content="image/jpeg" />`)
     .replace(/<meta\s+property="og:image:alt"[^>]*>/, `<meta property="og:image:alt" content="${esc(photo.title)}" />`)
     .replace(/<meta\s+property="og:url"[^>]*>/, `<meta property="og:url" content="${esc(pageUrl)}" />`);
 
-  // 5. Replace Twitter card tags
+  // 5. Replace Twitter card tags — use summary_large_image for big photo preview
   html = html
+    .replace(/<meta\s+name="twitter:card"[^>]*>/, `<meta name="twitter:card" content="summary_large_image" />`)
     .replace(/<meta\s+name="twitter:title"[^>]*>/, `<meta name="twitter:title" content="${esc(title)}" />`)
     .replace(/<meta\s+name="twitter:description"[^>]*>/, `<meta name="twitter:description" content="${esc(description)}" />`)
-    .replace(/<meta\s+name="twitter:image"[^>]*>/, `<meta name="twitter:image" content="${esc(imageUrl)}" />`);
+    .replace(/<meta\s+name="twitter:image"[^>]*>/, `<meta name="twitter:image" content="${esc(ogImageUrl)}" />`);
 
   // 6. Replace static JSON-LD and inject photo-specific structured data
   html = html.replace(/<script\s+type="application\/ld\+json">[\s\S]*?<\/script>\s*/g, '');
   html = html.replace('</head>', `${jsonLdBlock}\n</head>`);
 
+  // Short cache for dynamic content (5 min CDN, revalidate in background)
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=300, stale-while-revalidate=60');
   return res.status(200).send(html);

@@ -15,6 +15,18 @@ const FIREBASE_PROJECT_ID = 'wildsaura-1ef8a';
 const FIREBASE_API_KEY = 'AIzaSyCXDJrFmn-pzbqys91tj4Fruqn4tl58p9Y';
 const SITE_URL = 'https://www.wildsaura.com';
 
+
+/**
+ * Ensure Firebase Storage URLs have alt=media for direct access by social crawlers.
+ */
+function ensureDirectUrl(url) {
+  if (!url) return `${SITE_URL}/photos/photo-wildlife.jpeg`;
+  if (url.includes('firebasestorage.googleapis.com') && !url.includes('alt=media')) {
+    return url + (url.includes('?') ? '&' : '?') + 'alt=media';
+  }
+  return url;
+}
+
 async function getStoryBySlug(slug) {
   try {
     // Use Firestore REST runQuery to find story by slug field
@@ -46,7 +58,7 @@ async function getStoryBySlug(slug) {
       title: f.title?.stringValue || 'Wildlife Story',
       excerpt: f.excerpt?.stringValue || '',
       content: f.content?.stringValue || '',
-      coverImageUrl: f.coverImageUrl?.stringValue || `${SITE_URL}/photos/logo.png`,
+      coverImageUrl: f.coverImageUrl?.stringValue || `${SITE_URL}/photos/photo-wildlife.jpeg`,
       tags: f.tags?.arrayValue?.values?.map(v => v.stringValue).filter(Boolean) || [],
       photographer: f.photographer?.stringValue || 'Madan Shrestha',
       slug: f.slug?.stringValue || slug,
@@ -96,7 +108,7 @@ export default async function handler(req, res) {
   const title = `${story.title} — WILDS AURA`;
   const description = story.excerpt ||
     (story.content ? story.content.replace(/\n/g, ' ').slice(0, 160) + '...' : `Wildlife story by ${story.photographer} on WILDS AURA`);
-  const imageUrl = story.coverImageUrl;
+  const imageUrl = ensureDirectUrl(story.coverImageUrl);
 
   // Estimate read time
   const wordCount = (story.content || '').split(/\s+/).filter(Boolean).length;
@@ -156,11 +168,12 @@ export default async function handler(req, res) {
     .replace(/<meta\s+property="og:type"[^>]*>/, `<meta property="og:type" content="article" />`)
     .replace(/<meta\s+property="og:title"[^>]*>/, `<meta property="og:title" content="${esc(title)}" />`)
     .replace(/<meta\s+property="og:description"[^>]*>/, `<meta property="og:description" content="${esc(description)}" />`)
-    .replace(/<meta\s+property="og:image"[^>]*>/, `<meta property="og:image" content="${esc(imageUrl)}" />`)
+    .replace(/<meta\s+property="og:image"[^>]*>/, `<meta property="og:image" content="${esc(imageUrl)}" />\n    <meta property="og:image:width" content="1200" />\n    <meta property="og:image:height" content="630" />\n    <meta property="og:image:type" content="image/jpeg" />`)
     .replace(/<meta\s+property="og:image:alt"[^>]*>/, `<meta property="og:image:alt" content="${esc(story.title)}" />`)
     .replace(/<meta\s+property="og:url"[^>]*>/, `<meta property="og:url" content="${esc(pageUrl)}" />`);
 
   html = html
+    .replace(/<meta\s+name="twitter:card"[^>]*>/, `<meta name="twitter:card" content="summary_large_image" />`)
     .replace(/<meta\s+name="twitter:title"[^>]*>/, `<meta name="twitter:title" content="${esc(title)}" />`)
     .replace(/<meta\s+name="twitter:description"[^>]*>/, `<meta name="twitter:description" content="${esc(description)}" />`)
     .replace(/<meta\s+name="twitter:image"[^>]*>/, `<meta name="twitter:image" content="${esc(imageUrl)}" />`);
