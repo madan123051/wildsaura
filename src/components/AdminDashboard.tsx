@@ -2602,6 +2602,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const getViewTitle = () => {
     if (view === 'dashboard') return 'Dashboard Home';
     if (view === 'monetization') return 'Monetization / AdSense';
+    if (view === 'self-ads') return 'Self Ads';
     if (view === 'photos') return editingPhoto ? 'Edit Photo' : 'Manage Photos';
     if (view === 'add') return 'Add New Photo';
     if (view === 'gallery') return 'Gallery Management';
@@ -3056,6 +3057,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </ol>
               </div>
             </div>
+          )}
+
+          {view === 'self-ads' && (
+            <SelfAdsPanel />
           )}
 
           {/* Photos View */}
