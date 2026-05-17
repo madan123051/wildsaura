@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Send, Sparkles, ImageIcon, BookOpen, Globe } from 'lucide-react';
+import { X, Send, Sparkles, ImageIcon, BookOpen, Globe, ChevronRight } from 'lucide-react';
 import { ChatMessage, Photo } from '../types';
 import { getChatResponse, ChatResponse } from '../utils/aiService';
 
@@ -12,6 +12,7 @@ interface EnhancedMessage extends ChatMessage {
   wikiSummary?: string;
   animalName?: string;
   suggestedAnimals?: string[];
+  matchedPhotos?: Photo[];
 }
 
 export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick }) => {
@@ -19,21 +20,23 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
   const [messages, setMessages] = useState<EnhancedMessage[]>([
     {
       id: 1, sender: 'ai',
-      text: "Namaste! 🐾 Main Wilds Aura AI assistant hoon. Aap mujhse English ya Hindi mein baat kar sakte hain! Ask me about any animal or search our gallery!\n\nHello! I'm your wildlife photography assistant. Ask me about any animal — I'll show info + gallery photos! 🦁",
+      text: "Namaste! 🐾 Main Wilds Aura AI assistant hoon.\n\n🦁 Kisi bhi animal ke baare mein puchho\n📸 Gallery photos dikhaaunga\n🌍 Wikipedia facts bhi milenge\n\nEnglish ya Hindi — dono mein baat karo!",
       timestamp: new Date().toISOString(),
     },
   ]);
   const [input, setInput] = useState('');
   const [isThinking, setIsThinking] = useState(false);
-  const [matchedPhotos, setMatchedPhotos] = useState<Photo[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, matchedPhotos]);
+  }, [messages]);
 
-  const handleSend = async () => {
-    const text = input.trim();
+  // Quick suggestion chips
+  const quickChips = ['🐯 Tiger', '🐘 Elephant', '🦅 Eagle', '📸 Tips'];
+
+  const handleSend = async (overrideText?: string) => {
+    const text = (overrideText || input).trim();
     if (!text || isThinking) return;
 
     const userMsg: EnhancedMessage = {
@@ -42,7 +45,6 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
     setMessages((prev) => [...prev, userMsg]);
     setInput('');
     setIsThinking(true);
-    setMatchedPhotos([]);
 
     try {
       const galleryInfo = photos.map(p => ({
@@ -55,37 +57,55 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
 
       const response: ChatResponse = await getChatResponse(text, galleryInfo);
 
+      // Find matching photos — strict title match only, max 4
+      let matched: Photo[] = [];
+      if (response.matchingPhotoTitles && response.matchingPhotoTitles.length > 0) {
+        matched = photos.filter(p =>
+          response.matchingPhotoTitles.some(t => 
+            p.title.toLowerCase().trim() === t.toLowerCase().trim()
+          )
+        ).slice(0, 4);
+      }
+
+      // If AI didn't return matches, do a smart search (but limited to 4)
+      if (matched.length === 0) {
+        const q = text.toLowerCase().trim();
+        // Only match if query is specific enough (3+ chars)
+        if (q.length >= 3) {
+          const scored = photos
+            .map(p => {
+              let score = 0;
+              // Exact animal name match = highest
+              if (p.animalName?.toLowerCase() === q) score += 10;
+              // Animal name contains query
+              else if (p.animalName?.toLowerCase().includes(q)) score += 5;
+              // Title contains query
+              if (p.title.toLowerCase().includes(q)) score += 3;
+              // Tag match
+              if (p.tags?.some(t => t.toLowerCase() === q)) score += 4;
+              else if (p.tags?.some(t => t.toLowerCase().includes(q))) score += 2;
+              return { photo: p, score };
+            })
+            .filter(x => x.score > 0)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 4);
+          matched = scored.map(x => x.photo);
+        }
+      }
+
       const aiMsg: EnhancedMessage = {
         id: Date.now() + 1, sender: 'ai', text: response.text, timestamp: new Date().toISOString(),
         wikiSummary: response.wikiSummary,
         animalName: response.animalName,
         suggestedAnimals: response.suggestedAnimals,
+        matchedPhotos: matched,
       };
       setMessages((prev) => [...prev, aiMsg]);
-
-      // Find matching photos from gallery
-      if (response.matchingPhotoTitles && response.matchingPhotoTitles.length > 0) {
-        const matched = photos.filter(p =>
-          response.matchingPhotoTitles.some(t => p.title.toLowerCase() === t.toLowerCase())
-        );
-        setMatchedPhotos(matched);
-      } else {
-        // Also try to match by searching the user query against tags/names
-        const q = text.toLowerCase();
-        const tagMatches = photos.filter(p =>
-          p.tags?.some(t => t.toLowerCase().includes(q)) ||
-          p.animalName?.toLowerCase().includes(q) ||
-          p.title.toLowerCase().includes(q)
-        );
-        if (tagMatches.length > 0) {
-          setMatchedPhotos(tagMatches);
-        }
-      }
     } catch (err) {
       console.warn('AI chat error:', err instanceof Error ? err.message : 'unknown');
       const fallbackMsg: EnhancedMessage = {
         id: Date.now() + 1, sender: 'ai',
-        text: "AI se connect nahi ho pa raha 😕 Kisi bhi animal ka naam type karke dekhein!\n\nHaving trouble connecting to AI. Try typing any animal name!",
+        text: "AI se connect nahi ho pa raha 😕 Thodi der mein try karein!\n\nHaving trouble connecting. Please try again in a moment!",
         timestamp: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, fallbackMsg]);
@@ -95,7 +115,13 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
   };
 
   const handleSuggestionClick = (animal: string) => {
-    setInput(animal);
+    handleSend(animal);
+  };
+
+  const handleChipClick = (chip: string) => {
+    // Remove emoji prefix
+    const text = chip.replace(/^[^\w\s]+\s*/, '').trim();
+    handleSend(text);
   };
 
   return (
@@ -112,8 +138,7 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             boxShadow: '0 10px 36px rgba(0,0,0,0.65), 0 0 0 4px rgba(201,168,76,0.35)',
             transition: 'transform 0.3s, box-shadow 0.3s',
-            fontSize: '28px',
-            color: '#062013',
+            fontSize: '28px', color: '#062013',
           }}
           onMouseOver={(e) => {
             e.currentTarget.style.transform = 'scale(1.1)';
@@ -136,7 +161,7 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
           style={{
             position: 'fixed', bottom: 24, right: 24, zIndex: 55,
             width: 400, maxWidth: 'calc(100vw - 48px)',
-            height: 560, maxHeight: 'calc(100vh - 100px)',
+            height: 580, maxHeight: 'calc(100vh - 100px)',
             borderRadius: '16px', overflow: 'hidden',
             background: 'var(--wa-dark-card)',
             border: '1px solid rgba(201,168,76,0.5)',
@@ -147,19 +172,25 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
         >
           {/* Header */}
           <div style={{
-            padding: '0.85rem 1rem',
+            padding: '0.75rem 1rem',
             background: 'linear-gradient(135deg, rgba(201,168,76,0.15), rgba(201,168,76,0.05))',
             borderBottom: '1px solid rgba(201,168,76,0.15)',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              <Sparkles size={18} style={{ color: 'var(--wa-gold)' }} />
+              <div style={{
+                width: 32, height: 32, borderRadius: '50%',
+                background: 'linear-gradient(135deg, rgba(201,168,76,0.3), rgba(201,168,76,0.1))',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                border: '1px solid rgba(201,168,76,0.3)',
+                fontSize: '16px',
+              }}>🦁</div>
               <div>
                 <span className="font-cinzel" style={{ color: 'var(--wa-gold)', fontSize: '0.8rem', fontWeight: 600, letterSpacing: '0.05em' }}>
                   Wilds Aura AI
                 </span>
                 <p style={{ fontSize: '0.6rem', color: 'var(--wa-text-muted)', marginTop: '1px', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                  <Globe size={9} /> English • Hindi • Gallery Search
+                  <Globe size={9} /> Wildlife Expert • English • Hindi
                 </p>
               </div>
             </div>
@@ -172,22 +203,22 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
           </div>
 
           {/* Messages */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
             {messages.map((msg) => (
               <div key={msg.id}>
                 {/* Message bubble */}
                 <div
                   style={{
-                    maxWidth: '85%',
+                    maxWidth: '88%',
                     marginLeft: msg.sender === 'user' ? 'auto' : undefined,
-                    padding: '0.65rem 0.85rem',
+                    padding: '0.6rem 0.8rem',
                     borderRadius: msg.sender === 'user' ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
                     background: msg.sender === 'user'
                       ? 'linear-gradient(135deg, rgba(201,168,76,0.25), rgba(201,168,76,0.15))'
-                      : 'rgba(255,255,255,0.12)',
+                      : 'rgba(255,255,255,0.08)',
                     border: msg.sender === 'user'
                       ? '1px solid rgba(201,168,76,0.3)'
-                      : '1px solid var(--wa-border)',
+                      : '1px solid rgba(255,255,255,0.08)',
                     fontSize: '0.82rem',
                     lineHeight: 1.6,
                     color: 'var(--wa-text)',
@@ -197,23 +228,95 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
                   {msg.text}
                 </div>
 
+                {/* Matched Gallery Photos — nice card grid */}
+                {msg.matchedPhotos && msg.matchedPhotos.length > 0 && (
+                  <div style={{
+                    maxWidth: '88%',
+                    marginTop: '0.4rem',
+                    padding: '0.5rem',
+                    borderRadius: '10px',
+                    background: 'rgba(201,168,76,0.06)',
+                    border: '1px solid rgba(201,168,76,0.15)',
+                  }}>
+                    <p style={{ fontSize: '0.65rem', color: 'var(--wa-gold)', marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.3rem', fontWeight: 600 }}>
+                      <ImageIcon size={11} /> Gallery mein photos ({msg.matchedPhotos.length})
+                    </p>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: msg.matchedPhotos.length === 1 ? '1fr' : 'repeat(2, 1fr)',
+                      gap: '0.35rem',
+                    }}>
+                      {msg.matchedPhotos.map(p => (
+                        <div
+                          key={p.id}
+                          onClick={() => { if (onPhotoClick) onPhotoClick(p); }}
+                          style={{
+                            cursor: onPhotoClick ? 'pointer' : 'default',
+                            borderRadius: '8px', overflow: 'hidden',
+                            border: '1px solid rgba(201,168,76,0.2)',
+                            transition: 'transform 0.2s, border-color 0.2s',
+                            position: 'relative',
+                          }}
+                          onMouseOver={(e) => {
+                            e.currentTarget.style.transform = 'scale(1.03)';
+                            e.currentTarget.style.borderColor = 'rgba(201,168,76,0.5)';
+                          }}
+                          onMouseOut={(e) => {
+                            e.currentTarget.style.transform = 'scale(1)';
+                            e.currentTarget.style.borderColor = 'rgba(201,168,76,0.2)';
+                          }}
+                        >
+                          <img
+                            src={p.imageUrl}
+                            alt={p.title}
+                            style={{
+                              width: '100%',
+                              height: msg.matchedPhotos!.length === 1 ? 120 : 75,
+                              objectFit: 'cover',
+                              display: 'block',
+                            }}
+                          />
+                          <div style={{
+                            padding: '0.25rem 0.4rem',
+                            background: 'rgba(0,0,0,0.6)',
+                            position: 'absolute', bottom: 0, left: 0, right: 0,
+                          }}>
+                            <p style={{
+                              fontSize: '0.58rem', color: 'rgba(255,255,255,0.9)',
+                              lineHeight: 1.2, overflow: 'hidden',
+                              textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            }}>
+                              {p.title}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {onPhotoClick && (
+                      <p style={{ fontSize: '0.55rem', color: 'var(--wa-text-muted)', marginTop: '0.3rem', textAlign: 'center' }}>
+                        Tap to view full photo
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 {/* Wikipedia Summary Card */}
                 {msg.wikiSummary && (
                   <div style={{
-                    maxWidth: '85%',
+                    maxWidth: '88%',
                     marginTop: '0.4rem',
-                    padding: '0.6rem 0.75rem',
+                    padding: '0.5rem 0.65rem',
                     borderRadius: '10px',
-                    background: 'rgba(30,60,30,0.3)',
+                    background: 'rgba(30,60,30,0.25)',
                     border: '1px solid rgba(80,160,80,0.2)',
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.3rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.25rem' }}>
                       <BookOpen size={11} style={{ color: '#9fcb8f' }} />
-                      <span style={{ fontSize: '0.65rem', color: '#9fcb8f', fontWeight: 600, letterSpacing: '0.05em' }}>
+                      <span style={{ fontSize: '0.62rem', color: '#9fcb8f', fontWeight: 600, letterSpacing: '0.04em' }}>
                         Wikipedia • {msg.animalName}
                       </span>
                     </div>
-                    <p style={{ fontSize: '0.75rem', color: 'rgba(235,230,220,0.7)', lineHeight: 1.5 }}>
+                    <p style={{ fontSize: '0.72rem', color: 'rgba(235,230,220,0.7)', lineHeight: 1.5 }}>
                       {msg.wikiSummary}
                     </p>
                   </div>
@@ -222,35 +325,42 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
                 {/* Suggested Animals */}
                 {msg.suggestedAnimals && msg.suggestedAnimals.length > 0 && (
                   <div style={{
-                    maxWidth: '85%',
+                    maxWidth: '88%',
                     marginTop: '0.4rem',
-                    padding: '0.5rem 0.75rem',
+                    padding: '0.4rem 0.65rem',
                     borderRadius: '10px',
                     background: 'rgba(201,168,76,0.05)',
                     border: '1px solid rgba(201,168,76,0.15)',
                   }}>
-                    <p style={{ fontSize: '0.65rem', color: 'var(--wa-gold)', marginBottom: '0.35rem' }}>
-                      🔍 Gallery mein available animals:
+                    <p style={{ fontSize: '0.62rem', color: 'var(--wa-gold)', marginBottom: '0.3rem', fontWeight: 600 }}>
+                      🔍 Ye animals gallery mein hain:
                     </p>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
                       {msg.suggestedAnimals.map((animal, i) => (
                         <button
                           key={i}
                           onClick={() => handleSuggestionClick(animal)}
                           style={{
-                            padding: '0.25rem 0.5rem',
+                            padding: '0.2rem 0.5rem',
                             borderRadius: '12px',
-                            background: 'rgba(201,168,76,0.15)',
+                            background: 'rgba(201,168,76,0.12)',
                             border: '1px solid rgba(201,168,76,0.25)',
                             color: 'var(--wa-gold)',
-                            fontSize: '0.7rem',
+                            fontSize: '0.68rem',
                             cursor: 'pointer',
-                            transition: 'background 0.2s',
+                            transition: 'all 0.2s',
+                            display: 'flex', alignItems: 'center', gap: '0.2rem',
                           }}
-                          onMouseOver={(e) => e.currentTarget.style.background = 'rgba(201,168,76,0.3)'}
-                          onMouseOut={(e) => e.currentTarget.style.background = 'rgba(201,168,76,0.15)'}
+                          onMouseOver={(e) => {
+                            e.currentTarget.style.background = 'rgba(201,168,76,0.25)';
+                            e.currentTarget.style.transform = 'scale(1.05)';
+                          }}
+                          onMouseOut={(e) => {
+                            e.currentTarget.style.background = 'rgba(201,168,76,0.12)';
+                            e.currentTarget.style.transform = 'scale(1)';
+                          }}
                         >
-                          {animal}
+                          {animal} <ChevronRight size={10} />
                         </button>
                       ))}
                     </div>
@@ -262,89 +372,88 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
             {/* Thinking indicator */}
             {isThinking && (
               <div style={{
-                alignSelf: 'flex-start', padding: '0.65rem 0.85rem',
+                alignSelf: 'flex-start', padding: '0.6rem 0.8rem',
                 borderRadius: '12px 12px 12px 2px',
-                background: 'rgba(255,255,255,0.12)',
-                border: '1px solid rgba(201,168,76,0.35)',
+                background: 'rgba(255,255,255,0.08)',
+                border: '1px solid rgba(201,168,76,0.2)',
                 fontSize: '0.82rem', color: 'var(--wa-gold)',
                 display: 'flex', alignItems: 'center', gap: '0.5rem',
               }}>
                 <Sparkles size={14} style={{ animation: 'spin 2s linear infinite' }} />
-                Soch raha hoon... 🤔
-              </div>
-            )}
-
-            {/* Matched Gallery Photos */}
-            {matchedPhotos.length > 0 && (
-              <div style={{
-                alignSelf: 'flex-start',
-                width: '100%',
-                padding: '0.5rem',
-                borderRadius: '10px',
-                background: 'rgba(201,168,76,0.05)',
-                border: '1px solid rgba(201,168,76,0.15)',
-              }}>
-                <p style={{ fontSize: '0.7rem', color: 'var(--wa-gold)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                  <ImageIcon size={12} /> 📸 Gallery photos:
-                </p>
-                <div style={{ display: 'flex', gap: '0.4rem', overflowX: 'auto', paddingBottom: '0.3rem' }}>
-                  {matchedPhotos.slice(0, 6).map(p => (
-                    <div
-                      key={p.id}
-                      onClick={() => { if (onPhotoClick) onPhotoClick(p); }}
-                      style={{
-                        flexShrink: 0, width: 85, cursor: onPhotoClick ? 'pointer' : 'default',
-                        borderRadius: '6px', overflow: 'hidden',
-                        border: '1px solid rgba(201,168,76,0.2)',
-                        transition: 'transform 0.2s',
-                      }}
-                      onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-                      onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                    >
-                      <img src={p.imageUrl} alt={p.title} style={{ width: '100%', height: 60, objectFit: 'cover' }} />
-                      <p style={{ fontSize: '0.55rem', color: 'var(--wa-text)', padding: '0.2rem 0.3rem', lineHeight: 1.2 }}>
-                        {p.title}
-                      </p>
-                    </div>
-                  ))}
-                </div>
+                Thinking... 🤔
               </div>
             )}
 
             <div ref={messagesEndRef} />
           </div>
 
+          {/* Quick Chips (only show at start) */}
+          {messages.length <= 1 && !isThinking && (
+            <div style={{
+              padding: '0 0.75rem 0.5rem',
+              display: 'flex', gap: '0.3rem', flexWrap: 'wrap',
+            }}>
+              {quickChips.map((chip, i) => (
+                <button
+                  key={i}
+                  onClick={() => handleChipClick(chip)}
+                  style={{
+                    padding: '0.3rem 0.6rem',
+                    borderRadius: '16px',
+                    background: 'rgba(201,168,76,0.1)',
+                    border: '1px solid rgba(201,168,76,0.2)',
+                    color: 'var(--wa-gold)',
+                    fontSize: '0.72rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.background = 'rgba(201,168,76,0.2)'}
+                  onMouseOut={(e) => e.currentTarget.style.background = 'rgba(201,168,76,0.1)'}
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* Input */}
           <div style={{
-            padding: '0.75rem', borderTop: '1px solid rgba(201,168,76,0.1)',
+            padding: '0.6rem 0.75rem', borderTop: '1px solid rgba(201,168,76,0.1)',
             display: 'flex', gap: '0.5rem',
           }}>
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') handleSend(); }}
-              placeholder="Type animal name / जानवर का नाम लिखें..."
+              placeholder="Ask about any animal... 🐾"
               disabled={isThinking}
               style={{
-                flex: 1, padding: '0.6rem 0.75rem',
-                background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(201,168,76,0.35)',
-                borderRadius: '8px', color: 'var(--wa-text)', fontSize: '0.82rem',
+                flex: 1, padding: '0.55rem 0.75rem',
+                background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(201,168,76,0.25)',
+                borderRadius: '10px', color: 'var(--wa-text)', fontSize: '0.82rem',
                 outline: 'none', boxSizing: 'border-box',
                 opacity: isThinking ? 0.5 : 1,
+                transition: 'border-color 0.2s',
               }}
+              onFocus={(e) => e.currentTarget.style.borderColor = 'rgba(201,168,76,0.5)'}
+              onBlur={(e) => e.currentTarget.style.borderColor = 'rgba(201,168,76,0.25)'}
             />
             <button
-              onClick={handleSend}
-              disabled={isThinking}
+              onClick={() => handleSend()}
+              disabled={isThinking || !input.trim()}
               style={{
-                width: 38, height: 38, borderRadius: '8px',
-                background: isThinking ? 'rgba(201,168,76,0.3)' : 'linear-gradient(135deg, var(--wa-gold), var(--wa-gold-light))',
-                border: 'none', cursor: isThinking ? 'wait' : 'pointer',
+                width: 38, height: 38, borderRadius: '10px',
+                background: (isThinking || !input.trim()) 
+                  ? 'rgba(201,168,76,0.2)' 
+                  : 'linear-gradient(135deg, var(--wa-gold), var(--wa-gold-light))',
+                border: 'none', 
+                cursor: (isThinking || !input.trim()) ? 'default' : 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 flexShrink: 0,
+                transition: 'all 0.2s',
               }}
             >
-              <Send size={16} style={{ color: '#062013' }} />
+              <Send size={16} style={{ color: (isThinking || !input.trim()) ? 'rgba(6,32,19,0.4)' : '#062013' }} />
             </button>
           </div>
         </div>
