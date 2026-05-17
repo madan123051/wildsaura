@@ -2,9 +2,10 @@
  * api/sitemap.js
  *
  * Generates a fully dynamic XML sitemap including:
- * - All static pages (home, photos, stories, about, etc.)
+ * - All static pages (home, photos, stories, community, about, etc.)
  * - All published photos with <image:image> extensions (for Google Images)
  * - All published stories
+ * - All videos with <video:video> extensions (for Google Video)
  *
  * Accessible at /sitemap.xml via vercel.json rewrite.
  * Cached for 1 hour to avoid hammering Firestore on every crawl.
@@ -44,7 +45,6 @@ function esc(str) {
 }
 
 function docId(doc) {
-  // doc.name = "projects/.../documents/collection/ID"
   return doc.name?.split('/').pop() || '';
 }
 
@@ -64,24 +64,30 @@ function isoDate(doc) {
 }
 
 export default async function handler(req, res) {
-  // Fetch photos and stories in parallel
-  const [photoDocs, storyDocs] = await Promise.allSettled([
+  const today = new Date().toISOString().split('T')[0];
+
+  // Fetch photos, stories, and videos in parallel
+  const [photoDocs, storyDocs, videoDocs] = await Promise.allSettled([
     listCollection('photos'),
     listCollection('stories'),
+    listCollection('videos'),
   ]);
 
   const photos = photoDocs.status === 'fulfilled' ? photoDocs.value : [];
   const stories = storyDocs.status === 'fulfilled' ? storyDocs.value : [];
+  const videos = videoDocs.status === 'fulfilled' ? videoDocs.value : [];
 
-  // Static pages
+  // Static pages — all with lastmod
   const staticPages = [
-    { loc: `${SITE_URL}/`, changefreq: 'daily', priority: '1.0', lastmod: new Date().toISOString().split('T')[0] },
-    { loc: `${SITE_URL}/photos`, changefreq: 'daily', priority: '0.9' },
-    { loc: `${SITE_URL}/stories`, changefreq: 'weekly', priority: '0.8' },
-    { loc: `${SITE_URL}/marketplace`, changefreq: 'weekly', priority: '0.8' },
-    { loc: `${SITE_URL}/ngo`, changefreq: 'monthly', priority: '0.7' },
-    { loc: `${SITE_URL}/about`, changefreq: 'monthly', priority: '0.7' },
-    { loc: `${SITE_URL}/contact`, changefreq: 'monthly', priority: '0.6' },
+    { loc: `${SITE_URL}/`, changefreq: 'daily', priority: '1.0', lastmod: today },
+    { loc: `${SITE_URL}/photos`, changefreq: 'daily', priority: '0.9', lastmod: today },
+    { loc: `${SITE_URL}/stories`, changefreq: 'weekly', priority: '0.8', lastmod: today },
+    { loc: `${SITE_URL}/community`, changefreq: 'daily', priority: '0.8', lastmod: today },
+    { loc: `${SITE_URL}/marketplace`, changefreq: 'weekly', priority: '0.7', lastmod: today },
+    { loc: `${SITE_URL}/ngo`, changefreq: 'monthly', priority: '0.7', lastmod: today },
+    { loc: `${SITE_URL}/about`, changefreq: 'monthly', priority: '0.6', lastmod: today },
+    { loc: `${SITE_URL}/contact`, changefreq: 'monthly', priority: '0.6', lastmod: today },
+    { loc: `${SITE_URL}/terms`, changefreq: 'monthly', priority: '0.4', lastmod: today },
   ];
 
   const urlEntries = [];
@@ -91,7 +97,7 @@ export default async function handler(req, res) {
     urlEntries.push(
       `  <url>\n` +
       `    <loc>${esc(page.loc)}</loc>\n` +
-      (page.lastmod ? `    <lastmod>${page.lastmod}</lastmod>\n` : '') +
+      `    <lastmod>${page.lastmod}</lastmod>\n` +
       `    <changefreq>${page.changefreq}</changefreq>\n` +
       `    <priority>${page.priority}</priority>\n` +
       `  </url>`,
@@ -102,14 +108,11 @@ export default async function handler(req, res) {
   for (const doc of photos) {
     const id = docId(doc);
     if (!id) continue;
-    // Skip unpublished photos
     if (boolField(doc, 'published', true) === false) continue;
 
     const title = strField(doc, 'title') || 'Wildlife Photo';
     const imageUrl = strField(doc, 'imageUrl');
-    const thumbnailUrl = strField(doc, 'thumbnailUrl') || imageUrl;
     const location = strField(doc, 'location');
-    const photographer = strField(doc, 'photographer') || 'Madan Shrestha';
     const caption = strField(doc, 'caption');
     const photoLoc = `${SITE_URL}/photo/${encodeURIComponent(id)}`;
     const lastmod = isoDate(doc);
@@ -142,22 +145,63 @@ export default async function handler(req, res) {
     const slug = strField(doc, 'slug');
     if (!slug) continue;
     const lastmod = isoDate(doc);
+    const title = strField(doc, 'title');
+    const coverImage = strField(doc, 'coverImageUrl');
     const storyLoc = `${SITE_URL}/story/${encodeURIComponent(slug)}`;
+
+    let imageBlock = '';
+    if (coverImage) {
+      imageBlock =
+        `    <image:image>\n` +
+        `      <image:loc>${esc(coverImage)}</image:loc>\n` +
+        `      <image:title>${esc(title || 'Story Cover')}</image:title>\n` +
+        `    </image:image>\n`;
+    }
+
     urlEntries.push(
       `  <url>\n` +
       `    <loc>${esc(storyLoc)}</loc>\n` +
       `    <lastmod>${lastmod}</lastmod>\n` +
       `    <changefreq>monthly</changefreq>\n` +
       `    <priority>0.8</priority>\n` +
+      imageBlock +
       `  </url>`,
     );
+  }
+
+  // Add video pages (if they have individual URLs in the future)
+  // For now, list them as part of the homepage with video extensions
+  for (const doc of videos) {
+    const id = docId(doc);
+    if (!id) continue;
+    const title = strField(doc, 'title') || 'Wildlife Video';
+    const thumbnailUrl = strField(doc, 'thumbnailUrl');
+    const videoUrl = strField(doc, 'videoUrl');
+    const description = strField(doc, 'description') || title;
+    const lastmod = isoDate(doc);
+
+    if (videoUrl && thumbnailUrl) {
+      urlEntries.push(
+        `  <url>\n` +
+        `    <loc>${esc(`${SITE_URL}/`)}</loc>\n` +
+        `    <lastmod>${lastmod}</lastmod>\n` +
+        `    <video:video>\n` +
+        `      <video:thumbnail_loc>${esc(thumbnailUrl)}</video:thumbnail_loc>\n` +
+        `      <video:title>${esc(title)}</video:title>\n` +
+        `      <video:description>${esc(description)}</video:description>\n` +
+        `      <video:content_loc>${esc(videoUrl)}</video:content_loc>\n` +
+        `    </video:video>\n` +
+        `  </url>`,
+      );
+    }
   }
 
   const xml = [
     `<?xml version="1.0" encoding="UTF-8"?>`,
     `<urlset`,
     `  xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"`,
-    `  xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">`,
+    `  xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"`,
+    `  xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">`,
     ...urlEntries,
     `</urlset>`,
   ].join('\n');
