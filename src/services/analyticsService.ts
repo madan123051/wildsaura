@@ -37,6 +37,7 @@ export interface AdSenseSettings {
   sidebarSlot: string;
   multiplexSlot: string;
   enabled: boolean;
+  verificationCode?: string;
   updatedAt?: any;
 }
 
@@ -191,6 +192,7 @@ export async function getAdSenseSettings(): Promise<AdSenseSettings> {
     sidebarSlot: '',
     multiplexSlot: '',
     enabled: false,
+    verificationCode: '',
   };
 }
 

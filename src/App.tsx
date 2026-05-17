@@ -37,6 +37,7 @@ import { PhotoMap } from './components/PhotoMap';
 import { onSiteSettingsChange, SiteSettings } from './services/siteSettingsService';
 import { NotificationPanel, AppNotification } from './components/NotificationPanel';
 import { updatePhotoMeta, updateStoryMeta, resetMeta } from './utils/seo';
+import AdSenseHead from './components/AdSenseHead';
 
 const logoUrl = '/photos/logo.png';
 const ADMIN_EMAIL = 'madan123050@gmail.com';
@@ -1686,6 +1687,7 @@ const App: React.FC = () => {
 // ── Home View ──
   return (
     <div style={{ minHeight: '100vh', background: 'var(--wa-bg)' }}>
+      <AdSenseHead />
       {(pullDistance > 0 || isPullRefreshing) && (
         <div
           style={{

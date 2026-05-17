@@ -2339,7 +2339,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   // AdSense Settings
   const [adsenseSettings, setAdsenseSettings] = useState<AdSenseSettings>({
     publisherId: '', bannerSlot: '', inFeedSlot: '', inArticleSlot: '',
-    sidebarSlot: '', multiplexSlot: '', enabled: false,
+    sidebarSlot: '', multiplexSlot: '', enabled: false, verificationCode: '',
   });
   const [adsenseSaving, setAdsenseSaving] = useState(false);
 
@@ -2821,6 +2821,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <label style={labelStyle}>Multiplex Ad Slot</label>
                       <input value={adsenseSettings.multiplexSlot} onChange={(e) => setAdsenseSettings(prev => ({ ...prev, multiplexSlot: e.target.value }))} placeholder="1234567890" style={inputStyle} />
                     </div>
+                  </div>
+
+                  <div style={{ borderTop: '1px solid rgba(201,168,76,0.08)', paddingTop: '1rem', marginTop: '0.5rem' }}>
+                    <label style={labelStyle}>AdSense Verification Code</label>
+                    <textarea
+                      value={adsenseSettings.verificationCode || ''}
+                      onChange={(e) => setAdsenseSettings(prev => ({ ...prev, verificationCode: e.target.value }))}
+                      placeholder='Paste your AdSense verification <script> tag here...'
+                      rows={4}
+                      style={{ ...inputStyle, resize: 'vertical', fontFamily: 'monospace', fontSize: '0.78rem', lineHeight: 1.5 }}
+                    />
+                    <p style={{ fontSize: '0.68rem', color: 'rgba(235,230,220,0.3)', marginTop: '0.3rem' }}>
+                      Paste the verification script tag from Google AdSense. Example: &lt;script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXX"&gt;&lt;/script&gt;
+                    </p>
                   </div>
                 </div>
 
