@@ -11,23 +11,37 @@ export default async function handler(req, res) {
     if (!imageData) return res.status(400).json({ success: false, error: 'No image data provided' });
     if (!apiKey) return res.status(400).json({ success: false, error: 'No API key provided. Please configure your API key in AI Settings.' });
 
-    const prompt = `Analyze this wildlife/nature photograph and return a JSON response with these fields:
-{
-  "title": "A compelling, descriptive title for this photo",
-  "caption": "A detailed 2-3 sentence description of what's in the photo",
-  "category": "wildlife" or "landscape" or "street" or "other",
-  "tags": ["tag1", "tag2", "tag3", "tag4", "tag5", "tag6"],
-  "animalName": "Common name of the animal/bird if present, or empty string",
-  "scientificName": "Scientific name if animal detected, or empty string",
-  "location": "Best guess of location/habitat based on the image, or empty string"
-}
+    const prompt = `You are a professional wildlife photographer writing for your own portfolio website. Analyze this photo and write like a real photographer would — not like AI.
 
-Return ONLY the JSON object, no markdown, no code blocks, no explanation.`;
+RULES FOR WRITING:
+- Title: Short, specific, evocative. Like a photographer names their shot. 3-7 words max. NO generic phrases like "Majestic Beauty" or "A Glimpse of Nature". Use the actual subject. Examples of GOOD titles: "Morning Hunt", "Spotted Deer at Dawn", "The Watchful Owl", "Monsoon Kingfisher", "Tiger Crossing the Stream"
+- Caption: 1 short sentence. What's happening in the photo. Write like a photo caption in National Geographic — factual, clear, specific. NO flowery language. NO "showcasing" or "capturing the essence" or "breathtaking". Just describe what you see. Example: "A Bengal tiger wades through shallow water in Chitwan, early morning light catching its wet fur."
+- Tags: Specific, useful tags. Include species name, behavior, habitat, season if visible.
+- Location: Only if you can genuinely identify it from vegetation/terrain. Don't guess randomly.
+
+BAD examples (too AI-sounding):
+- "Majestic Tiger in its Natural Splendor" ❌
+- "This breathtaking photograph captures the raw beauty of nature as a magnificent creature..." ❌
+- "A stunning display of wildlife photography showcasing..." ❌
+
+GOOD examples (natural, professional):
+- Title: "Waiting for Prey" ✅
+- Caption: "A crested serpent eagle perches silently on a dry branch, scanning the forest floor below." ✅
+
+Return ONLY valid JSON:
+{
+  "title": "short specific title",
+  "caption": "one clear sentence describing the photo",
+  "category": "wildlife" or "landscape" or "street" or "other",
+  "tags": ["specific", "useful", "tags"],
+  "animalName": "common name or empty string",
+  "scientificName": "scientific name or empty string",
+  "location": "location if identifiable or empty string"
+}`;
 
     let analysisText = '';
 
     if (provider === 'chatgpt') {
-      // ── OpenAI GPT-4o-mini Vision ──
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -44,7 +58,7 @@ Return ONLY the JSON object, no markdown, no code blocks, no explanation.`;
             ],
           }],
           max_tokens: 2048,
-          temperature: 0.3,
+          temperature: 0.4,
         }),
       });
 
@@ -58,13 +72,11 @@ Return ONLY the JSON object, no markdown, no code blocks, no explanation.`;
       analysisText = data.choices?.[0]?.message?.content || '';
 
     } else {
-      // ── Gemini Vision (default) ──
-      // Use gemini-2.5-flash first — latest model with best free-tier rate limits
+      // Gemini Vision
       const models = ['gemini-2.5-flash', 'gemini-2.5-flash-lite'];
       let success = false;
       let lastError = '';
 
-      // Prepare image parts
       let imageParts;
       if (imageData.startsWith('data:')) {
         const base64Match = imageData.match(/^data:([^;]+);base64,(.+)$/);
@@ -87,11 +99,9 @@ Return ONLY the JSON object, no markdown, no code blocks, no explanation.`;
         };
       }
 
-      // Helper: wait for given ms
       const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
       for (const model of models) {
-        // Try each model with up to 3 retries for rate limit (429) errors
         for (let attempt = 0; attempt < 3; attempt++) {
           try {
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
@@ -106,40 +116,32 @@ Return ONLY the JSON object, no markdown, no code blocks, no explanation.`;
                   ],
                 }],
                 generationConfig: {
-                  temperature: 0.3,
+                  temperature: 0.4,
                   maxOutputTokens: 4096,
-                  },
+                },
               }),
             });
 
             if (response.ok) {
               const data = await response.json();
               analysisText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-              if (analysisText) {
-                success = true;
-                break;
-              }
+              if (analysisText) { success = true; break; }
             } else if (response.status === 429) {
-              // Rate limited — wait and retry
-              const waitTime = (attempt + 1) * 3000; // 3s, 6s, 9s
-              console.warn(`Gemini ${model} rate limited (429). Waiting ${waitTime / 1000}s before retry ${attempt + 1}/3...`);
-              lastError = `${model}: Rate limited (429). Retried ${attempt + 1} times.`;
+              const waitTime = (attempt + 1) * 3000;
+              console.warn(`Gemini ${model} rate limited (429). Waiting ${waitTime / 1000}s...`);
+              lastError = `${model}: Rate limited (429)`;
               await sleep(waitTime);
-              continue; // retry same model
+              continue;
             } else if (response.status === 403) {
-              // Forbidden — API not enabled or key invalid, skip model
-              lastError = `${model}: Access denied (403). Check if Generative Language API is enabled in Google Cloud Console.`;
-              console.warn(`Gemini ${model}: 403 Forbidden — skipping`);
-              break; // skip to next model
+              lastError = `${model}: Access denied (403)`;
+              break;
             } else {
               lastError = `${model} error ${response.status}`;
-              console.warn(`Gemini ${model} failed: ${response.status}`);
-              break; // skip to next model for other errors
+              break;
             }
           } catch (modelErr) {
             lastError = modelErr.message;
-            console.warn(`Gemini ${model} failed:`, modelErr.message);
-            break; // skip to next model on network errors
+            break;
           }
         }
         if (success) break;
@@ -148,17 +150,16 @@ Return ONLY the JSON object, no markdown, no code blocks, no explanation.`;
       if (!success) {
         return res.status(500).json({
           success: false,
-          error: `AI analysis failed after retries. ${lastError}. Tips: 1) Wait 1 minute and try again. 2) Switch to ChatGPT in AI Settings. 3) Check your API key is valid.`,
+          error: `AI analysis failed. ${lastError}. Try again in a minute or switch provider in AI Settings.`,
         });
       }
     }
 
-    // Parse the JSON response
+    // Parse JSON response
     let analysis;
     try {
       let cleanText = analysisText.trim();
       cleanText = cleanText.replace(/^```json?\s*/i, '').replace(/\s*```$/i, '');
-
       const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         analysis = JSON.parse(jsonMatch[0]);
@@ -166,14 +167,41 @@ Return ONLY the JSON object, no markdown, no code blocks, no explanation.`;
         return res.status(500).json({ success: false, error: 'AI returned non-JSON response' });
       }
     } catch (parseErr) {
-      console.error('JSON parse error:', parseErr.message, 'Raw:', analysisText.substring(0, 200));
+      console.error('JSON parse error:', parseErr.message);
       return res.status(500).json({ success: false, error: 'Failed to parse AI response. Please try again.' });
     }
 
-    // Validate and normalize
+    // Post-process: enforce quality rules
+    let title = (analysis.title || '').trim();
+    let caption = (analysis.caption || analysis.description || '').trim();
+
+    // Strip AI-sounding words from title
+    const aiWords = /\b(majestic|breathtaking|stunning|magnificent|splendor|glorious|resplendent|ethereal|enchanting|mesmerizing|captivating|awe-inspiring)\b/gi;
+    title = title.replace(aiWords, '').replace(/\s+/g, ' ').trim();
+
+    // If title is too long, truncate at last word before 50 chars
+    if (title.length > 50) {
+      title = title.substring(0, 50).replace(/\s+\S*$/, '');
+    }
+
+    // Strip AI phrases from caption
+    const aiPhrases = /\b(showcasing|capturing the essence|a testament to|breathtaking|stunning display|raw beauty|nature's|in all its glory|magnificent|majestic)\b/gi;
+    caption = caption.replace(aiPhrases, '').replace(/\s+/g, ' ').replace(/^[,.\s]+/, '').trim();
+
+    // Limit caption to ~150 chars (1-2 sentences)
+    if (caption.length > 200) {
+      // Find sentence end before 200 chars
+      const sentenceEnd = caption.substring(0, 200).lastIndexOf('.');
+      if (sentenceEnd > 50) {
+        caption = caption.substring(0, sentenceEnd + 1);
+      } else {
+        caption = caption.substring(0, 200).replace(/\s+\S*$/, '') + '.';
+      }
+    }
+
     const result = {
-      title: analysis.title || '',
-      caption: analysis.caption || analysis.description || '',
+      title,
+      caption,
       category: ['wildlife', 'landscape', 'street', 'other'].includes(analysis.category) ? analysis.category : 'wildlife',
       tags: Array.isArray(analysis.tags) ? analysis.tags.slice(0, 10) : [],
       animalName: analysis.animalName || analysis.animal || '',
@@ -181,13 +209,12 @@ Return ONLY the JSON object, no markdown, no code blocks, no explanation.`;
       location: analysis.location || '',
     };
 
-    // If animal detected, try to fetch Wikipedia info
+    // Wikipedia info
     let wikiSummary = '';
     if (result.animalName) {
       try {
-        const searchTerm = result.animalName;
         const wikiRes = await fetch(
-          `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(searchTerm)}&prop=extracts&exintro=true&explaintext=true&format=json&origin=*`
+          `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(result.animalName)}&prop=extracts&exintro=true&explaintext=true&format=json&origin=*`
         );
         if (wikiRes.ok) {
           const wikiData = await wikiRes.json();
@@ -202,12 +229,7 @@ Return ONLY the JSON object, no markdown, no code blocks, no explanation.`;
       }
     }
 
-    return res.status(200).json({
-      success: true,
-      data: result,
-      wikiSummary,
-      provider,
-    });
+    return res.status(200).json({ success: true, data: result, wikiSummary, provider });
 
   } catch (err) {
     console.error('Analyze error:', err);
