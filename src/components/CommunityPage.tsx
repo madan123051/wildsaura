@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   collection, addDoc, onSnapshot, orderBy, query,
-  doc, updateDoc, serverTimestamp, arrayUnion, arrayRemove, getDoc, setDoc, getDocs
+  doc, updateDoc, deleteDoc, serverTimestamp, arrayUnion, arrayRemove, getDoc, setDoc, getDocs
 } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -23,6 +23,8 @@ interface Post {
   avatarUrl?: string;
   avatarColor?: string;
   spiritAnimal?: string;
+  category?: string;
+  story?: string;
 }
 
 interface CommentItem {
@@ -33,6 +35,15 @@ interface CommentItem {
   avatarUrl?: string;
   avatarColor?: string;
   spiritAnimal?: string;
+}
+
+interface MemberInfo {
+  userId: string;
+  displayName: string;
+  avatarUrl?: string;
+  avatarColor?: string;
+  spiritAnimal?: string;
+  joinedAt?: any;
 }
 
 interface CommunityPageProps {
@@ -53,6 +64,18 @@ interface CommunityPageProps {
   onProfileClick?: () => void;
 }
 
+const POST_CATEGORIES = [
+  { value: '', label: '📋 Select Category (optional)' },
+  { value: 'wildlife', label: '🐯 Wildlife' },
+  { value: 'birds', label: '🦅 Birds' },
+  { value: 'landscape', label: '🏔️ Landscape' },
+  { value: 'macro', label: '🔍 Macro' },
+  { value: 'underwater', label: '🐠 Underwater' },
+  { value: 'conservation', label: '🌍 Conservation' },
+  { value: 'tips', label: '📸 Photography Tips' },
+  { value: 'other', label: '✨ Other' },
+];
+
 // Simple QR code component
 function QRCode({ url, size = 180 }: { url: string; size?: number }) {
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(url)}&bgcolor=16181c&color=d4a373&format=png`;
@@ -65,6 +88,33 @@ function QRCode({ url, size = 180 }: { url: string; size?: number }) {
       style={{ borderRadius: 12, border: '2px solid #2e323a' }}
     />
   );
+}
+
+// Compress image before upload
+async function compressImage(file: File, maxWidth = 1200, quality = 0.8): Promise<Blob> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let w = img.width;
+      let h = img.height;
+      if (w > maxWidth) {
+        h = (h * maxWidth) / w;
+        w = maxWidth;
+      }
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(img, 0, 0, w, h);
+      canvas.toBlob(
+        (blob) => resolve(blob || file),
+        'image/jpeg',
+        quality
+      );
+    };
+    img.onerror = () => resolve(file);
+    img.src = URL.createObjectURL(file);
+  });
 }
 
 export function CommunityPage({
@@ -89,16 +139,24 @@ export function CommunityPage({
   const [authUid, setAuthUid] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showMembersModal, setShowMembersModal] = useState(false);
   const [postText, setPostText] = useState('');
+  const [postCategory, setPostCategory] = useState('');
+  const [postStory, setPostStory] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState('');
   const [openComments, setOpenComments] = useState<Set<string>>(new Set());
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
   const [memberCount, setMemberCount] = useState(0);
+  const [members, setMembers] = useState<MemberInfo[]>([]);
   const [isMember, setIsMember] = useState(false);
   const [joining, setJoining] = useState(false);
   const [shareToast, setShareToast] = useState('');
+  const [editingPost, setEditingPost] = useState<Post | null>(null);
+  const [menuOpenPostId, setMenuOpenPostId] = useState<string | null>(null);
+  const [expandedStories, setExpandedStories] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const communityUrl = typeof window !== 'undefined'
@@ -127,17 +185,35 @@ export function CommunityPage({
     return () => unsub();
   }, []);
 
-  // Subscribe to community members count (real-time)
+  // Subscribe to community members (real-time)
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'community_members'), (snap) => {
       setMemberCount(snap.size);
+      const membersList: MemberInfo[] = [];
+      snap.forEach((d) => {
+        membersList.push({ userId: d.id, ...d.data() } as MemberInfo);
+      });
+      // Sort by join date (newest first)
+      membersList.sort((a, b) => {
+        const ta = a.joinedAt?.toDate?.()?.getTime?.() || 0;
+        const tb = b.joinedAt?.toDate?.()?.getTime?.() || 0;
+        return tb - ta;
+      });
+      setMembers(membersList);
       if (authUid) {
-        const isMem = snap.docs.some(d => d.id === authUid);
-        setIsMember(isMem);
+        setIsMember(snap.docs.some(d => d.id === authUid));
       }
     }, () => {});
     return () => unsub();
   }, [authUid]);
+
+  // Close menu on outside click
+  useEffect(() => {
+    if (!menuOpenPostId) return;
+    const handler = () => setMenuOpenPostId(null);
+    document.addEventListener('click', handler);
+    return () => document.removeEventListener('click', handler);
+  }, [menuOpenPostId]);
 
   // Join Community
   const handleJoinCommunity = async () => {
@@ -189,6 +265,12 @@ export function CommunityPage({
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setShareToast('❌ Image too large! Max 10MB');
+      setTimeout(() => setShareToast(''), 3000);
+      return;
+    }
     setImageFile(file);
     const reader = new FileReader();
     reader.onload = (ev) => setImagePreview(ev.target?.result as string);
@@ -197,28 +279,69 @@ export function CommunityPage({
 
   const resetModal = () => {
     setPostText('');
+    setPostCategory('');
+    setPostStory('');
     setImageFile(null);
     setImagePreview(null);
+    setEditingPost(null);
+    setUploadProgress('');
     if (fileInputRef.current) fileInputRef.current.value = '';
     setShowModal(false);
   };
 
   const handleSubmitPost = async () => {
-    if (!postText.trim() && !imageFile) return;
+    if (!postText.trim() && !imageFile && !editingPost) return;
     if (!visitor || !authUid) { onVisitorLoginClick(); return; }
     setSubmitting(true);
     try {
+      // Editing existing post
+      if (editingPost) {
+        let uploadedImageUrl = editingPost.imageUrl;
+
+        // If new image selected, upload it
+        if (imageFile) {
+          setUploadProgress('📷 Compressing image...');
+          const compressed = await compressImage(imageFile);
+          setUploadProgress('☁️ Uploading photo...');
+          const sRef = storageRef(storage, `community_posts/${authUid}/${Date.now()}_post.jpg`);
+          const snapshot = await uploadBytes(sRef, compressed);
+          uploadedImageUrl = await getDownloadURL(snapshot.ref);
+        }
+
+        setUploadProgress('💾 Saving changes...');
+        await updateDoc(doc(db, 'community_posts', editingPost.id), {
+          text: postText.trim(),
+          imageUrl: uploadedImageUrl,
+          category: postCategory || '',
+          story: postStory.trim() || '',
+        });
+        setShareToast('✅ Post updated!');
+        setTimeout(() => setShareToast(''), 2500);
+        resetModal();
+        setSubmitting(false);
+        return;
+      }
+
+      // New post
       let uploadedImageUrl: string | null = null;
       if (imageFile) {
-        const sRef = storageRef(storage, `community_posts/${authUid}/${Date.now()}_${imageFile.name}`);
-        const snapshot = await uploadBytes(sRef, imageFile);
+        setUploadProgress('📷 Compressing image...');
+        const compressed = await compressImage(imageFile);
+        setUploadProgress('☁️ Uploading photo...');
+        const sRef = storageRef(storage, `community_posts/${authUid}/${Date.now()}_post.jpg`);
+        const snapshot = await uploadBytes(sRef, compressed);
         uploadedImageUrl = await getDownloadURL(snapshot.ref);
+        setUploadProgress('✅ Photo uploaded!');
       }
+
+      setUploadProgress('📝 Creating post...');
       await addDoc(collection(db, 'community_posts'), {
         userId: authUid,
         username: visitor.displayName,
         text: postText.trim(),
         imageUrl: uploadedImageUrl,
+        category: postCategory || '',
+        story: postStory.trim() || '',
         timestamp: serverTimestamp(),
         likes: [],
         comments: [],
@@ -227,11 +350,42 @@ export function CommunityPage({
         spiritAnimal: visitor.avatarAnimal || '',
       });
       await ensureMember();
+      setShareToast('✅ Post published!');
+      setTimeout(() => setShareToast(''), 2500);
       resetModal();
     } catch (err) {
-      console.error(err);
+      console.error('Post failed:', err);
+      setShareToast('❌ Failed to post. Try again.');
+      setTimeout(() => setShareToast(''), 3000);
+      setUploadProgress('');
     }
     setSubmitting(false);
+  };
+
+  // Delete post
+  const handleDeletePost = async (postId: string) => {
+    if (!confirm('Delete this post? This cannot be undone.')) return;
+    try {
+      await deleteDoc(doc(db, 'community_posts', postId));
+      setShareToast('🗑️ Post deleted');
+      setTimeout(() => setShareToast(''), 2500);
+    } catch (err) {
+      console.error('Delete failed:', err);
+      setShareToast('❌ Failed to delete');
+      setTimeout(() => setShareToast(''), 3000);
+    }
+  };
+
+  // Edit post — open modal with prefilled data
+  const handleEditPost = (post: Post) => {
+    setEditingPost(post);
+    setPostText(post.text || '');
+    setPostCategory(post.category || '');
+    setPostStory(post.story || '');
+    if (post.imageUrl) {
+      setImagePreview(post.imageUrl);
+    }
+    setShowModal(true);
   };
 
   const handleLike = async (postId: string, likes: string[]) => {
@@ -278,10 +432,36 @@ export function CommunityPage({
     });
   };
 
+  const toggleStory = (postId: string) => {
+    setExpandedStories((prev) => {
+      const next = new Set(prev);
+      if (next.has(postId)) next.delete(postId);
+      else next.add(postId);
+      return next;
+    });
+  };
+
   const formatTime = (ts: any): string => {
     if (!ts) return 'Just now';
-    try { return new Date(ts.toDate()).toLocaleString(); }
-    catch { return 'Just now'; }
+    try {
+      const d = new Date(ts.toDate());
+      const now = new Date();
+      const diff = now.getTime() - d.getTime();
+      const mins = Math.floor(diff / 60000);
+      if (mins < 1) return 'Just now';
+      if (mins < 60) return `${mins}m ago`;
+      const hrs = Math.floor(mins / 60);
+      if (hrs < 24) return `${hrs}h ago`;
+      const days = Math.floor(hrs / 24);
+      if (days < 7) return `${days}d ago`;
+      return d.toLocaleDateString();
+    } catch { return 'Just now'; }
+  };
+
+  const getCategoryLabel = (cat?: string) => {
+    if (!cat) return null;
+    const found = POST_CATEGORIES.find(c => c.value === cat);
+    return found ? found.label : null;
   };
 
   // Share handlers
@@ -386,6 +566,8 @@ export function CommunityPage({
       fontWeight: 600,
       whiteSpace: 'nowrap' as const,
       flexShrink: 0,
+      cursor: 'pointer',
+      transition: 'all 0.2s',
     },
     headerRight: {
       display: 'flex',
@@ -437,11 +619,47 @@ export function CommunityPage({
     loginBtn: { background: 'linear-gradient(135deg, #d4a373, #e9c46a)', color: '#0b0c0e', fontWeight: 700, cursor: 'pointer', border: 'none', padding: '0.6rem 1.6rem', borderRadius: 30, fontSize: '0.95rem' },
     loginLink: { color: '#d4a373', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', fontSize: '0.9rem', background: 'none', border: 'none' },
 
-    card: { background: '#16181c', borderRadius: 18, padding: '1.2rem', border: '1px solid #262a31' },
+    card: { background: '#16181c', borderRadius: 18, padding: '1.2rem', border: '1px solid #262a31', position: 'relative' as const },
     cardHeader: { display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.8rem' },
     username: { fontWeight: 600, fontSize: '1rem', color: '#e4e4e7' },
     timestamp: { fontSize: '0.75rem', color: '#8a8f98' },
-    postText: { margin: '0.8rem 0 1rem', fontSize: '1rem', lineHeight: 1.6, color: '#d1d5db', whiteSpace: 'pre-wrap' },
+    categoryTag: {
+      display: 'inline-block',
+      fontSize: '0.7rem',
+      fontWeight: 600,
+      background: 'rgba(212,163,115,0.15)',
+      color: '#d4a373',
+      padding: '0.15rem 0.5rem',
+      borderRadius: 10,
+      marginLeft: '0.4rem',
+    },
+    postText: { margin: '0.5rem 0 0.8rem', fontSize: '1rem', lineHeight: 1.6, color: '#d1d5db', whiteSpace: 'pre-wrap' },
+    storySection: {
+      background: 'rgba(233,196,106,0.06)',
+      border: '1px solid rgba(233,196,106,0.15)',
+      borderRadius: 12,
+      padding: '0.7rem 1rem',
+      marginBottom: '0.8rem',
+    },
+    storyToggle: {
+      background: 'none',
+      border: 'none',
+      color: '#e9c46a',
+      fontWeight: 600,
+      fontSize: '0.85rem',
+      cursor: 'pointer',
+      padding: 0,
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.3rem',
+    },
+    storyText: {
+      color: '#b0b5c0',
+      fontSize: '0.9rem',
+      lineHeight: 1.5,
+      marginTop: '0.4rem',
+      whiteSpace: 'pre-wrap' as const,
+    },
     postImage: { width: '100%', borderRadius: 14, marginBottom: '1rem', maxHeight: 500, objectFit: 'cover' as const },
     actions: { display: 'flex', alignItems: 'center', gap: '1.8rem', paddingTop: '0.8rem', borderTop: '1px solid #252830' },
     actionBtn: { display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: '#a1a5b0', cursor: 'pointer', fontSize: '0.95rem', fontWeight: 500 },
@@ -454,12 +672,67 @@ export function CommunityPage({
     commentSubmitBtn: { background: '#d4a373', color: '#0b0c0e', border: 'none', borderRadius: 20, padding: '0.5rem 1.2rem', fontWeight: 700, cursor: 'pointer' },
     emptyState: { textAlign: 'center', padding: '3rem 1rem', color: '#6b7280', fontSize: '1rem' },
 
+    // Three-dot menu
+    menuBtn: {
+      position: 'absolute' as const,
+      top: '1rem',
+      right: '1rem',
+      background: 'none',
+      border: 'none',
+      color: '#8a8f98',
+      fontSize: '1.2rem',
+      cursor: 'pointer',
+      padding: '0.2rem 0.4rem',
+      borderRadius: 8,
+      lineHeight: 1,
+    },
+    menuDropdown: {
+      position: 'absolute' as const,
+      top: '2.5rem',
+      right: '1rem',
+      background: '#1f2126',
+      border: '1px solid #2e323a',
+      borderRadius: 12,
+      padding: '0.3rem 0',
+      zIndex: 50,
+      minWidth: 120,
+      boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+    },
+    menuItem: {
+      display: 'block',
+      width: '100%',
+      background: 'none',
+      border: 'none',
+      color: '#e4e4e7',
+      padding: '0.6rem 1rem',
+      fontSize: '0.85rem',
+      cursor: 'pointer',
+      textAlign: 'left' as const,
+    },
+    menuItemDanger: {
+      color: '#e76f51',
+    },
+
     // Modals
     overlay: { position: 'fixed' as const, top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 },
-    modal: { background: '#16181c', width: '90%', maxWidth: 520, borderRadius: 24, padding: '2rem', border: '1px solid #2e323a' },
+    modal: { background: '#16181c', width: '90%', maxWidth: 520, borderRadius: 24, padding: '2rem', border: '1px solid #2e323a', maxHeight: '90vh', overflowY: 'auto' as const },
     modalTitle: { marginBottom: '1.5rem', fontWeight: 700, color: '#d4a373', fontSize: '1.3rem' },
     label: { display: 'block', marginBottom: '0.4rem', fontWeight: 500, color: '#b0b5c0', fontSize: '0.9rem' },
     textarea: { width: '100%', background: '#1f2126', border: '1px solid #2e323a', borderRadius: 14, padding: '0.8rem', color: '#e4e4e7', resize: 'vertical' as const, fontFamily: 'inherit', fontSize: '1rem', marginBottom: '1.2rem', outline: 'none', boxSizing: 'border-box' as const },
+    selectInput: {
+      width: '100%',
+      background: '#1f2126',
+      border: '1px solid #2e323a',
+      borderRadius: 14,
+      padding: '0.7rem 0.8rem',
+      color: '#e4e4e7',
+      fontSize: '0.95rem',
+      marginBottom: '1.2rem',
+      outline: 'none',
+      boxSizing: 'border-box' as const,
+      appearance: 'none' as const,
+      cursor: 'pointer',
+    },
     fileUploadBtn: { display: 'flex', alignItems: 'center', gap: 8, background: '#1f2126', border: '1px dashed #3a3f4a', borderRadius: 14, padding: '0.8rem 1.2rem', color: '#a1a5b0', cursor: 'pointer', fontSize: '0.9rem', marginBottom: '1.2rem', width: '100%', justifyContent: 'center' },
     imagePreviewBox: { position: 'relative' as const, marginBottom: '1.2rem' },
     previewImg: { width: '100%', borderRadius: 12, maxHeight: 200, objectFit: 'cover' as const },
@@ -467,6 +740,17 @@ export function CommunityPage({
     modalActions: { display: 'flex', gap: '1rem', justifyContent: 'flex-end' },
     cancelBtn: { background: '#1f2126', border: 'none', color: '#e4e4e7', padding: '0.6rem 1.4rem', borderRadius: 30, fontWeight: 600, cursor: 'pointer' },
     submitBtn: { background: '#d4a373', color: '#0b0c0e', border: 'none', padding: '0.6rem 1.6rem', borderRadius: 30, fontWeight: 700, cursor: 'pointer' },
+    progressBar: {
+      background: 'rgba(76,205,196,0.12)',
+      border: '1px solid rgba(76,205,196,0.3)',
+      borderRadius: 10,
+      padding: '0.5rem 1rem',
+      color: '#4ECDC4',
+      fontSize: '0.85rem',
+      fontWeight: 600,
+      marginBottom: '1rem',
+      textAlign: 'center' as const,
+    },
 
     // Share Modal
     shareModal: { background: '#16181c', width: '90%', maxWidth: 420, borderRadius: 24, padding: '2rem', border: '1px solid #2e323a', textAlign: 'center' as const },
@@ -486,6 +770,24 @@ export function CommunityPage({
       padding: '0.7rem 1rem', color: '#8a8f98', fontSize: '0.8rem',
       marginBottom: '1.2rem', wordBreak: 'break-all' as const, textAlign: 'left' as const,
     },
+
+    // Members Modal
+    membersModal: {
+      background: '#16181c', width: '90%', maxWidth: 420, borderRadius: 24,
+      padding: '1.5rem', border: '1px solid #2e323a', maxHeight: '80vh', display: 'flex', flexDirection: 'column' as const,
+    },
+    membersTitle: { fontWeight: 700, color: '#d4a373', fontSize: '1.2rem', marginBottom: '1rem', textAlign: 'center' as const },
+    membersList: {
+      flex: 1, overflowY: 'auto' as const, display: 'flex', flexDirection: 'column' as const, gap: '0.5rem',
+    },
+    memberItem: {
+      display: 'flex', alignItems: 'center', gap: '0.7rem',
+      background: '#1f2126', borderRadius: 12, padding: '0.6rem 0.8rem',
+    },
+    memberName: { fontWeight: 600, color: '#e4e4e7', fontSize: '0.95rem' },
+    memberJoined: { color: '#8a8f98', fontSize: '0.75rem' },
+    membersCount: { textAlign: 'center' as const, color: '#8a8f98', fontSize: '0.85rem', marginBottom: '1rem' },
+
     toast: {
       position: 'fixed' as const, bottom: '2rem', left: '50%', transform: 'translateX(-50%)',
       background: '#1a1a1a', color: '#4ECDC4', border: '1px solid rgba(76,205,196,0.4)',
@@ -496,22 +798,24 @@ export function CommunityPage({
 
   return (
     <div style={s.page}>
-      {/* ── Compact Community Header (replaces main WildSaura header) ── */}
+      {/* ── Compact Community Header ── */}
       <div style={s.communityHeader}>
         <div style={s.headerRow}>
-          {/* Left: Back + Title + Member count */}
           <div style={s.headerLeft}>
             <button style={s.backArrow} onClick={onBack} title="Back to Home">
               ←
             </button>
             <span style={s.headerTitle}>🌿 WildSaura Community</span>
-            <div style={s.memberBadge}>
+            <div
+              style={s.memberBadge}
+              onClick={() => setShowMembersModal(true)}
+              title="View members"
+            >
               <span>👥</span>
               <span>{memberCount}</span>
             </div>
           </div>
 
-          {/* Right: Join + New Post + Share */}
           <div style={s.headerRight}>
             {visitor ? (
               isMember ? (
@@ -547,7 +851,7 @@ export function CommunityPage({
       </div>
 
       <div style={s.feed}>
-        {/* Guest banner — visible only when not logged in */}
+        {/* Guest banner */}
         {!visitor && (
           <div style={s.guestBanner}>
             <div style={s.guestTitle}>🌍 Welcome to WildSaura Community!</div>
@@ -577,22 +881,56 @@ export function CommunityPage({
             const likeCount = post.likes?.length || 0;
             const commentCount = post.comments?.length || 0;
             const showComments = openComments.has(post.id);
-            const displayUsername = (authUid && post.userId === authUid && visitor)
+            const isOwner = authUid && post.userId === authUid;
+            const displayUsername = (isOwner && visitor)
               ? visitor.displayName
               : (post.username || 'Anonymous');
 
-            const postAvatarUrl = (authUid && post.userId === authUid && visitor)
+            const postAvatarUrl = (isOwner && visitor)
               ? visitor.avatarUrl
               : post.avatarUrl;
-            const postAvatarColor = (authUid && post.userId === authUid && visitor)
+            const postAvatarColor = (isOwner && visitor)
               ? visitor.avatarColor
               : (post.avatarColor || '#4ECDC4');
-            const postSpiritAnimal = (authUid && post.userId === authUid && visitor)
+            const postSpiritAnimal = (isOwner && visitor)
               ? visitor.avatarAnimal
               : post.spiritAnimal;
 
+            const catLabel = getCategoryLabel(post.category);
+
             return (
               <div key={post.id} style={s.card}>
+                {/* Three-dot menu for own posts */}
+                {isOwner && (
+                  <>
+                    <button
+                      style={s.menuBtn}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMenuOpenPostId(menuOpenPostId === post.id ? null : post.id);
+                      }}
+                    >
+                      ⋮
+                    </button>
+                    {menuOpenPostId === post.id && (
+                      <div style={s.menuDropdown} onClick={(e) => e.stopPropagation()}>
+                        <button
+                          style={s.menuItem}
+                          onClick={() => { setMenuOpenPostId(null); handleEditPost(post); }}
+                        >
+                          ✏️ Edit Post
+                        </button>
+                        <button
+                          style={{ ...s.menuItem, ...s.menuItemDanger }}
+                          onClick={() => { setMenuOpenPostId(null); handleDeletePost(post.id); }}
+                        >
+                          🗑️ Delete Post
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+
                 <div style={s.cardHeader}>
                   <AvatarDisplay
                     displayName={displayUsername}
@@ -603,17 +941,34 @@ export function CommunityPage({
                     showBorder={true}
                   />
                   <div>
-                    <div style={s.username}>{displayUsername}</div>
+                    <div style={s.username}>
+                      {displayUsername}
+                      {catLabel && <span style={s.categoryTag}>{catLabel}</span>}
+                    </div>
                     <div style={s.timestamp}>{formatTime(post.timestamp)}</div>
                   </div>
                 </div>
 
                 {post.text && <div style={s.postText}>{post.text}</div>}
+
+                {/* Story behind the photo */}
+                {post.story && (
+                  <div style={s.storySection}>
+                    <button style={s.storyToggle} onClick={() => toggleStory(post.id)}>
+                      📖 Story behind this photo {expandedStories.has(post.id) ? '▲' : '▼'}
+                    </button>
+                    {expandedStories.has(post.id) && (
+                      <div style={s.storyText}>{post.story}</div>
+                    )}
+                  </div>
+                )}
+
                 {post.imageUrl && (
                   <img
                     src={post.imageUrl}
                     alt="Post"
                     style={s.postImage}
+                    loading="lazy"
                     onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                   />
                 )}
@@ -639,16 +994,17 @@ export function CommunityPage({
                   <div style={s.commentSection}>
                     <ul style={s.commentList}>
                       {(post.comments || []).map((c, i) => {
-                        const commentAvatarUrl = (authUid && c.userId === authUid && visitor)
+                        const isCommentOwner = authUid && c.userId === authUid;
+                        const commentAvatarUrl = (isCommentOwner && visitor)
                           ? visitor.avatarUrl
                           : c.avatarUrl;
-                        const commentAvatarColor = (authUid && c.userId === authUid && visitor)
+                        const commentAvatarColor = (isCommentOwner && visitor)
                           ? visitor.avatarColor
                           : (c.avatarColor || '#4ECDC4');
-                        const commentSpiritAnimal = (authUid && c.userId === authUid && visitor)
+                        const commentSpiritAnimal = (isCommentOwner && visitor)
                           ? visitor.avatarAnimal
                           : c.spiritAnimal;
-                        const commentDisplayName = (authUid && c.userId === authUid && visitor)
+                        const commentDisplayName = (isCommentOwner && visitor)
                           ? visitor.displayName
                           : (c.username || 'Anonymous');
 
@@ -710,11 +1066,13 @@ export function CommunityPage({
 
       <Footer logoUrl={logoUrl} onTermsClick={onTermsClick} />
 
-      {/* New Post Modal */}
+      {/* New/Edit Post Modal */}
       {showModal && (
         <div style={s.overlay} onClick={(e) => { if (e.target === e.currentTarget) resetModal(); }}>
           <div style={s.modal}>
-            <div style={s.modalTitle}>🌿 Create Post</div>
+            <div style={s.modalTitle}>
+              {editingPost ? '✏️ Edit Post' : '🌿 Create Post'}
+            </div>
 
             <label style={s.label}>Caption / Text</label>
             <textarea
@@ -725,7 +1083,27 @@ export function CommunityPage({
               style={s.textarea}
             />
 
-            <label style={s.label}>Photo (optional)</label>
+            <label style={s.label}>Category</label>
+            <select
+              value={postCategory}
+              onChange={(e) => setPostCategory(e.target.value)}
+              style={s.selectInput}
+            >
+              {POST_CATEGORIES.map(c => (
+                <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
+            </select>
+
+            <label style={s.label}>📖 Story Behind the Photo (optional)</label>
+            <textarea
+              rows={3}
+              placeholder="Share the story — where was this taken? What happened? Any interesting facts?"
+              value={postStory}
+              onChange={(e) => setPostStory(e.target.value)}
+              style={s.textarea}
+            />
+
+            <label style={s.label}>Photo</label>
             {imagePreview ? (
               <div style={s.imagePreviewBox}>
                 <img src={imagePreview} alt="Preview" style={s.previewImg} />
@@ -747,6 +1125,10 @@ export function CommunityPage({
               onChange={handleImageChange}
             />
 
+            {uploadProgress && (
+              <div style={s.progressBar}>{uploadProgress}</div>
+            )}
+
             <div style={s.modalActions}>
               <button style={s.cancelBtn} onClick={resetModal}>Cancel</button>
               <button
@@ -754,8 +1136,47 @@ export function CommunityPage({
                 onClick={handleSubmitPost}
                 disabled={submitting}
               >
-                {submitting ? 'Posting...' : 'Post 🌿'}
+                {submitting ? 'Posting...' : (editingPost ? 'Save ✏️' : 'Post 🌿')}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Members Modal */}
+      {showMembersModal && (
+        <div style={s.overlay} onClick={(e) => { if (e.target === e.currentTarget) setShowMembersModal(false); }}>
+          <div style={s.membersModal}>
+            <div style={s.membersTitle}>👥 Community Members</div>
+            <div style={s.membersCount}>{memberCount} {memberCount === 1 ? 'member' : 'members'} joined</div>
+            <div style={s.membersList}>
+              {members.length === 0 ? (
+                <div style={{ textAlign: 'center', color: '#6b7280', padding: '2rem 0' }}>
+                  No members yet. Be the first to join! 🌿
+                </div>
+              ) : (
+                members.map((m) => (
+                  <div key={m.userId} style={s.memberItem}>
+                    <AvatarDisplay
+                      displayName={m.displayName || 'User'}
+                      avatarUrl={m.avatarUrl}
+                      spiritAnimal={m.spiritAnimal}
+                      avatarColor={m.avatarColor}
+                      size={36}
+                      showBorder={false}
+                    />
+                    <div>
+                      <div style={s.memberName}>{m.displayName || 'User'}</div>
+                      <div style={s.memberJoined}>
+                        {m.joinedAt ? `Joined ${formatTime(m.joinedAt)}` : 'Member'}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+              <button style={s.cancelBtn} onClick={() => setShowMembersModal(false)}>Close</button>
             </div>
           </div>
         </div>
