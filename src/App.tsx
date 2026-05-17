@@ -231,7 +231,7 @@ const App: React.FC = () => {
   const pullStartYRef = useRef<number | null>(null);
   const pullDistanceRef = useRef(0);
   const isPullingRef = useRef(false);
-  const FREE_DOWNLOADS = 2;
+  const FREE_DOWNLOADS = Infinity; // Unlimited free downloads for all users
   const onlineCleanupRef = useRef<(() => void) | null>(null);
   const getGuestIdentity = useCallback(() => {
     const sid = sessionStorage.getItem('wa_session_id') || `guest_${Date.now()}`;
@@ -1051,7 +1051,7 @@ const App: React.FC = () => {
       localStorage.setItem(welcomeKey, '1');
       addNotification({
         title: `Namaste 🙏 ${merged.displayName}!`,
-        message: `Welcome to WildSaura! 🌿\nExplore our wildlife gallery, share your love for nature, and discover the wild beauty of India.\n\nEnjoy ${FREE_DOWNLOADS} free high-quality downloads! 📸`,
+        message: `Welcome to WildSaura! 🌿\nExplore our wildlife gallery, share your love for nature, and discover the wild beauty of India.\n\nEnjoy unlimited free high-quality downloads! 📸`,
         type: 'welcome',
         icon: '🙏',
       });
@@ -1212,7 +1212,7 @@ const App: React.FC = () => {
     if (!visitor) { setShowVisitorLogin(true); return; }
     setIsDownloading(true);
     try {
-      const applyWatermark = downloadCount >= FREE_DOWNLOADS;
+      const applyWatermark = false; // All downloads are free without watermark
       await downloadPhoto(photo.imageUrl, photo.title, applyWatermark);
       const newCount = downloadCount + 1;
       setDownloadCount(newCount);

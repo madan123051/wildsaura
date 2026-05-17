@@ -34,8 +34,8 @@ export const Gallery: React.FC<GalleryProps> = ({
   onLoginRequired,
   onViewAll,
 }) => {
-  const filtered = selectedCategory === 'all' ? photos : photos.filter((p) => p.category === selectedCategory);
-  const published = filtered.filter(p => p.published !== false);
+  // Always show all photos (no category filtering since pills are removed)
+  const published = photos.filter(p => p.published !== false);
   const displayPhotos = published.slice(0, INITIAL_COUNT);
   const hasMore = published.length > INITIAL_COUNT;
 
@@ -85,18 +85,7 @@ export const Gallery: React.FC<GalleryProps> = ({
           <div className="section-line" />
         </div>
 
-        {/* Filter Tabs */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '2.5rem' }}>
-          {filterTabs.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => onCategoryChange(tab.key)}
-              className={`filter-tab ${selectedCategory === tab.key ? 'active' : ''}`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        {/* Category pills REMOVED — categories already shown as thumbnail cards above */}
 
         {/* Gallery Grid */}
         {published.length === 0 ? (
