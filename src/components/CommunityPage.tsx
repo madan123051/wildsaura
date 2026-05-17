@@ -6,7 +6,6 @@ import {
 import { onAuthStateChanged } from 'firebase/auth';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, auth, storage } from '../firebase';
-import { Header } from './Header';
 import { Footer } from './Footer';
 import { AvatarDisplay } from './AvatarDisplay';
 import { Visitor } from '../types';
@@ -54,7 +53,7 @@ interface CommunityPageProps {
   onProfileClick?: () => void;
 }
 
-// Simple QR code component using Google Charts API
+// Simple QR code component
 function QRCode({ url, size = 180 }: { url: string; size?: number }) {
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(url)}&bgcolor=16181c&color=d4a373&format=png`;
   return (
@@ -132,7 +131,6 @@ export function CommunityPage({
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'community_members'), (snap) => {
       setMemberCount(snap.size);
-      // Check if current user is a member
       if (authUid) {
         const isMem = snap.docs.some(d => d.id === authUid);
         setIsMember(isMem);
@@ -228,7 +226,6 @@ export function CommunityPage({
         avatarColor: visitor.avatarColor || '#4ECDC4',
         spiritAnimal: visitor.avatarAnimal || '',
       });
-      // Auto-join on first post
       await ensureMember();
       resetModal();
     } catch (err) {
@@ -326,37 +323,111 @@ export function CommunityPage({
 
   const s: Record<string, React.CSSProperties> = {
     page: { minHeight: '100vh', background: 'var(--wa-bg, #0b0c0e)', display: 'flex', flexDirection: 'column', fontFamily: "'Segoe UI', 'Inter', system-ui, sans-serif" },
-    feed: { flex: 1, maxWidth: 700, margin: '0 auto', width: '100%', padding: '8rem 1rem 3rem', display: 'flex', flexDirection: 'column', gap: '1.8rem' },
-    topBar: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.75rem' },
-    backBtn: { background: 'rgba(201,168,76,0.15)', border: '1px solid rgba(201,168,76,0.35)', color: '#d4a373', borderRadius: 8, padding: '0.55rem 0.85rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem' },
-    title: { fontSize: '1.5rem', fontWeight: 700, background: 'linear-gradient(135deg, #d4a373, #e9c46a)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' },
-    newPostBtn: { background: '#d4a373', color: '#0b0c0e', border: 'none', padding: '0.6rem 1.4rem', borderRadius: 30, fontWeight: 700, cursor: 'pointer', fontSize: '0.95rem' },
 
-    // Stats bar
-    statsBar: {
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' as const, gap: '0.75rem',
-      background: 'linear-gradient(135deg, rgba(212,163,115,0.08), rgba(233,196,106,0.06))',
-      border: '1px solid rgba(212,163,115,0.2)', borderRadius: 16, padding: '0.9rem 1.2rem',
+    // ── Compact Community Header ──
+    communityHeader: {
+      position: 'sticky' as const,
+      top: 0,
+      zIndex: 100,
+      background: 'linear-gradient(180deg, rgba(11,12,14,0.98) 0%, rgba(11,12,14,0.95) 100%)',
+      backdropFilter: 'blur(12px)',
+      borderBottom: '1px solid rgba(212,163,115,0.15)',
+      padding: '0.6rem 1rem',
     },
-    statsLeft: { display: 'flex', alignItems: 'center', gap: '1.2rem', flexWrap: 'wrap' as const },
-    statItem: { display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.95rem', color: '#b0b5c0' },
-    statNumber: { fontWeight: 700, color: '#e9c46a', fontSize: '1.1rem' },
-    statsRight: { display: 'flex', alignItems: 'center', gap: '0.6rem' },
-    joinBtn: {
-      background: 'linear-gradient(135deg, #d4a373, #e9c46a)', color: '#0b0c0e', border: 'none',
-      padding: '0.55rem 1.4rem', borderRadius: 30, fontWeight: 700, cursor: 'pointer', fontSize: '0.9rem',
-      boxShadow: '0 2px 12px rgba(212,163,115,0.3)',
+    headerRow: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      maxWidth: 700,
+      margin: '0 auto',
+      width: '100%',
+      gap: '0.5rem',
+      flexWrap: 'wrap' as const,
     },
-    joinedBadge: {
-      display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(76,205,196,0.12)',
-      border: '1px solid rgba(76,205,196,0.3)', padding: '0.5rem 1rem', borderRadius: 30,
-      color: '#4ECDC4', fontWeight: 600, fontSize: '0.9rem',
+    headerLeft: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.5rem',
+      minWidth: 0,
+      flex: '1 1 auto',
     },
-    shareBtn: {
-      background: 'rgba(212,163,115,0.12)', border: '1px solid rgba(212,163,115,0.3)',
-      color: '#d4a373', borderRadius: 30, padding: '0.55rem 1rem', cursor: 'pointer',
-      fontWeight: 600, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: 6,
+    backArrow: {
+      background: 'none',
+      border: 'none',
+      color: '#d4a373',
+      cursor: 'pointer',
+      fontSize: '1.2rem',
+      padding: '0.3rem',
+      display: 'flex',
+      alignItems: 'center',
+      flexShrink: 0,
     },
+    headerTitle: {
+      fontSize: '1.05rem',
+      fontWeight: 700,
+      background: 'linear-gradient(135deg, #d4a373, #e9c46a)',
+      WebkitBackgroundClip: 'text',
+      WebkitTextFillColor: 'transparent',
+      backgroundClip: 'text',
+      whiteSpace: 'nowrap' as const,
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+    },
+    memberBadge: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.25rem',
+      background: 'rgba(233,196,106,0.1)',
+      border: '1px solid rgba(233,196,106,0.2)',
+      borderRadius: 20,
+      padding: '0.2rem 0.6rem',
+      fontSize: '0.78rem',
+      color: '#e9c46a',
+      fontWeight: 600,
+      whiteSpace: 'nowrap' as const,
+      flexShrink: 0,
+    },
+    headerRight: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.4rem',
+      flexShrink: 0,
+    },
+    headerBtn: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.3rem',
+      border: 'none',
+      borderRadius: 20,
+      padding: '0.35rem 0.7rem',
+      cursor: 'pointer',
+      fontSize: '0.8rem',
+      fontWeight: 600,
+      whiteSpace: 'nowrap' as const,
+      transition: 'all 0.2s',
+    },
+    joinHeaderBtn: {
+      background: 'linear-gradient(135deg, #d4a373, #e9c46a)',
+      color: '#0b0c0e',
+    },
+    joinedHeaderBadge: {
+      background: 'rgba(76,205,196,0.12)',
+      border: '1px solid rgba(76,205,196,0.3)',
+      color: '#4ECDC4',
+    },
+    newPostHeaderBtn: {
+      background: 'rgba(212,163,115,0.15)',
+      border: '1px solid rgba(212,163,115,0.3)',
+      color: '#d4a373',
+    },
+    shareHeaderBtn: {
+      background: 'rgba(212,163,115,0.1)',
+      border: '1px solid rgba(212,163,115,0.25)',
+      color: '#d4a373',
+    },
+
+    // ── Feed ──
+    feed: { flex: 1, maxWidth: 700, margin: '0 auto', width: '100%', padding: '1rem 1rem 3rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' },
 
     // Guest Banner
     guestBanner: { background: 'rgba(212,163,115,0.1)', border: '1px solid rgba(212,163,115,0.3)', borderRadius: 14, padding: '1rem 1.2rem', display: 'flex', flexDirection: 'column' as const, gap: '0.8rem', alignItems: 'center', textAlign: 'center' as const },
@@ -425,73 +496,57 @@ export function CommunityPage({
 
   return (
     <div style={s.page}>
-      <Header
-        onScrollToGallery={onScrollToGallery}
-        logoUrl={logoUrl}
-        onSearchClick={onSearchClick}
-        visitor={visitor}
-        onVisitorLoginClick={onVisitorLoginClick}
-        onVisitorLogout={onVisitorLogout}
-        onVisitorUpdate={onVisitorUpdate}
-        onStoriesClick={onStoriesClick}
-        notificationCount={notificationCount}
-        onNotificationClick={onNotificationClick}
-        isAdmin={isAdmin}
-        onAdminClick={onAdminClick}
-        onProfileClick={onProfileClick}
-      />
-
-      <div style={s.feed}>
-        {/* Top bar */}
-        <div style={s.topBar}>
-          <button style={s.backBtn} onClick={onBack}>← Back</button>
-          <span style={s.title}>🌿 WildSaura Community</span>
-          <button
-            style={s.newPostBtn}
-            onClick={() => requireLogin(() => setShowModal(true))}
-          >
-            + New Post
-          </button>
-        </div>
-
-        {/* Stats Bar — Member count, Join, Share */}
-        <div style={s.statsBar}>
-          <div style={s.statsLeft}>
-            <div style={s.statItem}>
+      {/* ── Compact Community Header (replaces main WildSaura header) ── */}
+      <div style={s.communityHeader}>
+        <div style={s.headerRow}>
+          {/* Left: Back + Title + Member count */}
+          <div style={s.headerLeft}>
+            <button style={s.backArrow} onClick={onBack} title="Back to Home">
+              ←
+            </button>
+            <span style={s.headerTitle}>🌿 WildSaura Community</span>
+            <div style={s.memberBadge}>
               <span>👥</span>
-              <span style={s.statNumber}>{memberCount}</span>
-              <span>Members</span>
-            </div>
-            <div style={s.statItem}>
-              <span>📝</span>
-              <span style={s.statNumber}>{posts.length}</span>
-              <span>Posts</span>
+              <span>{memberCount}</span>
             </div>
           </div>
-          <div style={s.statsRight}>
+
+          {/* Right: Join + New Post + Share */}
+          <div style={s.headerRight}>
             {visitor ? (
               isMember ? (
-                <div style={s.joinedBadge}>✅ Joined</div>
+                <span style={{ ...s.headerBtn, ...s.joinedHeaderBadge }}>✅</span>
               ) : (
                 <button
-                  style={{ ...s.joinBtn, opacity: joining ? 0.7 : 1 }}
+                  style={{ ...s.headerBtn, ...s.joinHeaderBtn, opacity: joining ? 0.7 : 1 }}
                   onClick={handleJoinCommunity}
                   disabled={joining}
                 >
-                  {joining ? 'Joining...' : '🤝 Join Community'}
+                  {joining ? '...' : '🤝 Join'}
                 </button>
               )
             ) : (
-              <button style={s.joinBtn} onClick={onVisitorLoginClick}>
-                🔑 Login to Join
+              <button style={{ ...s.headerBtn, ...s.joinHeaderBtn }} onClick={onVisitorLoginClick}>
+                🔑 Login
               </button>
             )}
-            <button style={s.shareBtn} onClick={() => setShowShareModal(true)}>
-              📤 Share
+            <button
+              style={{ ...s.headerBtn, ...s.newPostHeaderBtn }}
+              onClick={() => requireLogin(() => setShowModal(true))}
+            >
+              ✏️ Post
+            </button>
+            <button
+              style={{ ...s.headerBtn, ...s.shareHeaderBtn }}
+              onClick={() => setShowShareModal(true)}
+            >
+              📤
             </button>
           </div>
         </div>
+      </div>
 
+      <div style={s.feed}>
         {/* Guest banner — visible only when not logged in */}
         {!visitor && (
           <div style={s.guestBanner}>
@@ -504,7 +559,7 @@ export function CommunityPage({
               <button style={s.loginBtn} onClick={onVisitorLoginClick}>
                 🔑 Login to Join
               </button>
-              <button style={s.shareBtn} onClick={() => setShowShareModal(true)}>
+              <button style={{ ...s.headerBtn, ...s.shareHeaderBtn, padding: '0.5rem 1rem', fontSize: '0.9rem' }} onClick={() => setShowShareModal(true)}>
                 📤 Share with Friends
               </button>
             </div>
@@ -713,12 +768,10 @@ export function CommunityPage({
             <div style={s.shareTitle}>📤 Share Community</div>
             <div style={s.shareSubtitle}>Invite friends to join WildSaura Community!</div>
 
-            {/* QR Code */}
             <div style={s.qrContainer}>
               <QRCode url={communityUrl} size={160} />
             </div>
 
-            {/* Share Options Grid */}
             <div style={s.shareGrid}>
               <button
                 style={s.shareOption}
@@ -754,7 +807,6 @@ export function CommunityPage({
               </button>
             </div>
 
-            {/* Native share (mobile) */}
             {typeof navigator !== 'undefined' && 'share' in navigator && (
               <button
                 style={{ ...s.shareOption, justifyContent: 'center', marginBottom: '1rem' }}
@@ -764,7 +816,6 @@ export function CommunityPage({
               </button>
             )}
 
-            {/* Link preview */}
             <div style={s.linkPreview}>
               🔗 {communityUrl}
             </div>
