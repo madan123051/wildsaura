@@ -21,7 +21,7 @@ import { addGalleryPhotoToFirestore, deleteGalleryPhoto, subscribeToGalleryPhoto
 
 
 
-type AdminView = 'dashboard' | 'photos' | 'add' | 'gallery' | 'stories' | 'add-story' | 'videos' | 'add-video' | 'comments' | 'messages' | 'ai-settings' | 'site-settings' | 'monetization';
+type AdminView = 'dashboard' | 'photos' | 'add' | 'gallery' | 'stories' | 'add-story' | 'videos' | 'add-video' | 'comments' | 'messages' | 'ai-settings' | 'site-settings' | 'monetization' | 'self-ads';
 
 interface AdminDashboardProps {
   logoUrl?: string;
@@ -2288,6 +2288,162 @@ const GalleryManagement: React.FC = () => {
 };
 
 // ── Main Dashboard ───────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────
+// SelfAdsPanel – manage your own promotional banners
+// ─────────────────────────────────────────────────────────
+const SelfAdsPanel: React.FC = () => {
+  const [ads, setAds] = React.useState<{ id: string; title: string; imageUrl: string; linkUrl: string; active: boolean }[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [saving, setSaving] = React.useState(false);
+  const [newAd, setNewAd] = React.useState({ title: '', imageUrl: '', linkUrl: '', active: true });
+  const [showForm, setShowForm] = React.useState(false);
+
+  React.useEffect(() => {
+    // Gracefully handle if selfAdsService does not exist yet
+    import('../services/selfAdsService')
+      .then(mod => mod.getSelfAds().then((data: any) => { setAds(data || []); setLoading(false); }).catch(() => setLoading(false)))
+      .catch(() => setLoading(false));
+  }, []);
+
+  const handleAdd = async () => {
+    if (!newAd.title.trim()) return;
+    setSaving(true);
+    try {
+      const mod = await import('../services/selfAdsService');
+      const created = await mod.addSelfAd(newAd);
+      setAds(prev => [...prev, created]);
+      setNewAd({ title: '', imageUrl: '', linkUrl: '', active: true });
+      setShowForm(false);
+    } catch (err) { console.error(err); }
+    setSaving(false);
+  };
+
+  const handleToggle = async (id: string, active: boolean) => {
+    setAds(prev => prev.map(a => a.id === id ? { ...a, active } : a));
+    try {
+      const mod = await import('../services/selfAdsService');
+      await mod.updateSelfAd(id, { active });
+    } catch (err) { console.error(err); }
+  };
+
+  const handleDelete = async (id: string) => {
+    setAds(prev => prev.filter(a => a.id !== id));
+    try {
+      const mod = await import('../services/selfAdsService');
+      await mod.deleteSelfAd(id);
+    } catch (err) { console.error(err); }
+  };
+
+  const cardStyle: React.CSSProperties = {
+    background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.1)',
+    borderRadius: '12px', padding: '1.25rem', marginBottom: '1rem',
+  };
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '0.6rem 0.9rem', borderRadius: '8px',
+    border: '1px solid rgba(201,168,76,0.2)', background: 'rgba(255,255,255,0.05)',
+    color: '#ebe6dc', fontSize: '0.875rem', outline: 'none', boxSizing: 'border-box',
+  };
+  const btnPrimary: React.CSSProperties = {
+    padding: '0.55rem 1.25rem', borderRadius: '8px', border: 'none', cursor: 'pointer',
+    fontWeight: 600, fontSize: '0.85rem', background: 'var(--wa-gold)', color: '#1a1a2e',
+  };
+  const btnSecondary: React.CSSProperties = {
+    padding: '0.55rem 1.25rem', borderRadius: '8px', border: 'none', cursor: 'pointer',
+    fontWeight: 600, fontSize: '0.85rem', background: 'rgba(255,255,255,0.06)', color: 'rgba(235,230,220,0.7)',
+  };
+
+  return (
+    <div style={{ maxWidth: 700 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+        <div>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--wa-gold)', marginBottom: '0.25rem' }}>
+            📢 Self Ads / Promotion
+          </h3>
+          <p style={{ fontSize: '0.78rem', color: 'rgba(235,230,220,0.45)' }}>
+            Manage your own promotional banners displayed across the site.
+          </p>
+        </div>
+        <button style={btnPrimary} onClick={() => setShowForm(v => !v)}>
+          {showForm ? 'Cancel' : '+ Add Ad'}
+        </button>
+      </div>
+
+      {showForm && (
+        <div style={{ ...cardStyle, border: '1px solid rgba(201,168,76,0.25)', marginBottom: '1.5rem' }}>
+          <h4 style={{ color: 'var(--wa-gold)', marginBottom: '1rem', fontSize: '0.95rem' }}>New Promotional Ad</h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div>
+              <label style={{ fontSize: '0.78rem', color: 'rgba(235,230,220,0.5)', display: 'block', marginBottom: '0.35rem' }}>Title / Label</label>
+              <input style={inputStyle} placeholder="e.g. Wildlife Photography Course" value={newAd.title} onChange={e => setNewAd(p => ({ ...p, title: e.target.value }))} />
+            </div>
+            <div>
+              <label style={{ fontSize: '0.78rem', color: 'rgba(235,230,220,0.5)', display: 'block', marginBottom: '0.35rem' }}>Banner Image URL</label>
+              <input style={inputStyle} placeholder="https://..." value={newAd.imageUrl} onChange={e => setNewAd(p => ({ ...p, imageUrl: e.target.value }))} />
+            </div>
+            <div>
+              <label style={{ fontSize: '0.78rem', color: 'rgba(235,230,220,0.5)', display: 'block', marginBottom: '0.35rem' }}>Destination URL</label>
+              <input style={inputStyle} placeholder="https://..." value={newAd.linkUrl} onChange={e => setNewAd(p => ({ ...p, linkUrl: e.target.value }))} />
+            </div>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <button style={btnSecondary} onClick={() => setShowForm(false)}>Cancel</button>
+              <button style={btnPrimary} onClick={handleAdd}>{saving ? 'Saving...' : 'Add Ad'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '3rem', color: 'rgba(235,230,220,0.4)' }}>Loading ads...</div>
+      ) : ads.length === 0 ? (
+        <div style={{ ...cardStyle, textAlign: 'center', padding: '3rem' }}>
+          <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📢</div>
+          <p style={{ color: 'rgba(235,230,220,0.4)', fontSize: '0.9rem' }}>No self-promotional ads yet.</p>
+          <p style={{ color: 'rgba(235,230,220,0.25)', fontSize: '0.8rem' }}>Click "+ Add Ad" to create your first promotion.</p>
+        </div>
+      ) : (
+        ads.map(ad => (
+          <div key={ad.id} style={{ ...cardStyle, display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            {ad.imageUrl && (
+              <img src={ad.imageUrl} alt={ad.title} style={{ width: 80, height: 50, objectFit: 'cover', borderRadius: '6px', flexShrink: 0 }} />
+            )}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 600, color: '#ebe6dc', fontSize: '0.9rem', marginBottom: '0.25rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ad.title}</div>
+              {ad.linkUrl && (
+                <a href={ad.linkUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.75rem', color: 'var(--wa-gold)', opacity: 0.7 }}>{ad.linkUrl}</a>
+              )}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+              <button
+                onClick={() => handleToggle(ad.id, !ad.active)}
+                title={ad.active ? 'Disable' : 'Enable'}
+                style={{
+                  width: 40, height: 22, borderRadius: 11, border: 'none', cursor: 'pointer',
+                  background: ad.active ? '#4ade80' : 'rgba(255,255,255,0.15)',
+                  position: 'relative', transition: 'background 0.25s',
+                }}
+              >
+                <span style={{
+                  position: 'absolute', top: 3, left: ad.active ? 20 : 3,
+                  width: 16, height: 16, borderRadius: '50%', background: '#fff',
+                  transition: 'left 0.25s',
+                }} />
+              </button>
+              <button
+                onClick={() => handleDelete(ad.id)}
+                title="Delete"
+                style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '6px', padding: '0.35rem 0.5rem', cursor: 'pointer', color: 'rgba(239,68,68,0.7)' }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+              </button>
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  );
+};
+
+
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   logoUrl, photos, onAddPhoto, onUpdatePhoto, onDeletePhoto, onLogout, onViewSite,
   stories, onAddStory, onDeleteStory, onUpdateStory,
@@ -2429,6 +2585,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const getViewTitle = () => {
     if (view === 'dashboard') return 'Dashboard Home';
     if (view === 'monetization') return 'Monetization / AdSense';
+    if (view === 'self-ads') return 'Self Ads / Promotion';
     if (view === 'photos') return editingPhoto ? 'Edit Photo' : 'Manage Photos';
     if (view === 'add') return 'Add New Photo';
     if (view === 'gallery') return 'Gallery Management';
@@ -2549,6 +2706,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </button>
           <button style={sidebarItemStyle(view === 'monetization')} onClick={() => { setView('monetization'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); closeSidebarOnMobile(); }}>
             <DollarSign size={18} /> Monetization
+          </button>
+          <button style={sidebarItemStyle(view === 'self-ads')} onClick={() => { setView('self-ads'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); closeSidebarOnMobile(); }}>
+            <span style={{ fontSize: '1.1rem' }}>📢</span> Self Ads
           </button>
         </nav>
 
@@ -3358,6 +3518,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           {/* AI Settings View */}
           {view === 'ai-settings' && <AISettingsPanel />}
           {view === 'site-settings' && <SiteSettingsForm />}
+          {view === 'self-ads' && <SelfAdsPanel />}
         </div>
       </main>
     </div>
