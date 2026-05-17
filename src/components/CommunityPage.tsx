@@ -8,6 +8,7 @@ import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage
 import { db, auth, storage } from '../firebase';
 import { Header } from './Header';
 import { Footer } from './Footer';
+import { AvatarDisplay } from './AvatarDisplay';
 import { Visitor } from '../types';
 import { ANIMAL_AVATARS } from '../constants/avatarConstants';
 
@@ -20,6 +21,10 @@ interface Post {
   timestamp: any;
   likes: string[];
   comments: CommentItem[];
+  // Avatar data stored per post for consistent display
+  avatarUrl?: string;
+  avatarColor?: string;
+  spiritAnimal?: string;
 }
 
 interface CommentItem {
@@ -27,6 +32,9 @@ interface CommentItem {
   username: string;
   text: string;
   timestamp: string;
+  avatarUrl?: string;
+  avatarColor?: string;
+  spiritAnimal?: string;
 }
 
 interface CommunityPageProps {
@@ -143,6 +151,10 @@ export function CommunityPage({
         timestamp: serverTimestamp(),
         likes: [],
         comments: [],
+        // Store avatar data so all posts show consistent avatars
+        avatarUrl: visitor.avatarUrl || '',
+        avatarColor: visitor.avatarColor || '#4ECDC4',
+        spiritAnimal: visitor.avatarAnimal || '',
       });
       resetModal();
     } catch (err) {
@@ -177,6 +189,9 @@ export function CommunityPage({
           username: visitor.displayName,
           text,
           timestamp: new Date().toISOString(),
+          avatarUrl: visitor.avatarUrl || '',
+          avatarColor: visitor.avatarColor || '#4ECDC4',
+          spiritAnimal: visitor.avatarAnimal || '',
         },
       ],
     });
@@ -211,7 +226,6 @@ export function CommunityPage({
     loginLink: { color: '#d4a373', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', fontSize: '0.9rem', background: 'none', border: 'none' },
     card: { background: '#16181c', borderRadius: 18, padding: '1.2rem', border: '1px solid #262a31' },
     cardHeader: { display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.8rem' },
-    avatar: { width: 42, height: 42, borderRadius: '50%', background: '#2a2d35', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: '1.1rem', color: '#d4a373', flexShrink: 0 },
     username: { fontWeight: 600, fontSize: '1rem', color: '#e4e4e7' },
     timestamp: { fontSize: '0.75rem', color: '#8a8f98' },
     postText: { margin: '0.8rem 0 1rem', fontSize: '1rem', lineHeight: 1.6, color: '#d1d5db', whiteSpace: 'pre-wrap' },
@@ -220,9 +234,9 @@ export function CommunityPage({
     actionBtn: { display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: '#a1a5b0', cursor: 'pointer', fontSize: '0.95rem', fontWeight: 500 },
     commentSection: { marginTop: '1rem' },
     commentList: { listStyle: 'none', padding: 0, maxHeight: 200, overflowY: 'auto' as const, marginBottom: '0.8rem' },
-    commentItem: { padding: '0.5rem 0', borderBottom: '1px solid #23262e', fontSize: '0.9rem', color: '#d1d5db' },
+    commentItem: { padding: '0.5rem 0', borderBottom: '1px solid #23262e', fontSize: '0.9rem', color: '#d1d5db', display: 'flex', alignItems: 'flex-start', gap: '0.5rem' },
     commentUser: { fontWeight: 600, color: '#d4a373', marginRight: 6 },
-    commentInputArea: { display: 'flex', gap: 8 },
+    commentInputArea: { display: 'flex', gap: 8, alignItems: 'center' },
     commentInput: { flex: 1, background: '#1f2126', border: '1px solid #2e323a', borderRadius: 20, padding: '0.6rem 1rem', color: '#e4e4e7', outline: 'none', fontSize: '0.9rem' },
     commentSubmitBtn: { background: '#d4a373', color: '#0b0c0e', border: 'none', borderRadius: 20, padding: '0.5rem 1.2rem', fontWeight: 700, cursor: 'pointer' },
     emptyState: { textAlign: 'center', padding: '3rem 1rem', color: '#6b7280', fontSize: '1rem' },
@@ -297,20 +311,29 @@ export function CommunityPage({
               ? visitor.displayName
               : (post.username || 'Anonymous');
 
+            // For own posts use live visitor avatar; for others use stored post data
+            const postAvatarUrl = (authUid && post.userId === authUid && visitor)
+              ? visitor.avatarUrl
+              : post.avatarUrl;
+            const postAvatarColor = (authUid && post.userId === authUid && visitor)
+              ? visitor.avatarColor
+              : (post.avatarColor || '#4ECDC4');
+            const postSpiritAnimal = (authUid && post.userId === authUid && visitor)
+              ? visitor.avatarAnimal
+              : post.spiritAnimal;
+
             return (
               <div key={post.id} style={s.card}>
                 <div style={s.cardHeader}>
-                  {/* Avatar - Show photo/emoji like Header does */}
-                  <div style={{
-                    ...s.avatar,
-                    background: visitor?.avatarColor,
-                    fontSize: '1.1rem',
-                    position: 'relative',
-                  }}>
-                    {visitor && authUid === post.userId
-                      ? visitor.displayName?.charAt(0)?.toUpperCase() 
-                      : displayUsername.charAt(0).toUpperCase()}
-                  </div>
+                  {/* Unified Avatar for post author */}
+                  <AvatarDisplay
+                    displayName={displayUsername}
+                    avatarUrl={postAvatarUrl}
+                    spiritAnimal={postSpiritAnimal}
+                    avatarColor={postAvatarColor}
+                    size={42}
+                    showBorder={true}
+                  />
                   <div>
                     <div style={s.username}>{displayUsername}</div>
                     <div style={s.timestamp}>{formatTime(post.timestamp)}</div>
@@ -347,18 +370,52 @@ export function CommunityPage({
                 {showComments && (
                   <div style={s.commentSection}>
                     <ul style={s.commentList}>
-                      {(post.comments || []).map((c, i) => (
-                        <li key={i} style={s.commentItem}>
-                          <span style={s.commentUser}>{c.username || 'Anonymous'}</span>
-                          {c.text}
-                        </li>
-                      ))}
+                      {(post.comments || []).map((c, i) => {
+                        // For own comments use live visitor avatar; for others use stored comment data
+                        const commentAvatarUrl = (authUid && c.userId === authUid && visitor)
+                          ? visitor.avatarUrl
+                          : c.avatarUrl;
+                        const commentAvatarColor = (authUid && c.userId === authUid && visitor)
+                          ? visitor.avatarColor
+                          : (c.avatarColor || '#4ECDC4');
+                        const commentSpiritAnimal = (authUid && c.userId === authUid && visitor)
+                          ? visitor.avatarAnimal
+                          : c.spiritAnimal;
+                        const commentDisplayName = (authUid && c.userId === authUid && visitor)
+                          ? visitor.displayName
+                          : (c.username || 'Anonymous');
+
+                        return (
+                          <li key={i} style={s.commentItem}>
+                            <AvatarDisplay
+                              displayName={commentDisplayName}
+                              avatarUrl={commentAvatarUrl}
+                              spiritAnimal={commentSpiritAnimal}
+                              avatarColor={commentAvatarColor}
+                              size={28}
+                              showBorder={false}
+                            />
+                            <div>
+                              <span style={s.commentUser}>{commentDisplayName}</span>
+                              {c.text}
+                            </div>
+                          </li>
+                        );
+                      })}
                       {(post.comments || []).length === 0 && (
-                        <li style={{ ...s.commentItem, color: '#555', border: 'none' }}>No comments yet.</li>
+                        <li style={{ padding: '0.5rem 0', color: '#555', fontSize: '0.9rem' }}>No comments yet.</li>
                       )}
                     </ul>
                     {visitor ? (
                       <div style={s.commentInputArea}>
+                        <AvatarDisplay
+                          displayName={visitor.displayName}
+                          avatarUrl={visitor.avatarUrl}
+                          spiritAnimal={visitor.avatarAnimal}
+                          avatarColor={visitor.avatarColor}
+                          size={28}
+                          showBorder={false}
+                        />
                         <input
                           type="text"
                           placeholder="Add a comment..."

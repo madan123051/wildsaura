@@ -3,6 +3,7 @@ import { Menu, X, Search, LogOut, Bell, Settings, Sun, Moon, Monitor } from 'luc
 import { Visitor } from '../types';
 import { useTheme, Theme } from '../utils/useTheme';
 import { ANIMAL_AVATARS } from '../constants/avatarConstants';
+import { AvatarDisplay } from './AvatarDisplay';
 
 interface HeaderProps {
   onScrollToGallery: () => void;
@@ -59,11 +60,6 @@ export const Header: React.FC<HeaderProps> = ({
     { label: 'Contact', href: '#contact' },
     { label: 'Join Community', href: '/community', onClick: onCommunityClick },
   ];
-
-  const getAvatarEmoji = () => {
-    if (!visitor?.avatarAnimal) return null;
-    return ANIMAL_AVATARS.find(a => a.id === visitor.avatarAnimal)?.emoji;
-  };
 
   const cycleTheme = () => {
     const idx = THEME_CYCLE.indexOf(theme);
@@ -234,31 +230,16 @@ export const Header: React.FC<HeaderProps> = ({
             <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid var(--wa-dropdown-border)' }}>
               {visitor ? (
                 <div style={{ padding: '0.5rem 0' }}>
-                  {/* Profile row */}
+                  {/* Profile row — uses unified AvatarDisplay */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                    {/* Avatar circle - Shows profile photo if available */}
-                    <div
-                      style={{
-                        width: 44, height: 44, borderRadius: '50%',
-                        background: visitor.avatarUrl ? 'transparent' : (getAvatarEmoji() ? 'rgba(79,159,98,0.22)' : visitor.avatarColor),
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: getAvatarEmoji() ? '1.5rem' : '1rem',
-                        fontWeight: 700, color: getAvatarEmoji() ? undefined : '#000',
-                        border: '2px solid rgba(168,216,162,0.55)',
-                        flexShrink: 0,
-                        overflow: 'hidden',
-                      }}
-                    >
-                      {visitor.avatarUrl ? (
-                        <img
-                          src={visitor.avatarUrl}
-                          alt={visitor.displayName}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        />
-                      ) : (
-                        getAvatarEmoji() || visitor.displayName.charAt(0).toUpperCase()
-                      )}
-                    </div>
+                    <AvatarDisplay
+                      displayName={visitor.displayName}
+                      avatarUrl={visitor.avatarUrl}
+                      spiritAnimal={visitor.avatarAnimal}
+                      avatarColor={visitor.avatarColor}
+                      size={44}
+                      showBorder={true}
+                    />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <span style={{ display: 'block', fontSize: '0.82rem', color: 'var(--wa-gold)', fontWeight: 600 }}>
                         {visitor.displayName}
