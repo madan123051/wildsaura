@@ -898,13 +898,67 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
   const handleInlineImageUpload = useCallback(async (file: File) => {
     setInlineUploading(true);
     try {
+      // Compress image before upload (max 1200px, WebP ~200KB)
+      let uploadFile: File | Blob = file;
+      try {
+        const bitmap = await createImageBitmap(file);
+        const MAX_DIM = 1200;
+        let w = bitmap.width, h = bitmap.height;
+        if (w > MAX_DIM || h > MAX_DIM) {
+          const scale = MAX_DIM / Math.max(w, h);
+          w = Math.round(w * scale);
+          h = Math.round(h * scale);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(bitmap, 0, 0, w, h);
+        // Try WebP first, fallback to JPEG
+        let blob = await new Promise<Blob | null>(res => { try { canvas.toBlob(b => res(b), 'image/webp', 0.80); } catch { res(null); } });
+        if (!blob) blob = await new Promise<Blob | null>(res => canvas.toBlob(b => res(b), 'image/jpeg', 0.85));
+        if (blob) {
+          const ext = blob.type === 'image/webp' ? '.webp' : '.jpg';
+          uploadFile = new File([blob], file.name.replace(/\.[^.]+$/, '') + ext, { type: blob.type });
+          console.log(`📸 Story image compressed: ${(file.size/1024).toFixed(0)}KB → ${(blob.size/1024).toFixed(0)}KB`);
+        }
+      } catch (compErr) {
+        console.warn('Compression failed, using original:', compErr);
+      }
+
       const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
       const { storage } = await import('../firebase');
-      const storageRef = ref(storage, `story-inline/${Date.now()}_${file.name}`);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
-      const marker = `[IMAGE:${url}]`;
+      
+      // Try upload with retry
+      let url = '';
+      let lastErr: any = null;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const storageRef = ref(storage, `story-inline/${Date.now()}_${(uploadFile instanceof File ? uploadFile.name : file.name)}`);
+          await uploadBytes(storageRef, uploadFile);
+          url = await getDownloadURL(storageRef);
+          break;
+        } catch (err: any) {
+          lastErr = err;
+          console.warn(`Story image upload attempt ${attempt + 1} failed:`, err?.code || err?.message);
+          if (attempt === 0) await new Promise(r => setTimeout(r, 1000));
+        }
+      }
+      
+      if (!url) {
+        // Show specific error
+        const code = lastErr?.code || '';
+        if (code === 'storage/unauthorized') {
+          alert('❌ Image upload failed: Firebase Storage rules don\'t allow story-inline/ path. Please add storage rules for this path.');
+        } else if (code === 'storage/quota-exceeded') {
+          alert('❌ Storage quota exceeded. Please upgrade Firebase plan.');
+        } else {
+          alert(`❌ Image upload failed: ${lastErr?.message || 'Unknown error'}. Please try again.`);
+        }
+        setInlineUploading(false);
+        return;
+      }
 
+      const marker = `[IMAGE:${url}]`;
       // Insert at cursor position in textarea
       const ta = contentTextareaRef.current;
       if (ta) {
@@ -919,9 +973,9 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
       } else {
         setContent(prev => prev + '\n\n' + marker + '\n\n');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Inline image upload failed:', err);
-      alert('Image upload failed. Please try again.');
+      alert(`❌ Image upload failed: ${err?.message || 'Unknown error'}. Check Firebase Storage rules for story-inline/ path.`);
     }
     setInlineUploading(false);
   }, [content]);
@@ -2313,7 +2367,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   });
 
   const getViewTitle = () => {
-    if (view === 'dashboard') return 'Dashboard Overview';
+    if (view === 'dashboard') return 'Dashboard Home';
     if (view === 'photos') return editingPhoto ? 'Edit Photo' : 'Manage Photos';
     if (view === 'add') return 'Add New Photo';
     if (view === 'gallery') return 'Gallery Management';
@@ -2372,7 +2426,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
         <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', flex: 1 }}>
           <button style={sidebarItemStyle(view === 'dashboard')} onClick={() => { setView('dashboard'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); closeSidebarOnMobile(); }}>
-            <LayoutDashboard size={18} /> Overview
+            <LayoutDashboard size={18} /> Dashboard Home
           </button>
           <button style={sidebarItemStyle(view === 'photos')} onClick={() => { setView('photos'); setEditingPhoto(null); closeSidebarOnMobile(); }}>
             <Image size={18} /> Photos
@@ -2505,6 +2559,38 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           {/* Dashboard View */}
           {view === 'dashboard' && (
             <>
+              {/* Quick action: View Website */}
+              <div
+                onClick={onViewSite}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '1rem 1.25rem', marginBottom: '1.25rem',
+                  background: 'linear-gradient(135deg, rgba(201,168,76,0.15), rgba(201,168,76,0.05))',
+                  border: '1px solid rgba(201,168,76,0.25)', borderRadius: '12px',
+                  cursor: 'pointer', transition: 'all 0.3s',
+                }}
+                onMouseOver={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(201,168,76,0.25), rgba(201,168,76,0.1))'; }}
+                onMouseOut={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(201,168,76,0.15), rgba(201,168,76,0.05))'; }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <div style={{
+                    width: 40, height: 40, borderRadius: '10px',
+                    background: 'rgba(201,168,76,0.2)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '1.2rem',
+                  }}>🏠</div>
+                  <div>
+                    <p style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--wa-light)', marginBottom: '0.15rem' }}>
+                      View Website
+                    </p>
+                    <p style={{ fontSize: '0.7rem', color: 'rgba(235,230,220,0.45)' }}>
+                      Open WildSaura homepage
+                    </p>
+                  </div>
+                </div>
+                <span style={{ color: 'var(--wa-gold)', fontSize: '1.2rem' }}>→</span>
+              </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
                 <StatCard icon={<Image size={24} />} label="Total Photos" value={photos.length} color="blue" />
                 <StatCard icon={<Heart size={24} />} label="Total Likes" value={totalLikes} color="red" />
