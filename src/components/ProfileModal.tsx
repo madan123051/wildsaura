@@ -1,3 +1,6 @@
+// src/components/ProfileModal.tsx - FIXED VERSION (Key changes marked with ✨)
+// Changes: Import from shared constants, use UserAvatar component
+
 import React, { useState, useEffect } from 'react';
 import { X, LogOut, Upload, Camera, Trash2 } from 'lucide-react';
 import { Visitor } from '../types';
@@ -9,22 +12,8 @@ import {
   type UserProfile,
 } from '../services/userProfileService';
 import { getCurrentUser, updateUserPassword, logout } from '../services/authService';
-
-const ANIMAL_AVATARS = [
-  { id: 'tiger', emoji: '🐯', label: 'Tiger' },
-  { id: 'lion', emoji: '🦁', label: 'Lion' },
-  { id: 'elephant', emoji: '🐘', label: 'Elephant' },
-  { id: 'wolf', emoji: '🐺', label: 'Wolf' },
-  { id: 'eagle', emoji: '🦅', label: 'Eagle' },
-  { id: 'deer', emoji: '🦌', label: 'Deer' },
-  { id: 'owl', emoji: '🦉', label: 'Owl' },
-  { id: 'fox', emoji: '🦊', label: 'Fox' },
-];
-
-const AVATAR_COLORS = [
-  '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A',
-  '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2',
-];
+import { ANIMAL_AVATARS, AVATAR_COLORS } from '../constants/avatars'; // ✨ SHARED CONSTANTS
+import { UserAvatar } from './UserAvatar'; // ✨ SHARED COMPONENT
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -33,10 +22,10 @@ interface ProfileModalProps {
   onVisitorUpdate: (updatedVisitor: Visitor) => void;
   onLogout: () => void;
   downloadCount?: number;
-  communities?: Array<{ id: string; name: string; isMember?: boolean }>; // List of all communities
-  onJoinCommunity?: (communityId: string) => Promise<void>; // Join community callback
-  onLeaveCommunity?: (communityId: string) => Promise<void>; // Leave community callback
-  userCommunities?: string[]; // Array of community IDs user is member of
+  communities?: Array<{ id: string; name: string; isMember?: boolean }>;
+  onJoinCommunity?: (communityId: string) => Promise<void>;
+  onLeaveCommunity?: (communityId: string) => Promise<void>;
+  userCommunities?: string[];
 }
 
 export const ProfileModal: React.FC<ProfileModalProps> = ({
@@ -101,13 +90,11 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       setError('Photo must be less than 5MB');
       return;
     }
 
-    // Validate file type
     if (!file.type.startsWith('image/')) {
       setError('Please upload an image file');
       return;
@@ -117,7 +104,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       setUploadingPhoto(true);
       setError('');
 
-      // Load image and compress to WebP
       const reader = new FileReader();
       reader.onloadend = async () => {
         try {
@@ -127,7 +113,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             let width = img.width;
             let height = img.height;
 
-            // Resize if too large (max 600px on longest side)
             const maxSize = 600;
             if (width > height) {
               if (width > maxSize) {
@@ -149,7 +134,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
             ctx.drawImage(img, 0, 0, width, height);
 
-            // Convert to WebP format with compression (0.7 quality)
             canvas.toBlob(
               async (blob) => {
                 if (!blob) {
@@ -158,7 +142,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   return;
                 }
 
-                // Convert blob to base64
                 const blobReader = new FileReader();
                 blobReader.onloadend = async () => {
                   try {
@@ -166,7 +149,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     const originalSize = (file.size / 1024 / 1024).toFixed(2);
                     const compressedSize = (blob.size / 1024 / 1024).toFixed(2);
 
-                    // Update profile with compressed photo
                     await updateCurrentUserProfile({
                       displayName,
                       bio,
@@ -216,7 +198,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
         bio,
         location,
         website,
-        profilePhotoUrl: '', // Remove photo
+        profilePhotoUrl: '',
       });
       await loadProfile();
       setSuccess('Profile photo removed');
@@ -335,21 +317,18 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   };
 
   const handleAnimalSelect = async (animalId: string) => {
-    // Update local visitor state
     if (visitor) {
       onVisitorUpdate({ ...visitor, avatarAnimal: animalId });
     }
 
-    // Update form state
     setSpiritAnimal(animalId);
 
-    // Also save to Firestore
     const authUser = getCurrentUser();
     if (authUser) {
       try {
         await updateSpiritAnimal(authUser.uid, animalId);
       } catch (err) {
-        // Silently fail - visitor state already updated
+        // Silently fail
       }
     }
   };
@@ -367,9 +346,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
   if (!isOpen || !visitor) return null;
 
-  const currentAnimal = ANIMAL_AVATARS.find((a) => a.id === (visitor.avatarAnimal || spiritAnimal));
-  const initial = visitor.displayName?.trim()?.charAt(0)?.toUpperCase() || 'U';
-  const avatarBg = currentAnimal ? 'rgba(79,159,98,0.22)' : (profile?.avatarColor || visitor.avatarColor);
   const profilePhotoUrl = profile?.profilePhotoUrl as string | undefined;
 
   // Shared styles
@@ -457,8 +433,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
           justifyContent: 'space-between',
           gap: '0.75rem',
           marginBottom: '1.25rem',
-        }}
-        >
+        }}>
           <h2 style={{ margin: 0, color: 'var(--wa-gold)', fontSize: '1.2rem' }}>
             {editing ? '✏️ Edit Profile' : '👤 My Profile'}
           </h2>
@@ -482,7 +457,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
         {/* ─── VIEW MODE ─── */}
         {!editing ? (
           <>
-            {/* Avatar + Identity with Photo Upload */}
+            {/* Avatar + Identity - using shared UserAvatar ✨ */}
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', marginBottom: '1rem' }}>
               {/* Photo Upload Area */}
               <div
@@ -494,35 +469,16 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 onMouseEnter={() => setPhotoHover(true)}
                 onMouseLeave={() => setPhotoHover(false)}
               >
-                <div
+                {/* ✨ NOW USING SHARED COMPONENT */}
+                <UserAvatar
+                  visitor={visitor}
+                  profilePhotoUrl={profilePhotoUrl}
+                  size={88}
+                  showBorder={true}
                   style={{
-                    width: 88,
-                    height: 88,
-                    borderRadius: '50%',
-                    background: profilePhotoUrl ? 'transparent' : avatarBg,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: currentAnimal ? '2.5rem' : '2rem',
-                    border: '2px solid rgba(168,216,162,0.55)',
-                    position: 'relative' as const,
-                    overflow: 'hidden' as const,
+                    position: 'relative',
                   }}
-                >
-                  {profilePhotoUrl ? (
-                    <img
-                      src={profilePhotoUrl}
-                      alt={visitor.displayName}
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                      }}
-                    />
-                  ) : (
-                    currentAnimal?.emoji || initial
-                  )}
-                </div>
+                />
 
                 {/* Photo Upload Overlay */}
                 {photoHover && (
@@ -598,20 +554,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   >
                     {visitor.loginMethod.toUpperCase()}
                   </span>
-                  {currentAnimal && (
-                    <span
-                      style={{
-                        background: 'rgba(79,159,98,0.15)',
-                        color: 'var(--wa-gold)',
-                        fontSize: '0.72rem',
-                        padding: '2px 8px',
-                        borderRadius: 20,
-                        border: '1px solid rgba(79,159,98,0.3)',
-                      }}
-                    >
-                      {currentAnimal.emoji} {currentAnimal.label}
-                    </span>
-                  )}
                 </div>
               </div>
             </div>
@@ -622,8 +564,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               gridTemplateColumns: 'repeat(3, minmax(0,1fr))',
               gap: '0.6rem',
               marginBottom: '1rem',
-            }}
-            >
+            }}>
               {[
                 { label: 'Downloads', value: downloadCount },
                 { label: 'Followers', value: profile?.followerCount ?? 0 },
@@ -818,8 +759,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               gridTemplateColumns: '1fr 1fr',
               gap: '0.7rem',
               marginBottom: '0.9rem',
-            }}
-            >
+            }}>
               <div>
                 <label style={s.label}>📍 Location</label>
                 <input
@@ -843,7 +783,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               </div>
             </div>
 
-            {/* Spirit Animal */}
+            {/* Spirit Animal - using shared ANIMAL_AVATARS ✨ */}
             <div style={{ marginBottom: '0.9rem' }}>
               <label style={s.label}>🐾 Spirit Animal</label>
               <div
@@ -877,7 +817,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               </div>
             </div>
 
-            {/* Avatar Color */}
+            {/* Avatar Color - using shared AVATAR_COLORS ✨ */}
             <div style={{ marginBottom: '0.9rem' }}>
               <label style={s.label}>🎨 Avatar Color</label>
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' as const }}>
