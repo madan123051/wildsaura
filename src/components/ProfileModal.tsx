@@ -75,6 +75,14 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
         setLocation(p.location || '');
         setWebsite(p.website || '');
         setSpiritAnimal(p.spiritAnimal || '');
+
+        // ── FIX: Sync uploaded profile photo to visitor state ──
+        // If user has a custom profile photo in `users` collection,
+        // sync it to visitor.avatarUrl so Header, Community, etc. show the same photo
+        const savedPhoto = (p as any).profilePhotoUrl as string | undefined;
+        if (savedPhoto && visitor && savedPhoto !== visitor.avatarUrl) {
+          onVisitorUpdate({ ...visitor, avatarUrl: savedPhoto });
+        }
       }
     } catch (err: any) {
       // Silently fail - visitor fallback still works
@@ -156,6 +164,13 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
                     await loadProfile();
                     setSuccess(`✨ Photo updated! (${originalSize}MB → ${compressedSize}MB)`);
+
+                    // ── FIX: Sync uploaded photo to visitor state ──
+                    // This updates Header sidebar, Community posts, and everywhere else
+                    // Also persists to `visitors` collection via handleVisitorUpdate in App.tsx
+                    if (visitor) {
+                      onVisitorUpdate({ ...visitor, avatarUrl: compressedBase64 });
+                    }
                   } catch (err: any) {
                     setError('Failed to save photo');
                   } finally {
@@ -199,6 +214,11 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       });
       await loadProfile();
       setSuccess('Profile photo removed');
+
+      // ── FIX: Clear visitor avatar so all views revert to spirit animal / initial ──
+      if (visitor) {
+        onVisitorUpdate({ ...visitor, avatarUrl: '' });
+      }
     } catch (err: any) {
       setError('Failed to remove photo');
     } finally {
