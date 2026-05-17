@@ -9,22 +9,7 @@ import {
   type UserProfile,
 } from '../services/userProfileService';
 import { getCurrentUser, updateUserPassword, logout } from '../services/authService';
-
-const ANIMAL_AVATARS = [
-  { id: 'tiger', emoji: '🐯', label: 'Tiger' },
-  { id: 'lion', emoji: '🦁', label: 'Lion' },
-  { id: 'elephant', emoji: '🐘', label: 'Elephant' },
-  { id: 'wolf', emoji: '🐺', label: 'Wolf' },
-  { id: 'eagle', emoji: '🦅', label: 'Eagle' },
-  { id: 'deer', emoji: '🦌', label: 'Deer' },
-  { id: 'owl', emoji: '🦉', label: 'Owl' },
-  { id: 'fox', emoji: '🦊', label: 'Fox' },
-];
-
-const AVATAR_COLORS = [
-  '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A',
-  '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2',
-];
+import { ANIMAL_AVATARS, AVATAR_COLORS } from '../constants/avatarConstants';
 
 interface ProfileModalProps {
   isOpen: boolean;
