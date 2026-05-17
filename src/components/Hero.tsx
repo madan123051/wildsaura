@@ -115,7 +115,17 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages, onCommunityCl
               </button>
 
               {marketOpen && (
-                <div className="hero-market-dropdown">
+                <>
+                  <div
+                    className="hero-market-backdrop"
+                    onClick={() => setMarketOpen(false)}
+                  />
+                  <div className="hero-market-dropdown">
+                  <button
+                    className="hero-market-close"
+                    onClick={() => setMarketOpen(false)}
+                    aria-label="Close"
+                  >✕</button>
                   <p className="hero-market-note">
                     Nepal's stock photography marketplace — buy authentic photos from local photographers, 
                     upload your work through Drishya, or edit with ProStudio.
@@ -144,6 +154,7 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages, onCommunityCl
                     </a>
                   </div>
                 </div>
+                </>
               )}
             </div>
 
@@ -485,21 +496,72 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages, onCommunityCl
         }
 
         /* ── MARKETPLACE DROPDOWN ── */
+        .hero-market-backdrop {
+          position: fixed;
+          inset: 0;
+          background: rgba(0,0,0,0.5);
+          z-index: 9998;
+        }
+        .hero-market-close {
+          position: absolute;
+          top: 12px;
+          right: 14px;
+          background: rgba(255,255,255,0.1);
+          border: none;
+          color: #fff;
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          font-size: 14px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          line-height: 1;
+        }
+        .hero-market-close:hover {
+          background: rgba(255,255,255,0.2);
+        }
         .hero-market-wrapper {
           position: relative;
         }
-        .hero-market-dropdown {
+        .hero-market-backdrop {
+          position: fixed;
+          inset: 0;
+          background: rgba(0,0,0,0.55);
+          z-index: 9998;
+        }
+        .hero-market-close {
           position: absolute;
-          top: calc(100% + 0.5rem);
-          left: 0;
-          z-index: 50;
-          background: rgba(12, 30, 22, 0.95);
-          backdrop-filter: blur(12px);
-          border: 1px solid rgba(159, 203, 143, 0.2);
-          border-radius: 12px;
-          padding: 0.9rem;
-          min-width: 260px;
-          box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+          top: 10px;
+          right: 12px;
+          background: rgba(255,255,255,0.1);
+          border: none;
+          color: #fff;
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          font-size: 14px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .hero-market-close:hover { background: rgba(255,255,255,0.2); }
+        .hero-market-dropdown {
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          z-index: 9999;
+          background: rgba(12, 30, 22, 0.98);
+          backdrop-filter: blur(16px);
+          border: 1px solid rgba(159, 203, 143, 0.25);
+          border-radius: 18px;
+          padding: 1.2rem 1rem;
+          width: 310px;
+          max-width: calc(100vw - 32px);
+          box-shadow: 0 20px 60px rgba(0,0,0,0.7);
           animation: dropIn 0.2s ease-out;
         }
         .hero-market-note {
