@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown, ChevronUp, ShoppingBag, Camera, Sparkles } from 'lucide-react';
 
 interface HeroProps {
@@ -114,8 +115,8 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages, onCommunityCl
                 <span className="font-cinzel">Visit Marketplace</span>
               </button>
 
-              {marketOpen && (
-                <>
+              {marketOpen && createPortal(
+                <div className="hero-market-portal">
                   <div
                     className="hero-market-backdrop"
                     onClick={() => setMarketOpen(false)}
@@ -154,7 +155,8 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages, onCommunityCl
                     </a>
                   </div>
                 </div>
-                </>
+                </div>,
+                document.body
               )}
             </div>
 
