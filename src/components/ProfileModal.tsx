@@ -10,6 +10,7 @@ import {
 } from '../services/userProfileService';
 import { getCurrentUser, updateUserPassword, logout } from '../services/authService';
 import { ANIMAL_AVATARS, AVATAR_COLORS } from '../constants/avatarConstants';
+import { AvatarDisplay } from './AvatarDisplay';
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -18,10 +19,10 @@ interface ProfileModalProps {
   onVisitorUpdate: (updatedVisitor: Visitor) => void;
   onLogout: () => void;
   downloadCount?: number;
-  communities?: Array<{ id: string; name: string; isMember?: boolean }>; // List of all communities
-  onJoinCommunity?: (communityId: string) => Promise<void>; // Join community callback
-  onLeaveCommunity?: (communityId: string) => Promise<void>; // Leave community callback
-  userCommunities?: string[]; // Array of community IDs user is member of
+  communities?: Array<{ id: string; name: string; isMember?: boolean }>;
+  onJoinCommunity?: (communityId: string) => Promise<void>;
+  onLeaveCommunity?: (communityId: string) => Promise<void>;
+  userCommunities?: string[];
 }
 
 export const ProfileModal: React.FC<ProfileModalProps> = ({
@@ -86,13 +87,11 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       setError('Photo must be less than 5MB');
       return;
     }
 
-    // Validate file type
     if (!file.type.startsWith('image/')) {
       setError('Please upload an image file');
       return;
@@ -102,7 +101,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       setUploadingPhoto(true);
       setError('');
 
-      // Load image and compress to WebP
       const reader = new FileReader();
       reader.onloadend = async () => {
         try {
@@ -112,7 +110,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             let width = img.width;
             let height = img.height;
 
-            // Resize if too large (max 600px on longest side)
             const maxSize = 600;
             if (width > height) {
               if (width > maxSize) {
@@ -134,7 +131,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
             ctx.drawImage(img, 0, 0, width, height);
 
-            // Convert to WebP format with compression (0.7 quality)
             canvas.toBlob(
               async (blob) => {
                 if (!blob) {
@@ -143,7 +139,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   return;
                 }
 
-                // Convert blob to base64
                 const blobReader = new FileReader();
                 blobReader.onloadend = async () => {
                   try {
@@ -151,7 +146,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     const originalSize = (file.size / 1024 / 1024).toFixed(2);
                     const compressedSize = (blob.size / 1024 / 1024).toFixed(2);
 
-                    // Update profile with compressed photo
                     await updateCurrentUserProfile({
                       displayName,
                       bio,
@@ -201,7 +195,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
         bio,
         location,
         website,
-        profilePhotoUrl: '', // Remove photo
+        profilePhotoUrl: '',
       });
       await loadProfile();
       setSuccess('Profile photo removed');
@@ -259,7 +253,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
         await updateSpiritAnimal(authUser.uid, spiritAnimal);
       }
 
-      // Update visitor for backward compatibility
       if (visitor) {
         onVisitorUpdate({ ...visitor, displayName: displayName.trim() });
       }
@@ -320,15 +313,12 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   };
 
   const handleAnimalSelect = async (animalId: string) => {
-    // Update local visitor state
     if (visitor) {
       onVisitorUpdate({ ...visitor, avatarAnimal: animalId });
     }
 
-    // Update form state
     setSpiritAnimal(animalId);
 
-    // Also save to Firestore
     const authUser = getCurrentUser();
     if (authUser) {
       try {
@@ -353,8 +343,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   if (!isOpen || !visitor) return null;
 
   const currentAnimal = ANIMAL_AVATARS.find((a) => a.id === (visitor.avatarAnimal || spiritAnimal));
-  const initial = visitor.displayName?.trim()?.charAt(0)?.toUpperCase() || 'U';
-  const avatarBg = currentAnimal ? 'rgba(79,159,98,0.22)' : (profile?.avatarColor || visitor.avatarColor);
   const profilePhotoUrl = profile?.profilePhotoUrl as string | undefined;
 
   // Shared styles
@@ -469,7 +457,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
           <>
             {/* Avatar + Identity with Photo Upload */}
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', marginBottom: '1rem' }}>
-              {/* Photo Upload Area */}
+              {/* Photo Upload Area — uses unified AvatarDisplay */}
               <div
                 style={{
                   position: 'relative' as const,
@@ -479,35 +467,14 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 onMouseEnter={() => setPhotoHover(true)}
                 onMouseLeave={() => setPhotoHover(false)}
               >
-                <div
-                  style={{
-                    width: 88,
-                    height: 88,
-                    borderRadius: '50%',
-                    background: profilePhotoUrl ? 'transparent' : avatarBg,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: currentAnimal ? '2.5rem' : '2rem',
-                    border: '2px solid rgba(168,216,162,0.55)',
-                    position: 'relative' as const,
-                    overflow: 'hidden' as const,
-                  }}
-                >
-                  {profilePhotoUrl ? (
-                    <img
-                      src={profilePhotoUrl}
-                      alt={visitor.displayName}
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                      }}
-                    />
-                  ) : (
-                    currentAnimal?.emoji || initial
-                  )}
-                </div>
+                <AvatarDisplay
+                  displayName={visitor.displayName}
+                  avatarUrl={profilePhotoUrl || visitor.avatarUrl}
+                  spiritAnimal={visitor.avatarAnimal || spiritAnimal}
+                  avatarColor={profile?.avatarColor || visitor.avatarColor}
+                  size={88}
+                  showBorder={true}
+                />
 
                 {/* Photo Upload Overlay */}
                 {photoHover && (
