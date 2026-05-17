@@ -6,10 +6,6 @@ import {
   Settings, Cpu, MessageCircle, Globe, Mail, DollarSign, Users, Activity, Share2, Wifi, Download, MessageSquare
 } from 'lucide-react';
 import { fetchSiteAnalytics, fetchRecentVisitors, getAdSenseSettings, saveAdSenseSettings, subscribeToOnlineCount, SiteAnalytics, AdSenseSettings, VisitorRecord } from '../services/analyticsService';
-import { 
-  fetchAllSelfAds, createSelfAd, updateSelfAd, deleteSelfAd, toggleSelfAd, 
-  uploadAdImage, SelfAd 
-} from '../services/selfAdService';
 import { Photo, Story, Video, GalleryPhoto, GalleryCategory } from '../types';
 import { analyzePhoto, getAnimalInfo } from '../utils/aiService';
 import { uploadPhotoToStorage, uploadThumbnailToStorage, addPhotoToFirestore, updatePhotoInFirestore } from '../services/photoService';
@@ -25,7 +21,7 @@ import { addGalleryPhotoToFirestore, deleteGalleryPhoto, subscribeToGalleryPhoto
 
 
 
-type AdminView = 'dashboard' | 'photos' | 'add' | 'gallery' | 'stories' | 'add-story' | 'videos' | 'add-video' | 'comments' | 'messages' | 'ai-settings' | 'site-settings' | 'monetization' | 'self-ads';
+type AdminView = 'dashboard' | 'photos' | 'add' | 'gallery' | 'stories' | 'add-story' | 'videos' | 'add-video' | 'comments' | 'messages' | 'ai-settings' | 'site-settings' | 'monetization';
 
 interface AdminDashboardProps {
   logoUrl?: string;
@@ -2292,175 +2288,6 @@ const GalleryManagement: React.FC = () => {
 };
 
 // ── Main Dashboard ───────────────────────────────────────────────────────────
-
-// ── Self Ads Panel Component ──────────────────────────────────────────────
-const SelfAdsPanel: React.FC = () => {
-  const [ads, setAds] = React.useState<SelfAd[]>([]);
-  const [loading, setLoading] = React.useState(true);
-  const [showCreate, setShowCreate] = React.useState(false);
-  const [editAd, setEditAd] = React.useState<SelfAd | null>(null);
-  const [title, setTitle] = React.useState('');
-  const [description, setDescription] = React.useState('');
-  const [linkUrl, setLinkUrl] = React.useState('');
-  const [linkText, setLinkText] = React.useState('Visit Now');
-  const [priority, setPriority] = React.useState(1);
-  const [imageFile, setImageFile] = React.useState<File | null>(null);
-  const [imagePreview, setImagePreview] = React.useState('');
-  const [saving, setSaving] = React.useState(false);
-
-  const loadAds = async () => {
-    setLoading(true);
-    const data = await fetchAllSelfAds();
-    setAds(data);
-    setLoading(false);
-  };
-
-  React.useEffect(() => { loadAds(); }, []);
-
-  const resetForm = () => {
-    setTitle(''); setDescription(''); setLinkUrl(''); setLinkText('Visit Now');
-    setPriority(1); setImageFile(null); setImagePreview(''); setEditAd(null);
-    setShowCreate(false);
-  };
-
-  const handleEdit = (ad: SelfAd) => {
-    setEditAd(ad);
-    setTitle(ad.title);
-    setDescription(ad.description || '');
-    setLinkUrl(ad.linkUrl || '');
-    setLinkText(ad.linkText || 'Visit Now');
-    setPriority(ad.priority);
-    setImagePreview(ad.imageUrl || '');
-    setShowCreate(true);
-  };
-
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setImageFile(file);
-    const reader = new FileReader();
-    reader.onload = () => setImagePreview(reader.result as string);
-    reader.readAsDataURL(file);
-  };
-
-  const handleSave = async () => {
-    if (!title.trim()) return alert('Title is required!');
-    setSaving(true);
-    try {
-      let imageUrl = editAd?.imageUrl || '';
-      let imagePath = editAd?.imagePath || '';
-      if (imageFile) {
-        const uploaded = await uploadAdImage(imageFile);
-        imageUrl = uploaded.url;
-        imagePath = uploaded.path;
-      }
-      if (editAd) {
-        await updateSelfAd(editAd.id, { title, description, linkUrl, linkText, priority, imageUrl, imagePath } as any);
-      } else {
-        await createSelfAd({ title, description, imageUrl, imagePath, linkUrl, linkText, enabled: true, priority });
-      }
-      resetForm();
-      await loadAds();
-    } catch (err) {
-      alert('Failed to save: ' + (err instanceof Error ? err.message : 'Unknown'));
-    }
-    setSaving(false);
-  };
-
-  const handleDelete = async (ad: SelfAd) => {
-    if (!confirm('Delete "' + ad.title + '"?')) return;
-    await deleteSelfAd(ad);
-    await loadAds();
-  };
-
-  const handleToggle = async (ad: SelfAd) => {
-    await toggleSelfAd(ad.id, !ad.enabled);
-    await loadAds();
-  };
-
-  const bx: React.CSSProperties = { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '1.25rem' };
-  const ix: React.CSSProperties = { width: '100%', padding: '0.65rem 0.85rem', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', color: '#fff', fontSize: '0.9rem', outline: 'none' };
-  const lx: React.CSSProperties = { display: 'block', marginBottom: '0.3rem', color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.5px' };
-
-  return (
-    <div style={{ maxWidth: '900px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#fff' }}>{String.fromCodePoint(0x1f4e2)} Self Promotion Ads</h2>
-          <p style={{ margin: '0.25rem 0 0', color: 'rgba(255,255,255,0.5)', fontSize: '0.85rem' }}>Create your own popup ads — shows when visitors open the site</p>
-        </div>
-        <button onClick={() => { resetForm(); setShowCreate(true); }} style={{ padding: '0.6rem 1.25rem', background: 'linear-gradient(135deg, #c9a84c, #b8943f)', border: 'none', borderRadius: '10px', color: '#1a1a2e', fontWeight: 700, cursor: 'pointer', fontSize: '0.85rem' }}>+ Create Ad</button>
-      </div>
-
-      {showCreate && (
-        <div style={{ ...bx, marginBottom: '1.5rem', border: '1px solid rgba(201,168,76,0.3)' }}>
-          <h3 style={{ margin: '0 0 1rem', color: '#c9a84c', fontSize: '1.1rem' }}>{editAd ? 'Edit Ad' : 'Create New Ad'}</h3>
-          <div style={{ display: 'grid', gap: '1rem' }}>
-            <div><label style={lx}>Title *</label><input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Check out our marketplace!" style={ix} /></div>
-            <div><label style={lx}>Description</label><textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Short description..." rows={3} style={{ ...ix, resize: 'vertical' as const }} /></div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-              <div><label style={lx}>Link URL</label><input value={linkUrl} onChange={e => setLinkUrl(e.target.value)} placeholder="https://..." style={ix} /></div>
-              <div><label style={lx}>Button Text</label><input value={linkText} onChange={e => setLinkText(e.target.value)} placeholder="Visit Now" style={ix} /></div>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-              <div><label style={lx}>Priority (higher = first)</label><input type="number" value={priority} onChange={e => setPriority(Number(e.target.value))} min={0} max={100} style={ix} /></div>
-              <div><label style={lx}>Ad Image</label><input type="file" accept="image/*" onChange={handleImageSelect} style={{ ...ix, padding: '0.45rem' }} /></div>
-            </div>
-            {imagePreview && <div style={{ textAlign: 'center' }}><img src={imagePreview} alt="Preview" style={{ maxWidth: '300px', maxHeight: '180px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }} /></div>}
-            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-              <button onClick={resetForm} style={{ padding: '0.6rem 1.25rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>Cancel</button>
-              <button onClick={handleSave} disabled={saving} style={{ padding: '0.6rem 1.5rem', background: saving ? 'rgba(201,168,76,0.3)' : 'linear-gradient(135deg, #c9a84c, #b8943f)', border: 'none', borderRadius: '8px', color: '#1a1a2e', fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer' }}>{saving ? 'Saving...' : (editAd ? 'Update' : 'Create')}</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: '3rem', color: 'rgba(255,255,255,0.4)' }}>Loading...</div>
-      ) : ads.length === 0 ? (
-        <div style={{ ...bx, textAlign: 'center', padding: '3rem' }}>
-          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>{String.fromCodePoint(0x1f4e2)}</div>
-          <h3 style={{ color: '#fff', margin: '0 0 0.5rem' }}>No Self Ads Yet</h3>
-          <p style={{ color: 'rgba(255,255,255,0.5)', margin: 0 }}>Create your first ad to show popups to visitors!</p>
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gap: '1rem' }}>
-          {ads.map(ad => (
-            <div key={ad.id} style={{ ...bx, display: 'flex', gap: '1rem', alignItems: 'center', opacity: ad.enabled ? 1 : 0.5, flexWrap: 'wrap' }}>
-              {ad.imageUrl && <img src={ad.imageUrl} alt={ad.title} style={{ width: '80px', height: '60px', objectFit: 'cover', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }} />}
-              <div style={{ flex: 1, minWidth: '150px' }}>
-                <h4 style={{ margin: '0 0 0.25rem', color: '#fff', fontSize: '0.95rem' }}>{ad.title}</h4>
-                {ad.description && <p style={{ margin: 0, color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, maxWidth: '300px' }}>{ad.description}</p>}
-                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.3rem', flexWrap: 'wrap' }}>
-                  {ad.linkUrl && <span style={{ fontSize: '0.7rem', color: 'rgba(201,168,76,0.6)', background: 'rgba(201,168,76,0.1)', padding: '2px 8px', borderRadius: '4px' }}>{ad.linkUrl.replace(/https?:\/\//, '').slice(0, 30)}</span>}
-                  <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '4px' }}>Priority: {ad.priority}</span>
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <button onClick={() => handleToggle(ad)} style={{ padding: '0.4rem 0.75rem', borderRadius: '6px', border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, background: ad.enabled ? 'rgba(76,175,80,0.2)' : 'rgba(255,255,255,0.05)', color: ad.enabled ? '#4caf50' : 'rgba(255,255,255,0.4)' }}>{ad.enabled ? 'Active' : 'Paused'}</button>
-                <button onClick={() => handleEdit(ad)} style={{ padding: '0.4rem 0.6rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '0.8rem' }}>{String.fromCodePoint(0x270f)}{String.fromCodePoint(0xfe0f)}</button>
-                <button onClick={() => handleDelete(ad)} style={{ padding: '0.4rem 0.6rem', borderRadius: '6px', border: '1px solid rgba(244,67,54,0.2)', background: 'transparent', color: '#f44336', cursor: 'pointer', fontSize: '0.8rem' }}>{String.fromCodePoint(0x1f5d1)}</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div style={{ ...bx, marginTop: '1.5rem' }}>
-        <h3 style={{ margin: '0 0 0.75rem', color: '#c9a84c', fontSize: '1rem' }}>How Self Ads Work</h3>
-        <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.85rem', lineHeight: 1.7 }}>
-          <p style={{ margin: '0 0 0.5rem' }}>1. <strong style={{ color: '#fff' }}>Create an ad</strong> {String.fromCodePoint(0x2014)} Add title, image, description, and link</p>
-          <p style={{ margin: '0 0 0.5rem' }}>2. <strong style={{ color: '#fff' }}>Popup appears</strong> {String.fromCodePoint(0x2014)} When a visitor opens your site, the ad shows (2s delay)</p>
-          <p style={{ margin: '0 0 0.5rem' }}>3. <strong style={{ color: '#fff' }}>Close = dismissed</strong> {String.fromCodePoint(0x2014)} Once closed, it hides until they reopen the site</p>
-          <p style={{ margin: '0 0 0.5rem' }}>4. <strong style={{ color: '#fff' }}>Multiple ads?</strong> {String.fromCodePoint(0x2014)} Highest priority shows. Same priority = random</p>
-          <p style={{ margin: 0 }}>5. <strong style={{ color: '#fff' }}>Toggle anytime</strong> {String.fromCodePoint(0x2014)} Enable/disable ads instantly</p>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   logoUrl, photos, onAddPhoto, onUpdatePhoto, onDeletePhoto, onLogout, onViewSite,
   stories, onAddStory, onDeleteStory, onUpdateStory,
@@ -2662,22 +2489,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <button style={sidebarItemStyle(view === 'dashboard')} onClick={() => { setView('dashboard'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); closeSidebarOnMobile(); }}>
             <LayoutDashboard size={18} /> Dashboard Home
           </button>
-              {/* Self Ads */}
-              <button
-                onClick={() => setActiveView('self-ads')}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '0.75rem',
-                  padding: '0.75rem 1rem', width: '100%', border: 'none',
-                  background: activeView === 'self-ads' ? 'rgba(201,168,76,0.15)' : 'transparent',
-                  color: activeView === 'self-ads' ? '#c9a84c' : 'rgba(255,255,255,0.6)',
-                  borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 500,
-                  borderLeft: activeView === 'self-ads' ? '3px solid #c9a84c' : '3px solid transparent',
-                  transition: 'all 0.2s',
-                }}
-              >
-                <span style={{ fontSize: '1.1rem' }}>📢</span>
-                Self Ads
-              </button>
           <button style={sidebarItemStyle(view === 'photos')} onClick={() => { setView('photos'); setEditingPhoto(null); closeSidebarOnMobile(); }}>
             <Image size={18} /> Photos
           </button>
