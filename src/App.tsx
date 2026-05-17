@@ -1366,6 +1366,27 @@ const App: React.FC = () => {
           isLoggedIn={!!visitor}
           onLoginRequired={() => setShowVisitorLogin(true)}
         />
+        {selectedPhoto && (
+          <PhotoModal
+            photo={selectedPhoto}
+            onClose={closePhoto}
+            onLike={() => handleLike(selectedPhoto.id)}
+            onShare={() => handleShare(selectedPhoto)}
+            onDownload={() => handleDownload(selectedPhoto)}
+            onGenerateStory={() => handleGenerateStory(selectedPhoto)}
+            isGeneratingStory={false}
+            isAdmin={isAdmin}
+            visitor={visitor}
+            comments={photoComments[selectedPhoto.firestoreId || ''] || []}
+            onAddComment={(content) => handleAddPhotoComment(selectedPhoto.firestoreId || '', content)}
+            onDeleteComment={handleDeleteComment}
+            onVisitorLoginClick={() => setShowVisitorLogin(true)}
+            freeDownloadsLeft={Math.max(0, FREE_DOWNLOADS - downloadCount)}
+            isDownloading={isDownloading}
+            photos={photos.filter(p => p.published !== false)}
+            onNavigate={(photo) => openPhoto(photo)}
+          />
+        )}
       </div>
     );
   }
