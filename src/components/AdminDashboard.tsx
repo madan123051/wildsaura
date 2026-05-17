@@ -2307,7 +2307,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [videoDeleteConfirm, setVideoDeleteConfirm] = useState<number | null>(null);
   const [contactMessages, setContactMessages] = React.useState<ContactMessage[]>([]);
   const [msgDeleteConfirm, setMsgDeleteConfirm] = React.useState<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = React.useState(() => typeof window !== 'undefined' ? window.innerWidth >= 768 : true);
+  const [sidebarOpen, setSidebarOpen] = React.useState(true);
   const [isMobile, setIsMobile] = React.useState(() => typeof window !== 'undefined' ? window.innerWidth < 768 : false);
 
   React.useEffect(() => {
@@ -2559,38 +2559,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           {/* Dashboard View */}
           {view === 'dashboard' && (
             <>
-              {/* Quick action: View Website */}
-              <div
-                onClick={onViewSite}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '1rem 1.25rem', marginBottom: '1.25rem',
-                  background: 'linear-gradient(135deg, rgba(201,168,76,0.15), rgba(201,168,76,0.05))',
-                  border: '1px solid rgba(201,168,76,0.25)', borderRadius: '12px',
-                  cursor: 'pointer', transition: 'all 0.3s',
-                }}
-                onMouseOver={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(201,168,76,0.25), rgba(201,168,76,0.1))'; }}
-                onMouseOut={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(201,168,76,0.15), rgba(201,168,76,0.05))'; }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <div style={{
-                    width: 40, height: 40, borderRadius: '10px',
-                    background: 'rgba(201,168,76,0.2)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '1.2rem',
-                  }}>🏠</div>
-                  <div>
-                    <p style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--wa-light)', marginBottom: '0.15rem' }}>
-                      View Website
-                    </p>
-                    <p style={{ fontSize: '0.7rem', color: 'rgba(235,230,220,0.45)' }}>
-                      Open WildSaura homepage
-                    </p>
-                  </div>
-                </div>
-                <span style={{ color: 'var(--wa-gold)', fontSize: '1.2rem' }}>→</span>
-              </div>
-
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
                 <StatCard icon={<Image size={24} />} label="Total Photos" value={photos.length} color="blue" />
                 <StatCard icon={<Heart size={24} />} label="Total Likes" value={totalLikes} color="red" />
