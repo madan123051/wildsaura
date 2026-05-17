@@ -4,7 +4,7 @@ import { UserAvatar } from './UserAvatar';
 import { ProfileModal } from './ProfileModal';
 
 interface HeaderProps {
-  user: User;
+  user?: User | null;
   isDarkMode: boolean;
   onThemeToggle: () => void;
   onSettingsClick: () => void;
@@ -21,12 +21,15 @@ export const Header: React.FC<HeaderProps> = ({
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   const handleProfileClick = () => {
-    setIsProfileModalOpen(true);
+    if (user) setIsProfileModalOpen(true);
   };
 
   const handleCloseProfileModal = () => {
     setIsProfileModalOpen(false);
   };
+
+  const userName = user?.name || 'User';
+  const userEmail = user?.email || 'Loading...';
 
   return (
     <>
@@ -95,26 +98,32 @@ export const Header: React.FC<HeaderProps> = ({
               🔍
             </button>
 
-            {/* User Profile - CLICKABLE */}
-            <button
-              onClick={handleProfileClick}
-              className="flex items-center gap-3 p-2 rounded-lg transition-colors hover:opacity-75"
-              title="Open profile"
-            >
-              <UserAvatar
-                user={user}
-                size="small"
-                isClickable={true}
-              />
-              <div className="hidden sm:block text-left">
-                <p className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                  {user.name}
-                </p>
-                <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                  {user.email}
-                </p>
+            {/* User Profile - CLICKABLE WITH SAFETY CHECKS */}
+            {user ? (
+              <button
+                onClick={handleProfileClick}
+                className="flex items-center gap-3 p-2 rounded-lg transition-colors hover:opacity-75"
+                title="Open profile"
+              >
+                <UserAvatar
+                  user={user}
+                  size="small"
+                  isClickable={true}
+                />
+                <div className="hidden sm:block text-left">
+                  <p className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    {userName}
+                  </p>
+                  <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                    {userEmail}
+                  </p>
+                </div>
+              </button>
+            ) : (
+              <div className="flex items-center gap-2 p-2">
+                <div className={`w-8 h-8 rounded-full ${isDarkMode ? 'bg-slate-700' : 'bg-gray-200'} animate-pulse`} />
               </div>
-            </button>
+            )}
 
             {/* Menu */}
             <button
@@ -132,7 +141,7 @@ export const Header: React.FC<HeaderProps> = ({
       </header>
 
       {/* Profile Modal - Opens from Header */}
-      {isProfileModalOpen && (
+      {isProfileModalOpen && user && (
         <ProfileModal
           user={user}
           isDarkMode={isDarkMode}

@@ -3,7 +3,7 @@ import { User } from '../types';
 import { UserAvatar } from './UserAvatar';
 
 interface ProfileModalProps {
-  user: User;
+  user?: User | null;
   isDarkMode: boolean;
   onClose: () => void;
   onEditProfile?: () => void;
@@ -17,6 +17,26 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   onEditProfile,
   onSignOut,
 }) => {
+  // Safety check: if no user, return early with loading state
+  if (!user) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className={`${isDarkMode ? 'bg-slate-800' : 'bg-white'} rounded-2xl max-w-md w-full p-8 text-center`}>
+          <p className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const userName = user.name || 'User';
+  const userEmail = user.email || 'user@example.com';
+  const downloadCount = user.downloadCount ?? 0;
+  const followerCount = user.followerCount ?? 0;
+  const followingCount = user.followingCount ?? 0;
+  const likedPhotosCount = user.likedPhotosCount ?? 0;
+  const likedStoriesCount = user.likedStoriesCount ?? 0;
+  const communityCount = user.communityCount ?? 0;
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div
@@ -54,10 +74,10 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
         {/* User Info */}
         <div className="text-center mb-6">
           <h3 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-            {user.name}
+            {userName}
           </h3>
           <p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-600'} mt-1`}>
-            {user.email}
+            {userEmail}
           </p>
 
           {/* Auth Provider Badge */}
@@ -88,7 +108,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               Downloads
             </p>
             <p className={`text-2xl font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>
-              {user.downloadCount || 0}
+              {downloadCount}
             </p>
           </div>
 
@@ -98,7 +118,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               Followers
             </p>
             <p className={`text-2xl font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>
-              {user.followerCount || 0}
+              {followerCount}
             </p>
           </div>
 
@@ -108,7 +128,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               Following
             </p>
             <p className={`text-2xl font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>
-              {user.followingCount || 0}
+              {followingCount}
             </p>
           </div>
 
@@ -118,7 +138,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               Liked Photos
             </p>
             <p className={`text-2xl font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>
-              {user.likedPhotosCount || 0}
+              {likedPhotosCount}
             </p>
           </div>
 
@@ -128,7 +148,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               Liked Stories
             </p>
             <p className={`text-2xl font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>
-              {user.likedStoriesCount || 0}
+              {likedStoriesCount}
             </p>
           </div>
 
@@ -138,7 +158,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               Communities
             </p>
             <p className={`text-2xl font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>
-              {user.communityCount || 0}
+              {communityCount}
             </p>
           </div>
         </div>

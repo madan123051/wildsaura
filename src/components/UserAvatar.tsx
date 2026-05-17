@@ -3,7 +3,7 @@ import { User } from '../types';
 import { ANIMAL_AVATARS } from '../constants/avatars';
 
 interface UserAvatarProps {
-  user: User;
+  user?: User | null;
   size?: 'small' | 'medium' | 'large';
   showBorder?: boolean;
   onClick?: () => void;
@@ -17,8 +17,20 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   onClick,
   isClickable = false,
 }) => {
-  // Get avatar configuration
-  const avatarConfig = ANIMAL_AVATARS[user.spiritAnimal] || ANIMAL_AVATARS['leopard'];
+  // Safety check: if no user, show placeholder
+  if (!user) {
+    return (
+      <div
+        className={`${
+          size === 'small' ? 'w-8 h-8' : size === 'medium' ? 'w-12 h-12' : 'w-24 h-24'
+        } rounded-full bg-gray-300 animate-pulse`}
+      />
+    );
+  }
+
+  // Get avatar configuration with fallback
+  const spiritAnimal = user.spiritAnimal || 'leopard';
+  const avatarConfig = ANIMAL_AVATARS[spiritAnimal] || ANIMAL_AVATARS['leopard'];
 
   // Size configurations
   const sizeConfig = {
@@ -43,7 +55,8 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
 
   // Determine if we should show spirit animal or initials
   const showSpiritAnimal = size === 'large' || (size === 'medium' && showBorder);
-  const initials = user.name
+  const userName = user.name || 'U';
+  const initials = userName
     .split(' ')
     .map((n) => n[0])
     .join('')
@@ -82,6 +95,9 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
           ? `linear-gradient(135deg, ${avatarConfig.color}20, ${avatarConfig.color}10)`
           : 'none',
       }}
+      role={isClickable && onClick ? 'button' : undefined}
+      tabIndex={isClickable && onClick ? 0 : undefined}
+      onKeyPress={isClickable && onClick ? (e) => e.key === 'Enter' && handleClick() : undefined}
     >
       {showSpiritAnimal ? (
         <span className={`${config.text}`}>{avatarConfig.emoji}</span>
@@ -90,4 +106,4 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
       )}
     </div>
   );
-};
+}
