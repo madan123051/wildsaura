@@ -1,68 +1,92 @@
-// src/components/UserAvatar.tsx
-// ✨ UNIFIED AVATAR - Renders the same everywhere
-
 import React from 'react';
-import { Visitor } from '../types';
-import { getAvatarEmoji } from '../constants/avatars';
+import { User } from '../types';
+import { ANIMAL_AVATARS } from '../constants/avatars';
 
 interface UserAvatarProps {
-  visitor: Visitor | null;
-  profilePhotoUrl?: string; // Profile photo URL (takes precedence)
-  size?: number; // In pixels (default: 44)
+  user: User;
+  size?: 'small' | 'medium' | 'large';
   showBorder?: boolean;
-  style?: React.CSSProperties;
+  onClick?: () => void;
+  isClickable?: boolean;
 }
 
 export const UserAvatar: React.FC<UserAvatarProps> = ({
-  visitor,
-  profilePhotoUrl,
-  size = 44,
-  showBorder = true,
-  style = {},
+  user,
+  size = 'medium',
+  showBorder = false,
+  onClick,
+  isClickable = false,
 }) => {
-  if (!visitor) return null;
+  // Get avatar configuration
+  const avatarConfig = ANIMAL_AVATARS[user.spiritAnimal] || ANIMAL_AVATARS['leopard'];
 
-  const emoji = getAvatarEmoji(visitor.avatarAnimal);
-  const initial = visitor.displayName?.trim()?.charAt(0)?.toUpperCase() || 'U';
-  const hasPhoto = !!profilePhotoUrl;
-  const hasAnimal = !!emoji;
+  // Size configurations
+  const sizeConfig = {
+    small: {
+      container: 'w-8 h-8',
+      text: 'text-xs',
+      border: 'border-2',
+    },
+    medium: {
+      container: 'w-12 h-12',
+      text: 'text-sm',
+      border: 'border-2',
+    },
+    large: {
+      container: 'w-24 h-24',
+      text: 'text-3xl',
+      border: 'border-4',
+    },
+  };
 
-  // Determine background color
-  const bgColor = hasPhoto ? 'transparent' : (
-    hasAnimal ? 'rgba(79,159,98,0.22)' : (visitor.avatarColor || '#4ECDC4')
-  );
+  const config = sizeConfig[size];
+
+  // Determine if we should show spirit animal or initials
+  const showSpiritAnimal = size === 'large' || (size === 'medium' && showBorder);
+  const initials = user.name
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+
+  const containerClass = `
+    ${config.container}
+    ${showBorder ? config.border : 'border-0'}
+    rounded-full
+    flex
+    items-center
+    justify-center
+    font-bold
+    transition-all
+    ${isClickable && onClick ? 'cursor-pointer hover:opacity-80' : ''}
+    ${showBorder ? `border-[${avatarConfig.color}] bg-gradient-to-br` : 'bg-opacity-20'}
+  `.trim();
+
+  const backgroundColor = showBorder ? `from-${avatarConfig.color}/20 to-${avatarConfig.color}/10` : `bg-${avatarConfig.color}/30`;
+
+  const handleClick = () => {
+    if (isClickable && onClick) {
+      onClick();
+    }
+  };
 
   return (
     <div
+      className={`${containerClass} ${backgroundColor}`}
+      onClick={handleClick}
       style={{
-        width: size,
-        height: size,
-        borderRadius: '50%',
-        background: bgColor,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: hasAnimal ? `${size * 0.625}px` : `${size * 0.5}px`,
-        fontWeight: hasAnimal ? 400 : 700,
-        color: hasPhoto ? undefined : '#000',
-        border: showBorder ? '2px solid rgba(168,216,162,0.55)' : 'none',
-        flexShrink: 0,
-        overflow: 'hidden',
-        ...style,
+        borderColor: showBorder ? avatarConfig.color : 'transparent',
+        backgroundColor: `${avatarConfig.color}30`,
+        backgroundImage: showBorder
+          ? `linear-gradient(135deg, ${avatarConfig.color}20, ${avatarConfig.color}10)`
+          : 'none',
       }}
     >
-      {hasPhoto ? (
-        <img
-          src={profilePhotoUrl}
-          alt={visitor.displayName}
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-          }}
-        />
+      {showSpiritAnimal ? (
+        <span className={`${config.text}`}>{avatarConfig.emoji}</span>
       ) : (
-        hasAnimal ? emoji : initial
+        <span className={`${config.text} text-white font-bold`}>{initials}</span>
       )}
     </div>
   );
