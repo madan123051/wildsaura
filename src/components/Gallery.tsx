@@ -34,10 +34,12 @@ export const Gallery: React.FC<GalleryProps> = ({
   onLoginRequired,
   onViewAll,
 }) => {
-  // Always show all photos (no category filtering since pills are removed)
   const published = photos.filter(p => p.published !== false);
-  const displayPhotos = published.slice(0, INITIAL_COUNT);
-  const hasMore = published.length > INITIAL_COUNT;
+  const filtered = selectedCategory === 'all'
+    ? published
+    : published.filter(p => p.category === selectedCategory);
+  const displayPhotos = filtered.slice(0, INITIAL_COUNT);
+  const hasMore = filtered.length > INITIAL_COUNT;
 
   return (
     <section ref={galleryRef} id="gallery" className="bg-wa-dark" style={{ padding: '4rem 0 5rem' }}>
@@ -52,7 +54,7 @@ export const Gallery: React.FC<GalleryProps> = ({
                 fontSize: '0.9rem', fontWeight: 400, color: 'var(--wa-text-muted)',
                 marginLeft: '0.25rem',
               }}>
-                ({published.length})
+                ({filtered.length})
               </span>
             </h2>
             {onViewAll && (
@@ -88,7 +90,7 @@ export const Gallery: React.FC<GalleryProps> = ({
         {/* Category pills REMOVED — categories already shown as thumbnail cards above */}
 
         {/* Gallery Grid */}
-        {published.length === 0 ? (
+        {filtered.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '6rem 0' }}>
             <Camera size={48} style={{ margin: '0 auto 1rem', opacity: 0.2 }} />
             <p className="font-cinzel text-wa-muted" style={{ fontSize: '0.875rem' }}>
@@ -143,7 +145,7 @@ export const Gallery: React.FC<GalleryProps> = ({
                     e.currentTarget.style.color = 'var(--wa-gold)';
                   }}
                 >
-                  View All {published.length} Photos <ArrowRight size={16} />
+                  View All {filtered.length} Photos <ArrowRight size={16} />
                 </button>
               </div>
             )}
