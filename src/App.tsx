@@ -377,6 +377,7 @@ const App: React.FC = () => {
         title: fp.title,
         category: fp.category as any,
         imageUrl: fp.imageUrl,
+        thumbnailUrl: fp.thumbnailUrl || undefined,
         location: fp.location || '',
         caption: fp.caption || '',
         type: (fp.type || 'photo') as 'photo' | 'video',
@@ -1635,9 +1636,13 @@ const App: React.FC = () => {
   if (view === 'about') return <StaticPage title="About WildSaura" text="WildSaura connects photographers, nature lovers, and a mission to protect animals in Nepal. Start small, grow fast, and use visual storytelling for impact." />;
   if (view === 'contact') return <StaticPage title="Contact" text="For partnerships, volunteering, and media inquiries, message us through the contact form on the homepage." />;
 
-  // ── Auto-rotating Category Thumbnails ────────────────────────────────────
-  // Uses a day-based index so every category thumbnail changes automatically every 24 hours.
-  // Priority: (1) Admin manual override via Site Settings → (2) Gallery photos → (3) Main photos → (4) Static default
+  // ── Smart Category Thumbnails ────────────────────────────────────────────
+  // Priority:
+  //   1. Admin manual override via Site Settings (dashboard upload)
+  //   2. Best photo from Firestore for that exact category (sorted by most liked = most engaging)
+  //      Uses thumbnailUrl if available for fast loading
+  //   3. Gallery photos as fallback (rotates daily)
+  //   4. Static default image
   const todayDayIndex = Math.floor(Date.now() / (1000 * 60 * 60 * 24));
 
   const getAutoCategoryThumbnail = (
@@ -1650,18 +1655,25 @@ const App: React.FC = () => {
     const manual = siteSettings.categoryImages?.[settingsKey];
     if (manual) return manual;
 
-    // 2. Pick from gallery photos (rotates daily)
+    // 2. Best photo from Firestore for this exact category (most liked = most engaging)
+    const fromPhotos = photos
+      .filter(
+        p => p.category === (photoCategory as any) &&
+             p.published !== false &&
+             p.imageUrl &&
+             !p.imageUrl.startsWith('/photos/')
+      )
+      .sort((a, b) => (b.likeCount || 0) - (a.likeCount || 0));
+    if (fromPhotos.length > 0) {
+      const best = fromPhotos[0];
+      // Use thumbnailUrl if available for faster loading
+      return best.thumbnailUrl || best.imageUrl;
+    }
+
+    // 3. Fallback to gallery photos (rotates daily)
     const fromGallery = galleryPhotos.filter(p => galleryCategories.includes(p.category) && p.imageUrl);
     if (fromGallery.length > 0) {
       return fromGallery[todayDayIndex % fromGallery.length].imageUrl;
-    }
-
-    // 3. Pick from main photos collection (rotates daily)
-    const fromPhotos = photos.filter(
-      p => p.category === (photoCategory as any) && p.published !== false && p.imageUrl && !p.imageUrl.startsWith('/photos/')
-    );
-    if (fromPhotos.length > 0) {
-      return fromPhotos[todayDayIndex % fromPhotos.length].imageUrl;
     }
 
     // 4. Static default fallback
