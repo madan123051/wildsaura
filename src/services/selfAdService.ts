@@ -2,7 +2,7 @@
 import { db, storage } from '../firebase';
 import { 
   collection, doc, getDocs, addDoc, updateDoc, deleteDoc, 
-  query, orderBy, Timestamp, where 
+  query, orderBy, Timestamp
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 
@@ -50,15 +50,16 @@ export async function fetchAllSelfAds(): Promise<SelfAd[]> {
 }
 
 // ── Fetch only enabled ads (public site) ─────────────────────────────
+// NOTE: No composite index needed — fetch all, filter client-side
 export async function fetchEnabledSelfAds(): Promise<SelfAd[]> {
   try {
+    // Simple query — only orderBy, no where (avoids composite index requirement)
     const q = query(
-      collection(db, COLLECTION), 
-      where('enabled', '==', true),
+      collection(db, COLLECTION),
       orderBy('priority', 'desc')
     );
     const snap = await getDocs(q);
-    return snap.docs.map(d => {
+    const all = snap.docs.map(d => {
       const data = d.data();
       return {
         id: d.id,
@@ -67,12 +68,14 @@ export async function fetchEnabledSelfAds(): Promise<SelfAd[]> {
         imageUrl: data.imageUrl || '',
         linkUrl: data.linkUrl || '',
         linkText: data.linkText || 'Visit',
-        enabled: true,
+        enabled: data.enabled !== false,
         priority: data.priority || 0,
         createdAt: data.createdAt?.toDate() || new Date(),
         updatedAt: data.updatedAt?.toDate() || new Date(),
       } as SelfAd;
     });
+    // Filter enabled client-side (no Firestore composite index needed)
+    return all.filter(ad => ad.enabled === true);
   } catch (err) {
     console.error('Failed to fetch enabled self ads:', err);
     return [];
