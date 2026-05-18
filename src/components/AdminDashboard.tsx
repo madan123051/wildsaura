@@ -2512,7 +2512,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   // AdSense Settings
   const [adsenseSettings, setAdsenseSettings] = useState<AdSenseSettings>({
     publisherId: '', bannerSlot: '', inFeedSlot: '', inArticleSlot: '',
-    sidebarSlot: '', multiplexSlot: '', enabled: false, verificationCode: '',
+    sidebarSlot: '', multiplexSlot: '', enabled: false,
   });
   const [adsenseSaving, setAdsenseSaving] = useState(false);
 
@@ -2602,7 +2602,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const getViewTitle = () => {
     if (view === 'dashboard') return 'Dashboard Home';
     if (view === 'monetization') return 'Monetization / AdSense';
-    if (view === 'self-ads') return 'Self Ads';
+    if (view === 'self-ads') return 'Self Promotion Ads';
     if (view === 'photos') return editingPhoto ? 'Edit Photo' : 'Manage Photos';
     if (view === 'add') return 'Add New Photo';
     if (view === 'gallery') return 'Gallery Management';
@@ -2663,22 +2663,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <button style={sidebarItemStyle(view === 'dashboard')} onClick={() => { setView('dashboard'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); closeSidebarOnMobile(); }}>
             <LayoutDashboard size={18} /> Dashboard Home
           </button>
-              {/* Self Ads */}
-              <button
-                onClick={() => setView('self-ads')}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '0.75rem',
-                  padding: '0.75rem 1rem', width: '100%', border: 'none',
-                  background: view === 'self-ads' ? 'rgba(201,168,76,0.15)' : 'transparent',
-                  color: view === 'self-ads' ? '#c9a84c' : 'rgba(255,255,255,0.6)',
-                  borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 500,
-                  borderLeft: view === 'self-ads' ? '3px solid #c9a84c' : '3px solid transparent',
-                  transition: 'all 0.2s',
-                }}
-              >
-                <span style={{ fontSize: '1.1rem' }}>📢</span>
-                Self Ads
-              </button>
+          <button style={sidebarItemStyle(view === 'self-ads')} onClick={() => { setView('self-ads'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); closeSidebarOnMobile(); }}>
+            <span style={{ fontSize: '1.1rem' }}>📢</span> Self Ads
+          </button>
           <button style={sidebarItemStyle(view === 'photos')} onClick={() => { setView('photos'); setEditingPhoto(null); closeSidebarOnMobile(); }}>
             <Image size={18} /> Photos
           </button>
@@ -3012,20 +2999,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <input value={adsenseSettings.multiplexSlot} onChange={(e) => setAdsenseSettings(prev => ({ ...prev, multiplexSlot: e.target.value }))} placeholder="1234567890" style={inputStyle} />
                     </div>
                   </div>
-
-                  <div style={{ borderTop: '1px solid rgba(201,168,76,0.08)', paddingTop: '1rem', marginTop: '0.5rem' }}>
-                    <label style={labelStyle}>AdSense Verification Code</label>
-                    <textarea
-                      value={adsenseSettings.verificationCode || ''}
-                      onChange={(e) => setAdsenseSettings(prev => ({ ...prev, verificationCode: e.target.value }))}
-                      placeholder='Paste your AdSense verification <script> tag here...'
-                      rows={4}
-                      style={{ ...inputStyle, resize: 'vertical', fontFamily: 'monospace', fontSize: '0.78rem', lineHeight: 1.5 }}
-                    />
-                    <p style={{ fontSize: '0.68rem', color: 'rgba(235,230,220,0.3)', marginTop: '0.3rem' }}>
-                      Paste the verification script tag from Google AdSense. Example: &lt;script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXX"&gt;&lt;/script&gt;
-                    </p>
-                  </div>
                 </div>
 
                 <button
@@ -3057,10 +3030,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </ol>
               </div>
             </div>
-          )}
-
-          {view === 'self-ads' && (
-            <SelfAdsPanel />
           )}
 
           {/* Photos View */}
@@ -3566,6 +3535,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           {/* AI Settings View */}
           {view === 'ai-settings' && <AISettingsPanel />}
           {view === 'site-settings' && <SiteSettingsForm />}
+        {view === 'self-ads' && <SelfAdsPanel />}
         </div>
       </main>
     </div>
