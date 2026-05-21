@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Send, Sparkles, ImageIcon, BookOpen, Globe, ChevronRight } from 'lucide-react';
+import { X, Send, Sparkles, ImageIcon, Globe, ChevronRight } from 'lucide-react';
 import { ChatMessage, Photo } from '../types';
 import { getChatResponse, ChatResponse } from '../utils/aiService';
 
@@ -9,7 +9,6 @@ interface AIChatbotProps {
 }
 
 interface EnhancedMessage extends ChatMessage {
-  wikiSummary?: string;
   animalName?: string;
   suggestedAnimals?: string[];
   matchedPhotos?: Photo[];
@@ -20,7 +19,7 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
   const [messages, setMessages] = useState<EnhancedMessage[]>([
     {
       id: 1, sender: 'ai',
-      text: "Namaste! 🐾 Main Wilds Aura AI assistant hoon.\n\n🦁 Kisi bhi animal ke baare mein puchho\n📸 Gallery photos dikhaaunga\n🌍 Wikipedia facts bhi milenge\n\nEnglish ya Hindi — dono mein baat karo!",
+      text: "Namaste! 🐾 Main Wilds Aura AI assistant hoon. Animal ka naam bhejo, main gallery mein available photos turant dikhata hoon.",
       timestamp: new Date().toISOString(),
     },
   ]);
@@ -33,7 +32,7 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
   }, [messages]);
 
   // Quick suggestion chips
-  const quickChips = ['🐯 Tiger', '🐘 Elephant', '🦅 Eagle', '📸 Tips'];
+  const quickChips = ['🐯 Tiger', '🦍 Chimpanzee', '🦁 Lion', '🦅 Eagle'];
 
   const handleSend = async (overrideText?: string) => {
     const text = (overrideText || input).trim();
@@ -95,7 +94,6 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
 
       const aiMsg: EnhancedMessage = {
         id: Date.now() + 1, sender: 'ai', text: response.text, timestamp: new Date().toISOString(),
-        wikiSummary: response.wikiSummary,
         animalName: response.animalName,
         suggestedAnimals: response.suggestedAnimals,
         matchedPhotos: matched,
@@ -297,28 +295,6 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
                         Tap to view full photo
                       </p>
                     )}
-                  </div>
-                )}
-
-                {/* Wikipedia Summary Card */}
-                {msg.wikiSummary && (
-                  <div style={{
-                    maxWidth: '88%',
-                    marginTop: '0.4rem',
-                    padding: '0.5rem 0.65rem',
-                    borderRadius: '10px',
-                    background: 'rgba(30,60,30,0.25)',
-                    border: '1px solid rgba(80,160,80,0.2)',
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.25rem' }}>
-                      <BookOpen size={11} style={{ color: '#9fcb8f' }} />
-                      <span style={{ fontSize: '0.62rem', color: '#9fcb8f', fontWeight: 600, letterSpacing: '0.04em' }}>
-                        Wikipedia • {msg.animalName}
-                      </span>
-                    </div>
-                    <p style={{ fontSize: '0.72rem', color: 'rgba(235,230,220,0.7)', lineHeight: 1.5 }}>
-                      {msg.wikiSummary}
-                    </p>
                   </div>
                 )}
 

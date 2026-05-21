@@ -22,7 +22,6 @@ export interface AnalysisResult {
 export interface ChatResponse {
   text: string;
   matchingPhotoTitles: string[];
-  wikiSummary?: string;
   animalName?: string;
   suggestedAnimals?: string[];
 }
@@ -129,7 +128,7 @@ export async function getChatResponse(
   galleryPhotos: { title: string; category: string; tags?: string[]; animalName?: string; location?: string }[]
 ): Promise<ChatResponse> {
   const fallback: ChatResponse = {
-    text: "I'd love to help! 🐾 Ask me about animals in our gallery, photography tips, or anything wildlife related!",
+    text: "I can help you find animals available in this gallery. Try Tiger, Chimpanzee, or Lion.",
     matchingPhotoTitles: [],
   };
 
@@ -157,7 +156,6 @@ export async function getChatResponse(
     return {
       text: data.reply || data.text || fallback.text,
       matchingPhotoTitles: data.matchingPhotos || data.matchingPhotoTitles || [],
-      wikiSummary: data.wikiSummary || undefined,
       animalName: data.animalName || undefined,
       suggestedAnimals: data.suggestions || data.suggestedAnimals || undefined,
     };
