@@ -13,11 +13,14 @@ const SelfAdPopup: React.FC = () => {
     const dismissed = sessionStorage.getItem('selfAdDismissed');
     if (dismissed) return;
 
-    // Delay popup by 2 seconds for better UX
-    const timer = setTimeout(() => {
+    let shown = false;
+
+    const showPopup = () => {
+      if (shown) return;
+      shown = true;
+      window.removeEventListener('scroll', onScroll);
       fetchEnabledSelfAds().then(ads => {
         if (ads.length > 0) {
-          // Pick random from top priority ads
           const topPriority = ads[0].priority;
           const topAds = ads.filter(a => a.priority === topPriority);
           const picked = topAds[Math.floor(Math.random() * topAds.length)];
@@ -25,9 +28,23 @@ const SelfAdPopup: React.FC = () => {
           setVisible(true);
         }
       });
-    }, 2000);
+    };
 
-    return () => clearTimeout(timer);
+    const onScroll = () => {
+      const doc = document.documentElement;
+      const scrollable = doc.scrollHeight - window.innerHeight;
+      if (scrollable <= 0) return;
+      const progress = window.scrollY / scrollable;
+      if (progress >= 0.3) showPopup();
+    };
+
+    const timer = window.setTimeout(showPopup, 5000);
+    window.addEventListener('scroll', onScroll, { passive: true });
+
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('scroll', onScroll);
+    };
   }, []);
 
   const handleClose = () => {

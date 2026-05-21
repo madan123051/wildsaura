@@ -173,6 +173,7 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
                           src={video.thumbnailUrl}
                           alt={video.title}
                           style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s' }}
+                          loading="lazy"
                         />
                       ) : (
                         <div style={{

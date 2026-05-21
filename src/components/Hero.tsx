@@ -180,6 +180,8 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages, onCommunityCl
           <img
             src={images[currentIndex]}
             alt="Wildlife photography"
+            loading="eager"
+            fetchPriority="high"
             style={{
               width: '100%', height: '100%',
               objectFit: 'cover', objectPosition: 'center',
