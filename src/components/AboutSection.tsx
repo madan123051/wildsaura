@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { saveContactMessage } from '../services/contactService';
-import { Camera, Mountain, Heart, Globe, MapPin } from 'lucide-react';
+import { Heart, Globe, MapPin } from 'lucide-react';
 
 interface AboutSectionProps {
   onMapClick?: () => void;
 }
 
 export const AboutSection: React.FC<AboutSectionProps> = ({ onMapClick }) => {
+  const [isStoryOpen, setIsStoryOpen] = useState(false);
+
   return (
     <section id="about" className="bg-wa-dark-alt" style={{ padding: '5rem 0 6rem' }}>
       <div className="wa-container">
@@ -60,17 +62,8 @@ export const AboutSection: React.FC<AboutSectionProps> = ({ onMapClick }) => {
                   }}
                 />
               </div>
-              <p className="section-subtitle" style={{ marginBottom: 0 }}>Behind the Lens</p>
               <h3 className="font-playfair" style={{ fontSize: '1.75rem', fontWeight: 700, margin: 0 }}>Madan</h3>
             </div>
-
-            <p className="text-wa-mid" style={{ fontSize: '0.9rem', lineHeight: 1.8, marginBottom: '1.25rem' }}>
-              Namaste! I'm Madan, a wildlife and nature photographer with a deep-rooted passion for capturing Earth's untamed beauty. Though my home country is <strong style={{ color: 'var(--wa-text)' }}>Nepal</strong>, I am currently based in <strong style={{ color: 'var(--wa-text)' }}>Japan</strong>—exploring and documenting the wild landscapes of both worlds.
-            </p>
-
-            <p className="text-wa-mid" style={{ fontSize: '0.9rem', lineHeight: 1.8, marginBottom: '1.25rem' }}>
-              My journey began in the breathtaking biodiversity of Nepal—from the towering Himalayas to the dense jungles of Chitwan. Now, living in Japan, my lens has found new stories in the snowy mountains of Nagano, the rugged Pacific coastlines, and the quiet moments where nature meets urban life.
-            </p>
 
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '1.5rem' }}>
               <span style={{
@@ -107,72 +100,111 @@ export const AboutSection: React.FC<AboutSectionProps> = ({ onMapClick }) => {
                 color: 'var(--wa-gold)',
               }}>Wildlife & Nature</span>
             </div>
+
+            <button
+              type="button"
+              onClick={() => setIsStoryOpen((prev) => !prev)}
+              style={{
+                marginTop: '1rem',
+                border: '1px solid rgba(201,168,76,0.35)',
+                background: 'rgba(201,168,76,0.08)',
+                color: 'var(--wa-gold)',
+                borderRadius: '9999px',
+                padding: '0.5rem 0.9rem',
+                fontSize: '0.75rem',
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                transition: 'all 0.25s ease',
+              }}
+            >
+              {isStoryOpen ? '− Hide Story' : '+ Read Full Story & Mission'}
+            </button>
           </div>
 
           {/* Right Column: Mission + Behind the Lens + Contact */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            {/* Mission Card */}
             <div
               style={{
-                borderRadius: '1rem',
-                padding: '2rem 2.5rem',
-                background: 'linear-gradient(135deg, var(--wa-dark-card), var(--wa-dark-alt))',
-                border: '1px solid var(--wa-border)',
+                overflow: 'hidden',
+                maxHeight: isStoryOpen ? 1200 : 0,
+                opacity: isStoryOpen ? 1 : 0,
+                transition: 'max-height 0.45s ease, opacity 0.3s ease',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1.5rem',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-                <Heart size={18} color="#9fcb8f" />
-                <h3 className="font-cinzel" style={{ fontSize: '1rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--wa-gold)', margin: 0 }}>
-                  My Mission
-                </h3>
-              </div>
-              <p className="text-wa-mid" style={{ fontSize: '0.875rem', lineHeight: 1.8, marginBottom: '1rem' }}>
-                Through Wilds Aura, I aim to do more than just take pictures. I want to:
+              <p className="text-wa-mid" style={{ fontSize: '0.9rem', lineHeight: 1.8, marginBottom: 0 }}>
+                Namaste! I’m Madan, a wildlife photographer driven by a passion to capture Earth’s untamed beauty. Born in Nepal and now based in Japan, I document the quiet stories where nature meets life—from the Himalayas to the rugged Pacific coasts. For me, photography is 10% skill and 90% patience and respect for the wild.
               </p>
-              <ul style={{ margin: 0, paddingLeft: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <li className="text-wa-mid" style={{ fontSize: '0.875rem', lineHeight: 1.7 }}>
-                  <strong style={{ color: 'var(--wa-text)' }}>Share the untold stories</strong> of wildlife and their habitats—from the Nepali terai to Japanese hot springs.
-                </li>
-                <li className="text-wa-mid" style={{ fontSize: '0.875rem', lineHeight: 1.7 }}>
-                  <strong style={{ color: 'var(--wa-text)' }}>Inspire a deeper connection</strong> with nature, no matter where you are in the world.
-                </li>
-                <li className="text-wa-mid" style={{ fontSize: '0.875rem', lineHeight: 1.7 }}>
-                  <strong style={{ color: 'var(--wa-text)' }}>Promote conservation awareness</strong> through honest, patient visual storytelling.
-                </li>
-              </ul>
-              <p className="text-wa-mid" style={{ fontSize: '0.875rem', lineHeight: 1.8, marginTop: '1rem' }}>
-                Every photograph you see here is the result of hours—sometimes days—of waiting, respecting the wild, and letting the moment unfold naturally. Whether it's a Japanese macaque bathing in a Nagano hot spring or a tiger's silent walk in Nepal, I strive to capture the soul of the wild.
-              </p>
-            </div>
 
-            {/* Behind the Lens Card */}
-            <div
-              style={{
-                borderRadius: '1rem',
-                padding: '2rem 2.5rem',
-                background: 'linear-gradient(135deg, rgba(201,168,76,0.05), var(--wa-dark-card))',
-                border: '1px solid rgba(201,168,76,0.15)',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-                <Globe size={18} color="#9fcb8f" />
-                <h3 className="font-cinzel" style={{ fontSize: '1rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--wa-gold)', margin: 0 }}>
-                  Behind the Lens
-                </h3>
+              {/* Mission Card */}
+              <div
+                style={{
+                  borderRadius: '1rem',
+                  padding: '2rem 2.5rem',
+                  background: 'linear-gradient(135deg, var(--wa-dark-card), var(--wa-dark-alt))',
+                  border: '1px solid var(--wa-border)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                  <Heart size={18} color="#9fcb8f" />
+                  <h3 className="font-cinzel" style={{ fontSize: '1rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--wa-gold)', margin: 0 }}>
+                    My Mission
+                  </h3>
+                </div>
+                <p className="text-wa-mid" style={{ fontSize: '0.875rem', lineHeight: 1.8, marginBottom: '1rem' }}>
+                  Through Wilds Aura, I aim to do more than just take pictures. I want to:
+                </p>
+                <ul style={{ margin: 0, paddingLeft: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <li className="text-wa-mid" style={{ fontSize: '0.875rem', lineHeight: 1.7 }}>
+                    <strong style={{ color: 'var(--wa-text)' }}>Share the untold stories</strong> of wildlife and their habitats—from the Nepali terai to Japanese hot springs.
+                  </li>
+                  <li className="text-wa-mid" style={{ fontSize: '0.875rem', lineHeight: 1.7 }}>
+                    <strong style={{ color: 'var(--wa-text)' }}>Inspire a deeper connection</strong> with nature, no matter where you are in the world.
+                  </li>
+                  <li className="text-wa-mid" style={{ fontSize: '0.875rem', lineHeight: 1.7 }}>
+                    <strong style={{ color: 'var(--wa-text)' }}>Promote conservation awareness</strong> through honest, patient visual storytelling.
+                  </li>
+                </ul>
+                <p className="text-wa-mid" style={{ fontSize: '0.875rem', lineHeight: 1.8, marginTop: '1rem' }}>
+                  Every photograph you see here is the result of hours—sometimes days—of waiting, respecting the wild, and letting the moment unfold naturally. Whether it's a Japanese macaque bathing in a Nagano hot spring or a tiger's silent walk in Nepal, I strive to capture the soul of the wild.
+                </p>
               </div>
-              <p className="text-wa-mid" style={{ fontSize: '0.875rem', lineHeight: 1.8, marginBottom: '0.75rem' }}>
-                I believe wildlife photography is <strong style={{ color: 'var(--wa-gold)' }}>10% skill and 90% patience and respect for nature</strong>. When I'm not on an expedition, I spend my time exploring local cafes in Tokyo and planning my next trip back to Nepal.
-              </p>
-              <p className="text-wa-mid" style={{ fontSize: '0.875rem', lineHeight: 1.8, marginBottom: '1rem' }}>
-                Living between two countries has taught me to see nature from different perspectives, and I bring that lens to every frame I capture.
-              </p>
-              <p className="font-playfair" style={{ fontSize: '1rem', fontStyle: 'italic', color: 'var(--wa-text)', lineHeight: 1.6 }}>
-                "Thank you for stopping by. I hope my work reminds you of the wild beauty we share this planet with—whether in the Himalayas or the Japanese Alps."
-              </p>
-              <p className="font-cinzel text-gold" style={{ fontSize: '0.8rem', letterSpacing: '0.1em', marginTop: '0.75rem' }}>
-                — Madan
-              </p>
+
+              {/* Behind the Lens Card */}
+              <div
+                style={{
+                  borderRadius: '1rem',
+                  padding: '2rem 2.5rem',
+                  background: 'linear-gradient(135deg, rgba(201,168,76,0.05), var(--wa-dark-card))',
+                  border: '1px solid rgba(201,168,76,0.15)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                  <Globe size={18} color="#9fcb8f" />
+                  <h3 className="font-cinzel" style={{ fontSize: '1rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--wa-gold)', margin: 0 }}>
+                    Behind the Lens
+                  </h3>
+                </div>
+                <p className="text-wa-mid" style={{ fontSize: '0.875rem', lineHeight: 1.8, marginBottom: '0.75rem' }}>
+                  I believe wildlife photography is <strong style={{ color: 'var(--wa-gold)' }}>10% skill and 90% patience and respect for nature</strong>. When I'm not on an expedition, I spend my time exploring local cafes in Tokyo and planning my next trip back to Nepal.
+                </p>
+                <p className="text-wa-mid" style={{ fontSize: '0.875rem', lineHeight: 1.8, marginBottom: '1rem' }}>
+                  Living between two countries has taught me to see nature from different perspectives, and I bring that lens to every frame I capture.
+                </p>
+                <p className="font-playfair" style={{ fontSize: '1rem', fontStyle: 'italic', color: 'var(--wa-text)', lineHeight: 1.6 }}>
+                  "Thank you for stopping by. I hope my work reminds you of the wild beauty we share this planet with—whether in the Himalayas or the Japanese Alps."
+                </p>
+                <p className="font-cinzel text-gold" style={{ fontSize: '0.8rem', letterSpacing: '0.1em', marginTop: '0.75rem' }}>
+                  — Madan
+                </p>
+              </div>
             </div>
+            <p style={{ margin: 0, fontSize: '0.8rem', color: 'rgba(235,230,220,0.5)' }}>
+              {isStoryOpen ? 'Tap above to collapse story details.' : 'Tap above to learn more.'}
+              </p>
 
             {/* Photo Map Button */}
             {onMapClick && (
