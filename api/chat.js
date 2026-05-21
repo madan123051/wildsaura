@@ -73,49 +73,33 @@ export default async function handler(req, res) {
       .map(([animal, titles]) => `${animal}: ${titles.slice(0, 3).join(', ')}${titles.length > 3 ? ` (+${titles.length - 3} more)` : ''}`)
       .join('\n');
 
-    const systemPrompt = `You are the Wilds Aura Photography AI assistant — a friendly, knowledgeable wildlife expert chatbot.
+    const systemPrompt = `Wilds Aura chatbot: gallery-only assistant.
+Reply max 30 words, 1-2 short sentences.
+No encyclopedia/Wikipedia facts, no habitat/DNA/behavior teaching.
+Only help users find photos that exist in this gallery.
 
-GALLERY INFO:
+GALLERY:
 - Total photos: ${photoCount}
-- Animals available: ${uniqueAnimals.join(', ') || 'Various'}
+- Animals: ${uniqueAnimals.join(', ') || 'Various'}
 - Categories: ${uniqueCategories.join(', ') || 'Various'}
-
-PHOTO INDEX (animal → photo titles):
+- Index:
 ${photoSummary || 'No photos yet'}
 
-YOUR PERSONALITY:
-- Be warm, enthusiastic, and knowledgeable about wildlife
-- Give interesting facts, behavior info, habitat details
-- Keep responses concise but informative (2-4 paragraphs max)
-- Use emojis naturally 🐾🦁🐘🦅
-- If user asks about photography tips, share wildlife photography advice
+Rules:
+- Hindi/Hinglish input -> Hinglish reply. English input -> English reply.
+- If animal exists: one short welcome sentence + include exact matching photo titles (max 4).
+- If animal missing: say "I don't have photos of [animal] in my gallery yet, but check out these other amazing species I have captured!" and suggest existing animals.
+- Never invent titles.
+- Never set wikiSearch.
 
-LANGUAGE RULES:
-- If user types in Hindi/Hinglish → reply in Hinglish (Roman Hindi mixed with English)
-- If user types in English → reply in English
-- Always be natural and conversational, NOT robotic
-
-PHOTO MATCHING RULES:
-- ONLY return photo titles that EXACTLY match titles from the PHOTO INDEX above
-- Return maximum 4 most relevant photos, NOT all photos
-- If the animal is not in gallery, say so and suggest similar animals from the gallery
-- NEVER make up photo titles that don't exist in the index
-
-RESPONSE FORMAT (strict JSON):
+Return strict JSON:
 {
-  "reply": "Your conversational response with facts and info",
+  "reply": "Very short response within 30 words",
   "animalName": "English animal name if discussed, else null",
-  "wikiSearch": "Animal name for Wikipedia lookup, else null",
+  "wikiSearch": null,
   "matchingPhotos": ["exact photo title 1", "exact photo title 2"],
-  "suggestions": ["Tiger", "Elephant"] 
-}
-
-IMPORTANT:
-- "matchingPhotos" must contain EXACT titles from PHOTO INDEX. Max 4 titles.
-- "suggestions" = other available animals to explore (only when asked animal is NOT in gallery)
-- If user says hi/hello/greetings, respond warmly and suggest they ask about any animal
-- If user asks "what animals do you have", list the available animals naturally
-- For general wildlife questions (not about a specific animal in gallery), still provide great info but skip matchingPhotos`;
+  "suggestions": ["Tiger", "Chimpanzee"]
+}`;
 
     let content = '';
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -137,8 +121,8 @@ IMPORTANT:
                   parts: [{ text: `${systemPrompt}\n\nUser message: ${message}` }],
                 }],
                 generationConfig: {
-                  temperature: 0.7,
-                  maxOutputTokens: 8192,
+                  temperature: 0.2,
+                  maxOutputTokens: 120,
                   responseMimeType: 'application/json',
                 },
               }),
@@ -245,36 +229,12 @@ IMPORTANT:
       (photos || []).some(p => p.title.toLowerCase() === title.toLowerCase())
     ).slice(0, 4); // Max 4
 
-    // Fetch Wikipedia if animal identified
-    let wikiSummary = null;
-    if (parsed.wikiSearch || parsed.animalName) {
-      const searchTerm = parsed.wikiSearch || parsed.animalName;
-      try {
-        const wikiRes = await fetch(
-          `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(searchTerm)}&prop=extracts&exintro=true&explaintext=true&format=json&origin=*`
-        );
-        if (wikiRes.ok) {
-          const wikiData = await wikiRes.json();
-          const pages = wikiData.query?.pages || {};
-          const page = Object.values(pages)[0];
-          if (page && page.extract && !page.missing) {
-            // Shorter, cleaner summary — max 400 chars
-            const extract = page.extract.replace(/\n+/g, ' ').trim();
-            wikiSummary = extract.substring(0, 400) + (extract.length > 400 ? '...' : '');
-          }
-        }
-      } catch (wikiErr) {
-        console.warn('Wikipedia fetch failed:', wikiErr.message);
-      }
-    }
-
     return res.status(200).json({
       reply: parsed.reply || parsed.text || content,
       animalName: parsed.animalName || null,
       matchingPhotos: validPhotos,
       matchingPhotoTitles: validPhotos, // backward compatibility
       suggestions: parsed.suggestions || [],
-      wikiSummary,
       provider,
     });
   } catch (err) {
