@@ -632,6 +632,13 @@ const App: React.FC = () => {
 
   // ── Popstate Listener (Browser Back/Forward) ─────────────────────────────
   useEffect(() => {
+    const getStorySlugFromPath = (path: string) => {
+      if (!path.startsWith('/story/')) return null;
+      const rawSlug = path.slice('/story/'.length);
+      const normalized = rawSlug.replace(/^\/+|\/+$/g, '');
+      return normalized ? decodeURIComponent(normalized) : null;
+    };
+
     const onPopState = () => {
       const path = window.location.pathname;
       if (path === '/' || path === '') {
@@ -647,7 +654,12 @@ const App: React.FC = () => {
       } else if (path === '/terms') {
         setView('terms');
       } else if (path.startsWith('/story/')) {
-        const slug = decodeURIComponent(path.replace('/story/', ''));
+        const slug = getStorySlugFromPath(path);
+        if (!slug) {
+          setView('home');
+          return;
+        }
+
         const matchedStory = stories.find(s => s.slug === slug);
         if (matchedStory) {
           setSelectedStory({ ...matchedStory, viewCount: matchedStory.viewCount + 1 });
@@ -655,6 +667,15 @@ const App: React.FC = () => {
         }
       }
     };
+
+    const currentStorySlug = getStorySlugFromPath(window.location.pathname);
+    if (currentStorySlug && !selectedStory) {
+      const matchedStory = stories.find(s => s.slug === currentStorySlug);
+      if (matchedStory) {
+        setSelectedStory({ ...matchedStory, viewCount: matchedStory.viewCount + 1 });
+        setView('story-detail');
+      }
+    }
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, [photos, stories]);
