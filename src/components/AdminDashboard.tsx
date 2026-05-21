@@ -79,6 +79,16 @@ function detectCategory(filename: string): Photo['category'] {
   return 'wildlife'; // default
 }
 
+function toSeoSlug(value: string): string {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
 
 
 // ── File Upload Drop Zone ──────────────────────────────────────────────────────
@@ -467,8 +477,10 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
       }
 
       // Build Firestore data object (never include undefined values)
+      const slug = toSeoSlug(title);
       const photoData: Record<string, any> = {
         title, caption: caption || '', category, imageUrl: finalImageUrl,
+        slug,
         thumbnailUrl: thumbnailUrl || '',
         location: location || '', tags: finalTags, animalName: animalName || '',
         cameraModel: cameraModel || '', lens: lens || '', aperture: aperture || '',
@@ -511,6 +523,7 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
     const savedPhoto: any = {
       id: initial?.id || nextId,
       firestoreId,
+      slug: toSeoSlug(title),
       title, category, imageUrl: finalImageUrl, thumbnailUrl: thumbnailUrl || '', location, caption,
       type: mediaType === 'video' ? 'video' : 'photo',
       cameraModel, lens, aperture, shutterSpeed, iso, focalLength,

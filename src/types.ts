@@ -1,6 +1,7 @@
 export interface Photo {
   id: number;
   firestoreId?: string;
+  slug?: string;
   title: string;
   category: 'wildlife' | 'birds' | 'macro' | 'domestic' | 'landscape' | 'street' | 'nature' | 'other';
   imageUrl: string;

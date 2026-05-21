@@ -107,14 +107,15 @@ export default async function handler(req, res) {
   // Add photo pages with image extensions
   for (const doc of photos) {
     const id = docId(doc);
-    if (!id) continue;
+    const slug = strField(doc, 'slug');
+    if (!id || !slug) continue;
     if (boolField(doc, 'published', true) === false) continue;
 
     const title = strField(doc, 'title') || 'Wildlife Photo';
     const imageUrl = strField(doc, 'imageUrl');
     const location = strField(doc, 'location');
     const caption = strField(doc, 'caption');
-    const photoLoc = `${SITE_URL}/photo/${encodeURIComponent(id)}`;
+    const photoLoc = `${SITE_URL}/photo/${encodeURIComponent(slug)}`;
     const lastmod = isoDate(doc);
 
     let imageBlock = '';
