@@ -21,6 +21,35 @@ const categoryLabel = (category: GalleryCategory) =>
 const categoryEmoji = (category: GalleryCategory) =>
   CATEGORY_TABS.find((t) => t.key === category)?.emoji || '📁';
 
+
+const PHOTO_PLACEHOLDER = '/images/placeholder-card.svg';
+
+const SmartImage: React.FC<{ src?: string | null; alt: string; height: number }> = ({ src, alt, height }) => {
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false);
+  const resolvedSrc = error ? PHOTO_PLACEHOLDER : (src || PHOTO_PLACEHOLDER);
+
+  return (
+    <div style={{ position: 'relative', height, overflow: 'hidden' }}>
+      {!loaded && (
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(110deg, #1a2e1a 8%, #2a4a2a 18%, #1a2e1a 33%)', backgroundSize: '200% 100%', animation: 'shimmer 1.5s linear infinite' }} />
+      )}
+      <img
+        src={resolvedSrc}
+        alt={alt}
+        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', opacity: loaded ? 1 : 0, transition: 'opacity 0.25s ease' }}
+        loading='lazy'
+        decoding='async'
+        onLoad={() => setLoaded(true)}
+        onError={() => {
+          if (!error) setError(true);
+          else setLoaded(true);
+        }}
+      />
+    </div>
+  );
+};
+
 export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery }) => {
   const [openCategory, setOpenCategory] = useState<GalleryCategory | null>(null);
   const [openYear, setOpenYear] = useState<string | null>(null);
@@ -115,11 +144,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
               textAlign: 'left',
             }}
           >
-            <img
-              src={photo.imageUrl}
-              alt={photo.title}
-              style={{ width: '100%', height: index % 5 === 0 ? 250 : 190, objectFit: 'cover', display: 'block' }}
-            />
+            <SmartImage src={photo.imageUrl} alt={photo.title} height={index % 5 === 0 ? 250 : 190} />
             <span style={{ display: 'block', padding: '0.7rem 0.8rem' }}>
               <span style={{ display: 'block', color: 'var(--wa-light)', fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.2rem' }}>
                 {photo.title}
@@ -207,8 +232,8 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
                   style={{ border: '1px solid rgba(201,168,76,0.18)', borderRadius: '18px', overflow: 'hidden', padding: 0, background: 'rgba(255,255,255,0.03)', cursor: 'pointer', boxShadow: '0 18px 45px rgba(0,0,0,0.2)', textAlign: 'left', transition: 'transform 0.2s' }}
                   onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 24px 55px rgba(0,0,0,0.35)'; }}
                   onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 18px 45px rgba(0,0,0,0.2)'; }}>
-                  <div style={{ position: 'relative', height: 150, overflow: 'hidden' }}>
-                    <img src={mPhotos[0].imageUrl} alt={month} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <div style={{ position: 'relative' }}>
+                    <SmartImage src={mPhotos[0].imageUrl} alt={month} height={150} />
                     <span style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.62)', backdropFilter: 'blur(6px)', color: 'var(--wa-gold)', fontSize: '0.68rem', fontWeight: 700, padding: '0.2rem 0.55rem', borderRadius: '20px', border: '1px solid rgba(201,168,76,0.28)' }}>
                       {mPhotos.length}
                     </span>
@@ -243,8 +268,8 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
                   style={{ border: '1px solid rgba(201,168,76,0.18)', borderRadius: '18px', overflow: 'hidden', padding: 0, background: 'rgba(255,255,255,0.03)', cursor: 'pointer', boxShadow: '0 18px 45px rgba(0,0,0,0.2)', textAlign: 'left', transition: 'transform 0.2s' }}
                   onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 24px 55px rgba(0,0,0,0.35)'; }}
                   onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 18px 45px rgba(0,0,0,0.2)'; }}>
-                  <div style={{ position: 'relative', height: 150, overflow: 'hidden' }}>
-                    <img src={yPhotos[0].imageUrl} alt={year} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <div style={{ position: 'relative' }}>
+                    <SmartImage src={yPhotos[0].imageUrl} alt={year} height={150} />
                     <span style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.62)', backdropFilter: 'blur(6px)', color: 'var(--wa-gold)', fontSize: '0.68rem', fontWeight: 700, padding: '0.2rem 0.55rem', borderRadius: '20px', border: '1px solid rgba(201,168,76,0.28)' }}>
                       {yPhotos.length}
                     </span>
@@ -350,6 +375,12 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
           </div>
         </div>
       )}
+    <style>{`
+      @keyframes shimmer {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+      }
+    `}</style>
     </section>
   );
 };

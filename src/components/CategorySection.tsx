@@ -3,6 +3,7 @@ import { Category } from '../types';
 
 const NG_YELLOW = '#9fcb8f';
 const PARCHMENT = '#e8f5e9';
+const CATEGORY_PLACEHOLDER = '/images/placeholder-card.svg';
 
 interface CategorySectionProps {
   categories: Category[];
@@ -14,7 +15,7 @@ interface CategorySectionProps {
  * Resizes to small thumbnail for fast loading on category cards
  */
 function getOptimizedUrl(url: string, width = 300): string {
-  if (!url) return '';
+  if (!url) return CATEGORY_PLACEHOLDER;
   // Don't proxy local static assets — they're already small
   if (url.startsWith('/photos/') || url.startsWith('/images/')) return url;
   // Don't double-proxy
@@ -136,7 +137,7 @@ const CategoryCard: React.FC<{ cat: Category; onClick: () => void }> = ({ cat, o
 
       {/* Optimized thumbnail image */}
       <img
-        src={error ? cat.imageUrl : optimizedUrl}
+        src={error ? (cat.imageUrl || CATEGORY_PLACEHOLDER) : optimizedUrl}
         alt={cat.label}
         style={{
           position: 'absolute',
@@ -153,6 +154,7 @@ const CategoryCard: React.FC<{ cat: Category; onClick: () => void }> = ({ cat, o
         onError={() => {
           if (!error) {
             setError(true);
+          } else {
             setLoaded(true);
           }
         }}

@@ -2,6 +2,8 @@ import React from 'react';
 import { Heart, Share2, Download, MapPin, MessageCircle, CalendarDays } from 'lucide-react';
 import { Photo } from '../types';
 
+const PHOTO_PLACEHOLDER = '/images/placeholder-card.svg';
+
 const formatPhotoDate = (createdAt: any): string => {
   if (!createdAt) return '';
   try {
@@ -28,6 +30,8 @@ interface PhotoCardProps {
 
 export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, onShare, onDownload, isLoggedIn: _isLoggedIn, onLoginRequired: _onLoginRequired }) => {
   const gated = (action: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); action(); };
+  const [imgLoaded, setImgLoaded] = React.useState(false);
+  const [imgError, setImgError] = React.useState(false);
 
   return (
     <div
@@ -46,13 +50,29 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, on
         style={{ aspectRatio: '1/1', position: 'relative', overflow: 'hidden' }}
         onContextMenu={(e) => e.preventDefault()}
       >
+        {!imgLoaded && (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'linear-gradient(110deg, #1a2e1a 8%, #2a4a2a 18%, #1a2e1a 33%)',
+              backgroundSize: '200% 100%',
+              animation: 'shimmer 1.5s linear infinite',
+            }}
+          />
+        )}
         <img
-          src={photo.imageUrl}
+          src={imgError ? PHOTO_PLACEHOLDER : (photo.imageUrl || PHOTO_PLACEHOLDER)}
           alt={photo.title}
-          style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.7s', userSelect: 'none', WebkitUserDrag: 'none' } as React.CSSProperties}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.7s, opacity 0.25s', opacity: imgLoaded ? 1 : 0, userSelect: 'none', WebkitUserDrag: 'none' } as React.CSSProperties}
           loading="lazy"
           draggable={false}
           onDragStart={(e) => e.preventDefault()}
+          onLoad={() => setImgLoaded(true)}
+          onError={() => {
+            if (!imgError) setImgError(true);
+            else setImgLoaded(true);
+          }}
         />
         {/* Transparent overlay to block right-click save */}
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 }} />
@@ -167,6 +187,10 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, on
         .photo-card:hover .card-overlay { opacity: 1 !important; }
         .photo-card:hover .card-actions { opacity: 1 !important; transform: translateY(0) !important; }
         .photo-card:hover img { transform: scale(1.1); }
+        @keyframes shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
       `}</style>
     </div>
   );
