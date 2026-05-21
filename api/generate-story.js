@@ -23,52 +23,34 @@ PHOTO DETAILS:
 - Location: ${location || 'the wild'}
 - Description: ${caption || ''}
 
-${wikiInfo ? `SPECIES INFO (use for accuracy, don't copy-paste):\n${wikiInfo}` : ''}
+${wikiInfo ? `PHOTO CONTEXT (optional, do not quote as facts):\n${wikiInfo}` : ''}
 
 WRITING STYLE — THIS IS CRITICAL:
-You are writing like a REAL photographer sharing a field story. Think of how photographers write on their blogs — casual, personal, real.
+You are writing like a REAL photographer sharing a field story. Think of a personal diary entry or a natural Instagram caption — warm, short, human.
 
 DO NOT:
+- Mention camera models, lens names, focal lengths, apertures, shutter speeds, or ISO values
+- Include encyclopedic/Wikipedia-style animal facts, stats, or trivia
+- Use robotic fillers like "Typical, right?", "Learn more about...", or labels like "Story image 1"
 - Use fancy vocabulary like "majestic", "breathtaking", "magnificent", "awe-inspiring", "resplendent"
-- Write like a nature documentary narrator
-- Use phrases like "capturing the essence", "a testament to", "in all its glory", "raw beauty of nature"
-- Start every paragraph with dramatic descriptions
-- Use excessive adjectives
-- Sound like ChatGPT or any AI — readers can instantly tell
-- Write generic conservation messages that sound copy-pasted
+- Write like a nature documentary narrator or a generic AI
 
 DO:
-- Write like you're telling a friend about your day in the field
-- Be specific — mention real details (time, weather, equipment, what went wrong)
-- Keep it conversational. Short sentences mixed with longer ones.
-- Include one or two interesting facts about the animal (from wiki info) but weave them in naturally
-- Share genuine emotions — frustration when the shot didn't work, excitement when it did
-- Mention specific camera details naturally (not like a specs list)
-- End with a personal thought, not a generic conservation lecture
-- Use simple, clear English. No poetry.
+- Focus on mood, weather, patience, stillness, and emotional connection with the moment
+- Keep it conversational and simple, like telling a friend what that day felt like
+- Include specific scene details from the photo context (light, wind, sounds, waiting), not technical specs
+- End with a personal reflective thought
 
 STRUCTURE:
-- 3-4 paragraphs (not 7). Keep it tight. Readers scroll fast.
-- Title: Short, specific. Not dramatic. Like a blog post title.
-- Excerpt: 1 sentence that sounds like the first line of a blog post, not a movie trailer.
-
-EXAMPLES OF BAD WRITING (do NOT write like this):
-❌ "The morning sun cast its golden rays across the pristine wilderness as I embarked on my journey..."
-❌ "In the heart of the untamed jungle, a magnificent creature revealed itself in all its breathtaking splendor..."
-❌ "This encounter was a profound reminder of nature's boundless beauty and the urgent need for conservation..."
-
-EXAMPLES OF GOOD WRITING (write like this):
-✅ "I'd been sitting in the same spot for three hours. My legs were numb and I was about to pack up when I heard movement in the tall grass."
-✅ "The tiger was maybe 30 meters away, completely unbothered. It walked along the riverbank, stopped to drink, and moved on. The whole thing lasted about two minutes."
-✅ "I shot this at f/5.6, ISO 800 — not ideal, but the light was fading fast and I didn't want to miss it."
-
-${wikiUrl ? `Reference: ${wikiUrl} — mention this naturally if relevant, like "According to..." or as a 'Learn more' link at the end.` : ''}
+- 2-3 short paragraphs maximum
+- Title: Short, natural, non-dramatic
+- Excerpt: 1 warm, human sentence
 
 Return ONLY valid JSON:
 {
   "title": "short blog-style title",
   "excerpt": "one natural sentence",
-  "content": "full story with paragraphs separated by \\n\\n. 3-4 paragraphs max.",
+  "content": "full story with paragraphs separated by \\n\\n. 2-3 short paragraphs max.",
   "tags": ["specific", "tags", "only"],
   "wikiUrl": "${wikiUrl || ''}"
 }`;
@@ -175,7 +157,7 @@ Return ONLY valid JSON:
         const fallbackStory = {
           title: photoTitle || `${subject} — Field Notes`,
           excerpt: `Notes from a morning spent tracking ${subject} in ${loc}.`,
-          content: `I got to ${loc} around 6 AM. The plan was simple — find ${subject} and get a decent shot before the light got too harsh. Easier said than done.\n\nAfter about an hour of walking, I spotted movement. ${caption || `A ${subject} was there, partially hidden.`} I set up quickly — my usual setup, trying to keep steady while my hands were still cold from the morning air.\n\n${wikiInfo ? `${subject} is interesting — ${wikiInfo.substring(0, 300).replace(/\n/g, ' ').trim()}. Knowing this stuff helps in the field because you can predict behavior.\n\n` : ''}The whole encounter was over in a few minutes. But that's wildlife photography — hours of waiting for moments that last seconds. I checked my shots on the way back and was happy with what I got.\n\n${wikiUrl ? `More about ${subject}: ${wikiUrl}` : '— Madan Shrestha | WILDS AURA'}`,
+          content: `I reached ${loc} early, with soft light and cool air all around. I stayed quiet for a long time, just listening and waiting, letting the place settle me down.\n\nThen I noticed ${caption || `${subject} moving gently through the scene`}. The moment was brief but it felt deeply peaceful. Instead of rushing, I let it unfold and took in the stillness before pressing the shutter.\n\nBy the end, I walked back with a calm mind and a few frames that felt honest to the morning.`,
           tags: [animalName, location, 'wildlife', 'photography', 'field notes'].filter(Boolean),
           wikiUrl: wikiUrl || '',
         };
