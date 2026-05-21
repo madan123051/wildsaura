@@ -4,6 +4,7 @@ import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 export interface FirestorePhoto {
   id?: string;
+  slug?: string;
   title: string;
   caption: string;
   category: string;

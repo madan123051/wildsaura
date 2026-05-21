@@ -17,9 +17,12 @@ export default async function handler(req, res) {
   const urls = [
     ...staticUrls.map((u) => `<url><loc>${SITE_URL}${u}</loc></url>`),
     ...photos.map((p) => {
-      const id = p.name?.split('/').pop();
+      const slug = p.fields?.slug?.stringValue;
       const img = p.fields?.imageUrl?.stringValue;
-      return `<url><loc>${SITE_URL}/photo/${encodeURIComponent(id)}</loc>${img ? `<image:image><image:loc>${img}</image:loc></image:image>` : ''}</url>`;
+      const title = p.fields?.title?.stringValue || 'Wildlife Photo';
+      const caption = p.fields?.caption?.stringValue || title;
+      if (!slug) return '';
+      return `<url><loc>${SITE_URL}/photo/${encodeURIComponent(slug)}</loc>${img ? `<image:image><image:loc>${img}</image:loc><image:title>${title}</image:title><image:caption>${caption}</image:caption></image:image>` : ''}</url>`;
     }),
     ...stories.map((s) => {
       const slug = s.fields?.slug?.stringValue;

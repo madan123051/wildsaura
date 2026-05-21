@@ -100,7 +100,7 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
     touchStartX.current = null;
   };
 
-  const shareUrl = `${window.location.origin}/photo/${encodeURIComponent(photo.firestoreId || String(photo.id))}`;
+  const shareUrl = `${window.location.origin}/photo/${encodeURIComponent(photo.slug || photo.firestoreId || String(photo.id))}`;
   const shareText = `Check out "${photo.title}" on WildSaura Photography! 🐯📸`;
 
   const handleCopyLink = async () => {
@@ -170,7 +170,7 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
         >
           <img
             src={photo.imageUrl}
-            alt={photo.title}
+            alt={`${photo.title} - ${(photo.tags || []).join(', ')}`}
             style={{ width: '100%', objectFit: 'cover', borderRadius: '1rem 1rem 0 0', maxHeight: '50vh', userSelect: 'none', WebkitUserDrag: 'none' } as React.CSSProperties}
             draggable={false}
             onDragStart={(e) => e.preventDefault()}

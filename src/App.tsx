@@ -374,6 +374,7 @@ const App: React.FC = () => {
       const mapped = firestorePhotos.map((fp, idx) => ({
         id: Date.now() + idx,
         firestoreId: fp.id,
+        slug: fp.slug || '',
         title: fp.title,
         category: fp.category as any,
         imageUrl: fp.imageUrl,
@@ -414,7 +415,9 @@ const App: React.FC = () => {
 
         // Deep link: auto-open photo if pending (only on first snapshot)
         if (isFirstPhotoSnap && pendingPhotoId) {
-          const matchedPhoto = allPhotos.find(p => p.firestoreId === pendingPhotoId || String(p.id) === pendingPhotoId);
+          const matchedPhoto = allPhotos.find(p =>
+            p.slug === pendingPhotoId || p.firestoreId === pendingPhotoId || String(p.id) === pendingPhotoId
+          );
           if (matchedPhoto) {
             setTimeout(() => { setSelectedPhoto(matchedPhoto); setPendingPhotoId(null); }, 100);
           }
@@ -425,7 +428,9 @@ const App: React.FC = () => {
     }, (err) => {
       console.warn('Photo subscription error, falling back to samples:', err);
       if (pendingPhotoId) {
-        const matchedPhoto = SAMPLE_PHOTOS.find(p => String(p.id) === pendingPhotoId || p.firestoreId === pendingPhotoId);
+        const matchedPhoto = SAMPLE_PHOTOS.find(p =>
+          p.slug === pendingPhotoId || String(p.id) === pendingPhotoId || p.firestoreId === pendingPhotoId
+        );
         if (matchedPhoto) {
           setTimeout(() => { setSelectedPhoto(matchedPhoto); setPendingPhotoId(null); }, 100);
         }
@@ -635,7 +640,7 @@ const App: React.FC = () => {
         setView('home');
       } else if (path.startsWith('/photo/')) {
         const photoId = decodeURIComponent(path.replace('/photo/', ''));
-        const matchedPhoto = photos.find(p => p.firestoreId === photoId || String(p.id) === photoId);
+        const matchedPhoto = photos.find(p => p.slug === photoId || p.firestoreId === photoId || String(p.id) === photoId);
         if (matchedPhoto) {
           setSelectedPhoto(matchedPhoto);
         }
@@ -753,7 +758,7 @@ const App: React.FC = () => {
   }, [selectedPhoto, visitor]);
 
   const handleShare = useCallback(async (photo: Photo) => {
-    const photoId = photo.firestoreId || String(photo.id);
+    const photoId = photo.slug || photo.firestoreId || String(photo.id);
     const shareUrl = `${window.location.origin}/photo/${encodeURIComponent(photoId)}`;
     const shareText = `Check out "${photo.title}" on WILDS AURA Photography! 🐯📸`;
     
@@ -1328,7 +1333,7 @@ const App: React.FC = () => {
     setSelectedPhoto(photo);
     if (photo) {
       window.scrollTo(0, 0);
-      const photoId = photo.firestoreId || String(photo.id);
+      const photoId = photo.slug || photo.firestoreId || String(photo.id);
       window.history.pushState({}, '', '/photo/' + encodeURIComponent(photoId));
       updatePhotoMeta({
         title: photo.title,
