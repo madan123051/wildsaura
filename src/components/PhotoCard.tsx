@@ -50,7 +50,7 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, on
 
       <a
         href={`/photo/${photoSlug}`}
-        onClick={(e) => { e.preventDefault(); onClick(); }}
+        onClick={() => onClick()}
         aria-label={`Open photo page for ${photo.title}`}
         style={{ position: 'absolute', inset: 0, zIndex: 0 }}
       />

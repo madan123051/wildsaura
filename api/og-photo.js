@@ -14,7 +14,7 @@ import { esc, injectSeoHtml, readBaseHtml, SITE_URL, defaultRobotsMeta } from '.
 const FIREBASE_PROJECT_ID = 'wildsaura-1ef8a';
 const FIREBASE_API_KEY = 'AIzaSyCXDJrFmn-pzbqys91tj4Fruqn4tl58p9Y';
 
-async function getPhotoFromFirestore(photoId) {
+async function getPhotoById(photoId) {
   try {
     const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/photos/${encodeURIComponent(photoId)}?key=${FIREBASE_API_KEY}`;
     const res = await fetch(url, { 
@@ -41,6 +41,7 @@ async function getPhotoFromFirestore(photoId) {
       animalName: f.animalName?.stringValue || '',
       tags: f.tags?.arrayValue?.values?.map(v => v.stringValue).filter(Boolean) || [],
       published: f.published?.booleanValue !== false,
+      slug: f.slug?.stringValue || photoId,
     };
   } catch (err) {
     console.error('Firestore fetch error:', err?.message || err);
@@ -103,8 +104,8 @@ function buildDescription(photo) {
 }
 
 export default async function handler(req, res) {
-  const photoId = req.query.id;
-  if (!photoId) {
+  const requestedSlug = String(req.query.id || "").trim();
+  if (!requestedSlug) {
     return res.redirect(302, SITE_URL);
   }
 
@@ -115,29 +116,36 @@ export default async function handler(req, res) {
   } catch (err) {
     console.error('Failed to read dist/index.html:', err?.message);
     // Fall back to a minimal redirect if build HTML not available
-    return res.redirect(302, `${SITE_URL}/?photo=${encodeURIComponent(photoId)}`);
+    return res.redirect(302, `${SITE_URL}/photo/${encodeURIComponent(requestedSlug)}`);
   }
 
   // Fetch photo data from Firestore
-  const photo = await getPhotoFromFirestore(photoId);
+  const photo = await getPhotoById(requestedSlug);
 
   if (!photo) {
-    // Photo not found — still serve SPA but with generic OG tags
-    // so at least the site title/description are correct
+    const pageUrl = `${SITE_URL}/photo/${encodeURIComponent(requestedSlug)}`;
     const genericMeta = `
-    <title>Photo — WILDS AURA Photography</title>
-    <meta property="og:title" content="WILDS AURA — Wildlife Photography">
+    <title>Wildlife Photo — WILDS AURA Photography</title>
+    ${defaultRobotsMeta()}
+    <meta name="description" content="Explore wildlife photography on WILDS AURA.">
+    <link rel="canonical" href="${esc(pageUrl)}">
+    <meta property="og:title" content="Wildlife Photo — WILDS AURA Photography">
+    <meta property="og:description" content="Explore wildlife photography on WILDS AURA.">
+    <meta property="og:url" content="${esc(pageUrl)}">
     <meta property="og:image" content="${SITE_URL}/photos/photo-wildlife.jpeg">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Wildlife Photo — WILDS AURA Photography">
     `;
-    const injected = baseHtml.replace('</head>', `${genericMeta}\n</head>`);
+    const visibleHtml = `
+      <main><article><h1>Wildlife Photo</h1><img src="${SITE_URL}/photos/photo-wildlife.jpeg" alt="Wildlife Photo" /><p>This photo page is temporarily unavailable, but you can browse the complete collection below.</p><p><a href="/photos">Browse all photos</a></p><p><a href="/">Return to homepage</a></p></article></main>`;
+    const injected = injectSeoHtml(baseHtml, genericMeta, visibleHtml);
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'no-cache');
     return res.status(200).send(injected);
   }
 
-  const pageUrl = `${SITE_URL}/photo/${encodeURIComponent(photoId)}`;
+  const canonicalSlug = (photo?.slug || requestedSlug || "").trim();
+  const pageUrl = `${SITE_URL}/photo/${encodeURIComponent(canonicalSlug)}`;
   const title = `${photo.title} — WILDS AURA Photography`;
   const description = buildDescription(photo);
   const ogImageUrl = getBestOgImage(photo);
