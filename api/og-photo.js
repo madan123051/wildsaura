@@ -9,12 +9,10 @@
  * Real users get: the full React SPA — photo modal auto-opens via URL routing in App.tsx.
  */
 
-import fs from 'fs';
-import path from 'path';
+import { esc, injectSeoHtml, readBaseHtml, SITE_URL, defaultRobotsMeta } from './seo-render.js';
 
 const FIREBASE_PROJECT_ID = 'wildsaura-1ef8a';
 const FIREBASE_API_KEY = 'AIzaSyCXDJrFmn-pzbqys91tj4Fruqn4tl58p9Y';
-const SITE_URL = 'https://www.wildsaura.com';
 
 async function getPhotoFromFirestore(photoId) {
   try {
@@ -93,16 +91,6 @@ function getBestOgImage(photo) {
   }
 }
 
-function esc(str) {
-  if (!str) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
 function buildDescription(photo) {
   const parts = [];
   if (photo.caption) return photo.caption.slice(0, 200);
@@ -123,8 +111,7 @@ export default async function handler(req, res) {
   // Read the built SPA HTML (bundled via includeFiles in vercel.json)
   let baseHtml = '';
   try {
-    const htmlPath = path.join(process.cwd(), 'dist', 'index.html');
-    baseHtml = fs.readFileSync(htmlPath, 'utf-8');
+    baseHtml = readBaseHtml();
   } catch (err) {
     console.error('Failed to read dist/index.html:', err?.message);
     // Fall back to a minimal redirect if build HTML not available
@@ -158,14 +145,10 @@ export default async function handler(req, res) {
 
   // Build meta tags to inject
   // IMPORTANT: Remove any existing OG/Twitter tags from base HTML to prevent duplicates
-  let cleanHtml = baseHtml
-    .replace(/<meta\s+property="og:[^"]*"\s+content="[^"]*"\s*\/?>/gi, '')
-    .replace(/<meta\s+name="twitter:[^"]*"\s+content="[^"]*"\s*\/?>/gi, '')
-    .replace(/<meta\s+name="description"\s+content="[^"]*"\s*\/?>/gi, '')
-    .replace(/<title>[^<]*<\/title>/i, '');
 
   const metaTags = `
     <title>${esc(title)}</title>
+    ${defaultRobotsMeta()}
     <meta name="description" content="${esc(description)}">
     <link rel="canonical" href="${esc(pageUrl)}">
 
@@ -213,7 +196,17 @@ export default async function handler(req, res) {
   `;
 
   // Inject meta tags into <head>
-  const injectedHtml = cleanHtml.replace('</head>', `${metaTags}\n</head>`);
+  const visibleHtml = `
+    <main>
+      <article>
+        <h1>${esc(photo.title)}</h1>
+        <img src="${esc(fullImageUrl)}" alt="${esc(photo.title)}" />
+        <p>${esc(description)}</p>
+        <a href="/photos">Browse all photos</a>
+      </article>
+    </main>
+  `;
+  const injectedHtml = injectSeoHtml(baseHtml, metaTags, visibleHtml);
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
