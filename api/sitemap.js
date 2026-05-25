@@ -3,6 +3,8 @@ const FIREBASE_API_KEY = 'AIzaSyCXDJrFmn-pzbqys91tj4Fruqn4tl58p9Y';
 const SITE_URL = 'https://www.wildsaura.com';
 const PAGE_SIZE = 1000;
 
+const CATEGORY_SLUGS = ['wildlife', 'birds', 'macro', 'domestic', 'landscape', 'nature', 'street', 'other'];
+
 async function listCollection(collectionId) {
   const docs = [];
   let pageToken = '';
@@ -71,8 +73,10 @@ export default async function handler(req, res) {
     { loc: `${SITE_URL}/terms`, changefreq: 'monthly', priority: '0.4', lastmod: today },
   ];
 
+  const categoryPages = CATEGORY_SLUGS.map((slug) => ({ loc: `${SITE_URL}/category/${encodeURIComponent(slug)}`, changefreq: 'weekly', priority: '0.7', lastmod: today }));
+
   const urls = [];
-  for (const page of staticPages) {
+  for (const page of [...staticPages, ...categoryPages]) {
     urls.push(`  <url>\n    <loc>${esc(page.loc)}</loc>\n    <lastmod>${page.lastmod}</lastmod>\n    <changefreq>${page.changefreq}</changefreq>\n    <priority>${page.priority}</priority>\n  </url>`);
   }
 

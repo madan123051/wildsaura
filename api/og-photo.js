@@ -36,9 +36,10 @@ export default async function handler(req, res) {
   const baseHtml = readBaseHtml();
   const photo = await getPhotoById(requestedSlug);
   const pageUrl = `${SITE_URL}/photo/${encodeURIComponent(requestedSlug)}`;
+  const ogImageFromSlug = buildOgImageUrl('photo', requestedSlug, '1');
 
   if (!photo) {
-    const metaTags = buildMetaTags({ type: 'article', title: 'Wildlife Photo — WILDS AURA Photography', description: 'Explore wildlife photography on WILDS AURA.', pageUrl, ogImageUrl: `${SITE_URL}/photos/photo-wildlife.jpeg` });
+    const metaTags = buildMetaTags({ type: 'article', title: 'Wildlife Photo — WILDS AURA Photography', description: 'Explore wildlife photography on WILDS AURA.', pageUrl, ogImageUrl: ogImageFromSlug });
     const injected = injectSeoHtml(baseHtml, metaTags);
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     return res.status(200).send(injected);
@@ -46,7 +47,7 @@ export default async function handler(req, res) {
 
   const canonicalSlug = sanitizeSlug(photo.slug || requestedSlug);
   const canonicalUrl = `${SITE_URL}/photo/${encodeURIComponent(canonicalSlug)}`;
-  const ogImageUrl = buildOgImageUrl('photo', canonicalSlug, photo.updatedAt);
+  const ogImageUrl = buildOgImageUrl('photo', canonicalSlug, photo.updatedAt || '1');
   const title = `${photo.title} — WILDS AURA Photography`;
   const description = buildDescription(photo);
   const metaTags = buildMetaTags({ type: 'article', title, description, pageUrl: canonicalUrl, ogImageUrl });

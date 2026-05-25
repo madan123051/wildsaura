@@ -21,14 +21,15 @@ export default async function handler(req, res) {
   const pageUrl = `${SITE_URL}/story/${encodeURIComponent(storyId)}`;
   const baseHtml = readBaseHtml();
   const story = await getStory(storyId);
+  const ogImageFromSlug = buildOgImageUrl('story', storyId, '1');
 
   if (!story) {
-    const metaTags = buildMetaTags({ type: 'article', title: 'Wildlife Story — WILDS AURA Stories', description: 'Read wildlife stories on WILDS AURA.', pageUrl, ogImageUrl: `${SITE_URL}/photos/photo-wildlife.jpeg` });
+    const metaTags = buildMetaTags({ type: 'article', title: 'Wildlife Story — WILDS AURA Stories', description: 'Read wildlife stories on WILDS AURA.', pageUrl, ogImageUrl: ogImageFromSlug });
     return res.status(200).setHeader('Content-Type', 'text/html; charset=utf-8').send(injectSeoHtml(baseHtml, metaTags));
   }
 
   const slug = sanitizeSlug(story.slug || storyId);
-  const ogImageUrl = buildOgImageUrl('story', slug, story.updatedAt);
+  const ogImageUrl = buildOgImageUrl('story', slug, story.updatedAt || '1');
   const title = `${story.title} — WILDS AURA Stories`;
   const description = (story.excerpt || `${story.title} by ${story.author}`).slice(0, 200);
   const metaTags = buildMetaTags({ type: 'article', title, description, pageUrl: `${SITE_URL}/story/${encodeURIComponent(slug)}`, ogImageUrl });
