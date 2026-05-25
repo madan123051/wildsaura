@@ -36,7 +36,6 @@ import { LiveStats } from './components/LiveStats';
 import { PhotoMap } from './components/PhotoMap';
 import { onSiteSettingsChange, SiteSettings } from './services/siteSettingsService';
 import { NotificationPanel, AppNotification } from './components/NotificationPanel';
-import { updatePhotoMeta, updateStoryMeta, resetMeta } from './utils/seo';
 import AdSenseHead from './components/AdSenseHead';
 
 import SelfAdPopup from './components/SelfAdPopup';
@@ -1011,16 +1010,6 @@ const App: React.FC = () => {
     setStories((prev) => prev.map((s) => s.id === story.id ? { ...s, viewCount: s.viewCount + 1 } : s));
     setView('story-detail');
     window.history.pushState({}, '', '/story/' + encodeURIComponent(story.slug));
-    updateStoryMeta({
-      title: story.title,
-      excerpt: story.excerpt,
-      content: story.content,
-      coverImageUrl: story.coverImageUrl,
-      tags: story.tags,
-      photographer: story.photographer,
-      slug: story.slug,
-      createdAt: story.createdAt,
-    });
     window.scrollTo(0, 0);
   }, []);
 
@@ -1356,22 +1345,8 @@ const App: React.FC = () => {
       window.scrollTo(0, 0);
       const photoId = photo.slug || photo.firestoreId || String(photo.id);
       window.history.pushState({}, '', '/photo/' + encodeURIComponent(photoId));
-      updatePhotoMeta({
-        title: photo.title,
-        caption: photo.caption,
-        imageUrl: photo.imageUrl,
-        thumbnailUrl: photo.thumbnailUrl,
-        category: photo.category,
-        photographer: photo.photographer,
-        location: photo.location,
-        tags: photo.tags,
-        animalName: photo.animalName,
-        firestoreId: photo.firestoreId,
-        id: photo.id,
-      });
     } else {
       window.history.pushState({}, '', '/');
-      resetMeta();
     }
   }, []);
 
@@ -1379,7 +1354,6 @@ const App: React.FC = () => {
   const closePhoto = useCallback(() => {
     setSelectedPhoto(null);
     window.history.pushState({}, '', '/');
-    resetMeta();
   }, []);
 
   // ── Helper: Go back from story to home ───────────────────────────────────
@@ -1387,7 +1361,6 @@ const App: React.FC = () => {
     setView('home');
     setSelectedStory(null);
     window.history.pushState({}, '', '/');
-    resetMeta();
   }, []);
 
   // Admin login removed — admin auto-detected by email
