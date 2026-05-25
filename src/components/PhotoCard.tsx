@@ -33,6 +33,8 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, on
   const [imgLoaded, setImgLoaded] = React.useState(false);
   const [imgError, setImgError] = React.useState(false);
 
+  const photoSlug = encodeURIComponent(photo.slug || photo.firestoreId || String(photo.id));
+
   return (
     <div
       className="photo-card"
@@ -45,6 +47,14 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, on
         background: 'var(--wa-dark-card)',
       }}
     >
+
+      <a
+        href={`/photo/${photoSlug}`}
+        onClick={(e) => { e.preventDefault(); onClick(); }}
+        aria-label={`Open photo page for ${photo.title}`}
+        style={{ position: 'absolute', inset: 0, zIndex: 0 }}
+      />
+
       {/* Image */}
       <div
         style={{ aspectRatio: '1/1', position: 'relative', overflow: 'hidden' }}
@@ -113,6 +123,7 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, on
         <div
           className="card-actions"
           style={{
+            zIndex: 3,
             position: 'absolute',
             bottom: 0,
             left: 0,

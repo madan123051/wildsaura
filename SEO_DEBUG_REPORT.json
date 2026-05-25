@@ -1,0 +1,51 @@
+{
+  "generatedAt": "2026-05-25T04:40:24.124Z",
+  "photoRoute": {
+    "status": 200,
+    "meta": {
+      "title": "<title>WILDS AURA — Wildlife & Nature Photography | Madan Shrestha</title>",
+      "canonical": "<link rel=\"canonical\" href=\"https://www.wildsaura.com\" />",
+      "description": "<meta name=\"description\" content=\"WILDS AURA — Stunning wildlife & nature photography by Madan Shrestha. Explore breathtaking photos of wild animals, birds, landscapes, and untold stories from the wild.\" />",
+      "og": [
+        "<meta property=\"og:type\" content=\"website\" />",
+        "<meta property=\"og:site_name\" content=\"WILDS AURA Photography\" />",
+        "<meta property=\"og:title\" content=\"WILDS AURA — Wildlife & Nature Photography\" />",
+        "<meta property=\"og:description\" content=\"Explore stunning wildlife photos, landscapes, and stories from the wild by Madan Shrestha.\" />",
+        "<meta property=\"og:image\" content=\"https://www.wildsaura.com/photos/photo-wildlife.jpeg\" />"
+      ],
+      "twitter": [
+        "<meta name=\"twitter:card\" content=\"summary_large_image\" />",
+        "<meta name=\"twitter:title\" content=\"WILDS AURA — Wildlife & Nature Photography\" />",
+        "<meta name=\"twitter:description\" content=\"Explore stunning wildlife photos, landscapes, and stories from the wild by Madan Shrestha.\" />",
+        "<meta name=\"twitter:image\" content=\"https://www.wildsaura.com/photos/photo-wildlife.jpeg\" />",
+        "<meta name=\"twitter:creator\" content=\"@wildsaura\" />"
+      ],
+      "jsonLdCount": 3,
+      "visibleHeading": ""
+    }
+  },
+  "storyRoute": {
+    "status": 200,
+    "meta": {
+      "title": "<title>WILDS AURA — Wildlife & Nature Photography | Madan Shrestha</title>",
+      "canonical": "<link rel=\"canonical\" href=\"https://www.wildsaura.com\" />",
+      "description": "<meta name=\"description\" content=\"WILDS AURA — Stunning wildlife & nature photography by Madan Shrestha. Explore breathtaking photos of wild animals, birds, landscapes, and untold stories from the wild.\" />",
+      "og": [
+        "<meta property=\"og:type\" content=\"website\" />",
+        "<meta property=\"og:site_name\" content=\"WILDS AURA Photography\" />",
+        "<meta property=\"og:title\" content=\"WILDS AURA — Wildlife & Nature Photography\" />",
+        "<meta property=\"og:description\" content=\"Explore stunning wildlife photos, landscapes, and stories from the wild by Madan Shrestha.\" />",
+        "<meta property=\"og:image\" content=\"https://www.wildsaura.com/photos/photo-wildlife.jpeg\" />"
+      ],
+      "twitter": [
+        "<meta name=\"twitter:card\" content=\"summary_large_image\" />",
+        "<meta name=\"twitter:title\" content=\"WILDS AURA — Wildlife & Nature Photography\" />",
+        "<meta name=\"twitter:description\" content=\"Explore stunning wildlife photos, landscapes, and stories from the wild by Madan Shrestha.\" />",
+        "<meta name=\"twitter:image\" content=\"https://www.wildsaura.com/photos/photo-wildlife.jpeg\" />",
+        "<meta name=\"twitter:creator\" content=\"@wildsaura\" />"
+      ],
+      "jsonLdCount": 3,
+      "visibleHeading": ""
+    }
+  }
+}

@@ -6,12 +6,10 @@
  * are always small and fast-loading for WhatsApp/Facebook/Twitter.
  */
 
-import fs from 'fs';
-import path from 'path';
+import { esc, injectSeoHtml, readBaseHtml, SITE_URL, defaultRobotsMeta } from './seo-render.js';
 
 const FIREBASE_PROJECT_ID = 'wildsaura-1ef8a';
 const FIREBASE_API_KEY = 'AIzaSyCXDJrFmn-pzbqys91tj4Fruqn4tl58p9Y';
-const SITE_URL = 'https://www.wildsaura.com';
 
 async function getStoryFromFirestore(storyId) {
   try {
@@ -62,26 +60,15 @@ function getBestOgImage(story) {
   }
 }
 
-function esc(str) {
-  if (!str) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/\"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
 export default async function handler(req, res) {
-  const storyId = req.query.id;
+  const storyId = req.query.slug || req.query.id;
   if (!storyId) {
     return res.redirect(302, SITE_URL);
   }
 
   let baseHtml = '';
   try {
-    const htmlPath = path.join(process.cwd(), 'dist', 'index.html');
-    baseHtml = fs.readFileSync(htmlPath, 'utf-8');
+    baseHtml = readBaseHtml();
   } catch {
     return res.redirect(302, `${SITE_URL}/?story=${encodeURIComponent(storyId)}`);
   }
@@ -101,6 +88,7 @@ export default async function handler(req, res) {
 
   const metaTags = `
     <title>${esc(title)}</title>
+    ${defaultRobotsMeta()}
     <meta name="description" content="${esc(description)}">
     <link rel="canonical" href="${esc(pageUrl)}">
 
@@ -148,7 +136,17 @@ export default async function handler(req, res) {
     </script>
   `;
 
-  const injectedHtml = baseHtml.replace('</head>', `${metaTags}\n</head>`);
+  const visibleHtml = `
+    <main>
+      <article>
+        <h1>${esc(story.title)}</h1>
+        <img src="${esc(story.coverImage || ogImageUrl)}" alt="${esc(story.title)}" />
+        <p>${esc(description)}</p>
+        <a href="/stories">Browse all stories</a>
+      </article>
+    </main>
+  `;
+  const injectedHtml = injectSeoHtml(baseHtml, metaTags, visibleHtml);
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
