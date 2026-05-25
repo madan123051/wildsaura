@@ -3,14 +3,40 @@
   "outputDirectory": "dist",
   "framework": "vite",
   "functions": {
-    "api/og-photo.js": { "includeFiles": "dist/index.html" },
-    "api/og-story.js": { "includeFiles": "dist/index.html" }
+    "api/og-photo.js": {
+      "includeFiles": "dist/index.html"
+    },
+    "api/og-story.js": {
+      "includeFiles": "dist/index.html"
+    },
+    "api/og-category.js": {
+      "includeFiles": "dist/index.html"
+    }
   },
   "rewrites": [
-    { "source": "/photo/:id", "destination": "/api/og-photo?id=:id" },
-    { "source": "/story/:slug", "destination": "/api/og-story?slug=:slug" },
-    { "source": "/sitemap.xml", "destination": "/api/sitemap" },
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
+    {
+      "source": "/photo/:id",
+      "destination": "/api/og-photo?id=:id"
+    },
+    {
+      "source": "/story/:slug",
+      "destination": "/api/og-story?slug=:slug"
+    },
+    {
+      "source": "/category/:slug",
+      "destination": "/api/og-category?slug=:slug"
+    },
+    {
+      "source": "/sitemap.xml",
+      "destination": "/api/sitemap"
+    },
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
   ]
 }
