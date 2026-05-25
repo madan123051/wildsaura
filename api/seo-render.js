@@ -24,6 +24,7 @@ export function stripSeoTags(html) {
     .replace(/<meta\s+name="twitter:[^"]*"\s+content="[^"]*"\s*\/?>/gi, '')
     .replace(/<meta\s+name="description"\s+content="[^"]*"\s*\/?>/gi, '')
     .replace(/<link\s+rel="canonical"\s+href="[^"]*"\s*\/?>/gi, '')
+    .replace(/<script[^>]*application\/ld\+json[^>]*>[\s\S]*?<\/script>/gi, '')
     .replace(/<title>[^<]*<\/title>/i, '');
 }
 

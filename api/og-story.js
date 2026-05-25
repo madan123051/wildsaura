@@ -76,9 +76,24 @@ export default async function handler(req, res) {
   const story = await getStoryFromFirestore(storyId);
 
   if (!story) {
+    const pageUrl = `${SITE_URL}/story/${encodeURIComponent(storyId)}`;
+    const metaTags = `
+      <title>Wildlife Story — WILDS AURA Stories</title>
+      ${defaultRobotsMeta()}
+      <meta name="description" content="Read wildlife stories on WILDS AURA.">
+      <link rel="canonical" href="${esc(pageUrl)}">
+      <meta property="og:title" content="Wildlife Story — WILDS AURA Stories">
+      <meta property="og:description" content="Read wildlife stories on WILDS AURA.">
+      <meta property="og:url" content="${esc(pageUrl)}">
+      <meta property="og:image" content="${SITE_URL}/photos/photo-wildlife.jpeg">
+      <meta name="twitter:card" content="summary_large_image">
+    `;
+    const visibleHtml = `
+      <main><article><h1>Wildlife Story</h1><img src="${SITE_URL}/photos/photo-wildlife.jpeg" alt="Wildlife Story" /><p>This story page is temporarily unavailable, but more stories are available in our collection.</p><p><a href="/story-grid">Browse all stories</a></p><p><a href="/">Return to homepage</a></p></article></main>`;
+    const injectedHtml = injectSeoHtml(baseHtml, metaTags, visibleHtml);
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'no-cache');
-    return res.status(200).send(baseHtml);
+    return res.status(200).send(injectedHtml);
   }
 
   const pageUrl = `${SITE_URL}/story/${encodeURIComponent(storyId)}`;

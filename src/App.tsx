@@ -348,7 +348,7 @@ const App: React.FC = () => {
   }, []);
 
   // ── Deep Link State ──────────────────────────────────────────────────────
-  const [pendingPhotoId, setPendingPhotoId] = useState<string | null>(() => {
+  const [pendingPhotoSlug, setPendingPhotoSlug] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null;
     // Check /photo/:id path OR ?photo= query param (from OG redirect)
     const m = window.location.pathname.match(/^\/photo\/(.+)$/);
@@ -414,12 +414,12 @@ const App: React.FC = () => {
         const allPhotos = [...updatedFirestore, ...samples];
 
         // Deep link: auto-open photo if pending (only on first snapshot)
-        if (isFirstPhotoSnap && pendingPhotoId) {
+        if (isFirstPhotoSnap && pendingPhotoSlug) {
           const matchedPhoto = allPhotos.find(p =>
-            p.slug === pendingPhotoId || p.firestoreId === pendingPhotoId || String(p.id) === pendingPhotoId
+            p.slug === pendingPhotoSlug
           );
           if (matchedPhoto) {
-            setTimeout(() => { setSelectedPhoto(matchedPhoto); setPendingPhotoId(null); }, 100);
+            setTimeout(() => { setSelectedPhoto(matchedPhoto); setPendingPhotoSlug(null); }, 100);
           }
         }
         isFirstPhotoSnap = false;
@@ -427,12 +427,12 @@ const App: React.FC = () => {
       });
     }, (err) => {
       console.warn('Photo subscription error, falling back to samples:', err);
-      if (pendingPhotoId) {
+      if (pendingPhotoSlug) {
         const matchedPhoto = SAMPLE_PHOTOS.find(p =>
-          p.slug === pendingPhotoId || String(p.id) === pendingPhotoId || p.firestoreId === pendingPhotoId
+          p.slug === pendingPhotoSlug
         );
         if (matchedPhoto) {
-          setTimeout(() => { setSelectedPhoto(matchedPhoto); setPendingPhotoId(null); }, 100);
+          setTimeout(() => { setSelectedPhoto(matchedPhoto); setPendingPhotoSlug(null); }, 100);
         }
       }
     });
@@ -646,8 +646,8 @@ const App: React.FC = () => {
         setSelectedStory(null);
         setView('home');
       } else if (path.startsWith('/photo/')) {
-        const photoId = decodeURIComponent(path.replace('/photo/', ''));
-        const matchedPhoto = photos.find(p => p.slug === photoId || p.firestoreId === photoId || String(p.id) === photoId);
+        const photoSlug = decodeURIComponent(path.replace('/photo/', ''));
+        const matchedPhoto = photos.find(p => p.slug === photoSlug);
         if (matchedPhoto) {
           setSelectedPhoto(matchedPhoto);
         }
