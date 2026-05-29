@@ -75,6 +75,12 @@ const POST_CATEGORIES = [
   { value: 'tips', label: '📸 Photography Tips' },
   { value: 'other', label: '✨ Other' },
 ];
+const NAV_SITES = [
+  { label: 'Drishya', href: 'https://drishya.wildsaura.com', emoji: '📸' },
+  { label: 'Market', href: 'https://market.wildsaura.com', emoji: '🛒' },
+  { label: 'Community Hub', href: 'https://community.wildsaura.com', emoji: '🌿' },
+];
+
 
 // Simple QR code component
 function QRCode({ url, size = 180 }: { url: string; size?: number }) {
@@ -595,15 +601,17 @@ export function CommunityPage({
   const s: Record<string, React.CSSProperties> = {
     page: { minHeight: '100vh', background: 'var(--wa-bg, #0b0c0e)', display: 'flex', flexDirection: 'column', fontFamily: "'Segoe UI', 'Inter', system-ui, sans-serif" },
 
-    // ── Compact Community Header ──
+    // ── Community Header (Glassmorphism) ──
     communityHeader: {
       position: 'sticky' as const,
       top: 0,
       zIndex: 100,
-      background: 'linear-gradient(180deg, rgba(11,12,14,0.98) 0%, rgba(11,12,14,0.95) 100%)',
-      backdropFilter: 'blur(12px)',
-      borderBottom: '1px solid rgba(212,163,115,0.15)',
-      padding: '0.6rem 1rem',
+      background: 'rgba(11,12,14,0.92)',
+      backdropFilter: 'blur(20px)',
+      WebkitBackdropFilter: 'blur(20px)',
+      borderBottom: '1px solid rgba(212,163,115,0.12)',
+      boxShadow: '0 4px 24px rgba(0,0,0,0.4)',
+      padding: '0.7rem 1rem',
     },
     headerRow: {
       display: 'flex',
@@ -889,28 +897,42 @@ export function CommunityPage({
 
   return (
     <div style={s.page}>
-      {/* ── Compact Community Header ── */}
+      {/* ── Top Nav Strip ── */}
+      <div style={{ background: 'rgba(5,6,8,0.95)', borderBottom: '1px solid rgba(212,163,115,0.08)', padding: '0.35rem 1rem' }}>
+        <div style={{ maxWidth: 700, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', gap: '0.15rem' }}>
+            {NAV_SITES.map(site => (
+              <a key={site.href} href={site.href} target="_blank" rel="noopener noreferrer"
+                style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#8a8f98', fontSize: '0.72rem', fontWeight: 500, textDecoration: 'none', padding: '0.2rem 0.55rem', borderRadius: 20 }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#d4a373'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#8a8f98'; }}>
+                <span>{site.emoji}</span> {site.label}
+              </a>
+            ))}
+          </div>
+          <span style={{ fontSize: '0.7rem', color: 'rgba(212,163,115,0.45)', letterSpacing: '0.08em', fontWeight: 600, textTransform: 'uppercase' }}>wildsaura.com</span>
+        </div>
+      </div>
+
+      {/* ── Community Header (Glassmorphism) ── */}
       <div style={s.communityHeader}>
         <div style={s.headerRow}>
           <div style={s.headerLeft}>
-            <button style={s.backArrow} onClick={onBack} title="Back to Home">
-              ←
-            </button>
-            <span style={s.headerTitle}>🌿 WildSaura Community</span>
-            <div
-              style={s.memberBadge}
-              onClick={() => setShowMembersModal(true)}
-              title="View members"
-            >
-              <span>👥</span>
-              <span>{memberCount}</span>
+            <button style={s.backArrow} onClick={onBack} title="Back to Home">←</button>
+            <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg, #1a1200, #2e1f00)', border: '1.5px solid rgba(212,163,115,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', flexShrink: 0 }}>🌿</div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: '0.98rem', fontWeight: 800, background: 'linear-gradient(135deg, #d4a373 0%, #e9c46a 50%, #d4a373 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', whiteSpace: 'nowrap' as const }}>WildSaura</div>
+              <div style={{ fontSize: '0.65rem', color: 'rgba(212,163,115,0.5)', fontWeight: 500, letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>Community</div>
+            </div>
+            <div style={s.memberBadge} onClick={() => setShowMembersModal(true)} title="View members">
+              <span>👥</span><span>{memberCount}</span>
             </div>
           </div>
 
           <div style={s.headerRight}>
             {visitor ? (
               isMember ? (
-                <span style={{ ...s.headerBtn, ...s.joinedHeaderBadge }}>✅</span>
+                <span style={{ ...s.headerBtn, ...s.joinedHeaderBadge }}>✅ Member</span>
               ) : (
                 <button
                   style={{ ...s.headerBtn, ...s.joinHeaderBtn, opacity: joining ? 0.7 : 1 }}
