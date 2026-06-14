@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 
 export type Theme = 'light' | 'dark' | 'system';
+const THEMES: Theme[] = ['light', 'dark', 'system'];
 
 function applyTheme(theme: Theme) {
   if (typeof document === 'undefined') return;
@@ -13,8 +14,9 @@ function applyTheme(theme: Theme) {
 
 export function useTheme() {
   const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof window === 'undefined') return 'system';
-    return (localStorage.getItem('wa_theme') as Theme) || 'system';
+    if (typeof window === 'undefined') return 'dark';
+    const saved = localStorage.getItem('wa_theme') as Theme | null;
+    return saved && THEMES.includes(saved) ? saved : 'dark';
   });
 
   useEffect(() => {

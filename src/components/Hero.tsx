@@ -12,12 +12,12 @@ interface HeroProps {
 const DEFAULT_HERO = '/photos/tiger-hero.jpg';
 
 const C = {
-  natgeoYellow: '#9fcb8f',
-  parchment:    '#e8f5e9',
-  sage:         '#9fcb8f',
+  natgeoYellow: '#d4b96e',
+  parchment:    '#f7f4e8',
+  sage:         '#bfd1b7',
   himalBlue:    '#8DC3D8',
-  muted:        'rgba(159,203,143,0.65)',
-  bg:           '#0c1e16',
+  muted:        'rgba(191,209,183,0.72)',
+  bg:           '#08120e',
 };
 
 function getNPTDate(): { dateStr: string; timeStr: string } {

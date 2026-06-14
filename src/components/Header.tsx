@@ -23,7 +23,7 @@ interface HeaderProps {
   onCommunityClick?: () => void;
 }
 
-const THEME_CYCLE: Theme[] = ['system', 'light', 'dark'];
+const THEME_CYCLE: Theme[] = ['dark', 'light', 'system'];
 
 function ThemeIcon({ theme }: { theme: Theme }) {
   if (theme === 'light') return <Sun size={17} />;
@@ -70,15 +70,16 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header
+      className={`site-header ${scrolled ? 'is-scrolled' : 'is-top'}`}
       style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50,
-        transition: 'all 0.5s',
+        transition: 'background 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease',
         background: scrolled
           ? 'var(--wa-nav-bg-scrolled)'
           : 'var(--wa-nav-bg-top)',
-        backdropFilter: 'blur(12px)',
+        backdropFilter: 'blur(16px) saturate(1.08)',
         borderBottom: scrolled ? '1px solid var(--wa-dropdown-border)' : '1px solid transparent',
-        boxShadow: scrolled ? '0 4px 30px rgba(0,0,0,0.18)' : 'none',
+        boxShadow: scrolled ? '0 10px 34px rgba(0,0,0,0.2)' : '0 3px 20px rgba(0,0,0,0.12)',
       }}
     >
       <div className="wa-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '72px' }}>
@@ -95,19 +96,24 @@ export const Header: React.FC<HeaderProps> = ({
         >
           {logoUrl && (
             <img
-              src={logoUrl} alt="Wilds Aura"
-              style={{ height: 52, width: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 0 10px rgba(79,159,98,0.35))' }}
+              src={logoUrl}
+              alt="WILDS AURA Photography"
+              width={360}
+              height={320}
+              decoding="async"
+              className="site-logo"
             />
           )}
         </a>
 
         {/* Right: Icons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <div className="site-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
 
           {/* ── Theme Toggle ── */}
           <button
             onClick={cycleTheme}
             title={`Theme: ${themeLabel(theme)} — click to switch`}
+            aria-label={`Current theme: ${themeLabel(theme)}. Switch theme`}
             style={{
               background: 'none',
               border: '1px solid var(--wa-border)',
@@ -159,6 +165,7 @@ export const Header: React.FC<HeaderProps> = ({
           {onNotificationClick && (
             <button
               onClick={onNotificationClick}
+              aria-label="Open notifications"
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
                 color: 'var(--wa-nav-icon)', padding: '0.4rem',
@@ -186,6 +193,7 @@ export const Header: React.FC<HeaderProps> = ({
           {onSearchClick && (
             <button
               onClick={onSearchClick}
+              aria-label="Open search"
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
                 color: 'var(--wa-nav-icon)', padding: '0.4rem',
@@ -200,6 +208,8 @@ export const Header: React.FC<HeaderProps> = ({
 
           <button
             onClick={() => setMenuOpen(!menuOpen)}
+            aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            aria-expanded={menuOpen}
             style={{
               background: 'none', border: 'none',
               color: 'var(--wa-nav-icon)', cursor: 'pointer', padding: '0.4rem',
