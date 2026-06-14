@@ -29,7 +29,7 @@ interface PhotoCardProps {
 }
 
 export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, onShare, onDownload, isLoggedIn: _isLoggedIn, onLoginRequired: _onLoginRequired }) => {
-  const gated = (action: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); action(); };
+  const gated = (action: () => void) => (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); action(); };
   const [imgLoaded, setImgLoaded] = React.useState(false);
   const [imgError, setImgError] = React.useState(false);
 
@@ -50,9 +50,9 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, on
 
       <a
         href={`/photo/${photoSlug}`}
-        onClick={() => onClick()}
+        onClick={(e) => { e.preventDefault(); onClick(); }}
         aria-label={`Open photo page for ${photo.title}`}
-        style={{ position: 'absolute', inset: 0, zIndex: 0 }}
+        style={{ position: 'absolute', inset: 0, zIndex: 2 }}
       />
 
       {/* Image */}
@@ -86,7 +86,7 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, on
           }}
         />
         {/* Transparent overlay to block right-click save */}
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 }} />
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: 'none' }} />
         {/* Watermark badge */}
         <span
           className="font-cinzel"
@@ -124,7 +124,7 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, on
         <div
           className="card-actions"
           style={{
-            zIndex: 3,
+            zIndex: 5,
             position: 'absolute',
             bottom: 0,
             left: 0,
