@@ -1457,6 +1457,7 @@ const App: React.FC = () => {
     if (photo) {
       setPhotos((prev) => prev.map((p) => p.id === photo.id ? { ...p, viewCount: (p.viewCount || 0) + 1 } : p));
       recordView('photo', photo.firestoreId);
+      window.scrollTo(0, 0);
       const photoId = photo.slug || photo.firestoreId || String(photo.id);
       window.history.pushState({}, '', '/photo/' + encodeURIComponent(photoId));
     } else {
