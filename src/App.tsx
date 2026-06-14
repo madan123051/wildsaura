@@ -447,7 +447,7 @@ const App: React.FC = () => {
         const updatedFirestore = mapped.map(m => {
           const existing = existingMap.get(m.firestoreId);
           if (existing) {
-            return { ...m, liked: existing.liked, id: existing.id };
+            return { ...m, liked: existing.liked, id: existing.id, viewCount: Math.max(m.viewCount || 0, existing.viewCount || 0) };
           }
           return m;
         });
@@ -457,7 +457,11 @@ const App: React.FC = () => {
         if (isFirstPhotoSnap && pendingPhotoSlug) {
           const matchedPhoto = allPhotos.find(p => matchesPhotoRoute(p, pendingPhotoSlug));
           if (matchedPhoto) {
-            setTimeout(() => { setSelectedPhoto(matchedPhoto); setPendingPhotoSlug(null); }, 100);
+            setTimeout(() => {
+              setSelectedPhoto({ ...matchedPhoto, viewCount: (matchedPhoto.viewCount || 0) + 1 });
+              setPhotos(current => current.map(p => p.id === matchedPhoto.id ? { ...p, viewCount: (p.viewCount || 0) + 1 } : p));
+              setPendingPhotoSlug(null);
+            }, 100);
           }
         }
         isFirstPhotoSnap = false;
@@ -468,7 +472,7 @@ const App: React.FC = () => {
       if (pendingPhotoSlug) {
         const matchedPhoto = SAMPLE_PHOTOS.find(p => matchesPhotoRoute(p, pendingPhotoSlug));
         if (matchedPhoto) {
-          setTimeout(() => { setSelectedPhoto(matchedPhoto); setPendingPhotoSlug(null); }, 100);
+          setTimeout(() => { setSelectedPhoto({ ...matchedPhoto, viewCount: (matchedPhoto.viewCount || 0) + 1 }); setPendingPhotoSlug(null); }, 100);
         }
       }
     });
@@ -497,7 +501,7 @@ const App: React.FC = () => {
         const updatedFirestore = mapped.map(m => {
           const existing = existingMap.get(m.firestoreId);
           if (existing) {
-            return { ...m, liked: existing.liked, id: existing.id };
+            return { ...m, liked: existing.liked, id: existing.id, viewCount: Math.max(m.viewCount || 0, existing.viewCount || 0) };
           }
           return m;
         });
@@ -572,7 +576,7 @@ const App: React.FC = () => {
         const allVideos = mapped.map(m => {
           const existing = existingMap.get(m.firestoreId);
           if (existing) {
-            return { ...m, liked: existing.liked, id: existing.id };
+            return { ...m, liked: existing.liked, id: existing.id, viewCount: Math.max(m.viewCount || 0, existing.viewCount || 0) };
           }
           return m;
         });
@@ -580,7 +584,8 @@ const App: React.FC = () => {
           const matchedVideo = allVideos.find((video) => matchesVideoRoute(video, pendingVideoId));
           if (matchedVideo) {
             setTimeout(() => {
-              setSelectedVideo(matchedVideo);
+              setSelectedVideo({ ...matchedVideo, viewCount: (matchedVideo.viewCount || 0) + 1 });
+              setVideos(current => current.map(v => v.id === matchedVideo.id ? { ...v, viewCount: (v.viewCount || 0) + 1 } : v));
               setView('video-detail');
               setPendingVideoId(null);
             }, 100);
@@ -681,20 +686,21 @@ const App: React.FC = () => {
     }
   }, [userLikes]);
 
+  const recordView = useCallback((type: 'photo' | 'story' | 'video', firestoreId?: string) => {
+    if (!firestoreId) return;
+    const key = `${type}_${firestoreId}`;
+    if (viewedTargetsRef.current.has(key)) return;
+    viewedTargetsRef.current.add(key);
+    if (type === 'photo') incrementPhotoCounter(firestoreId, 'viewCount', 1).catch(err => console.warn('Photo view save failed:', err));
+    if (type === 'story') incrementStoryCounter(firestoreId, 'viewCount', 1).catch(err => console.warn('Story view save failed:', err));
+    if (type === 'video') incrementVideoCounter(firestoreId, 'viewCount', 1).catch(err => console.warn('Video view save failed:', err));
+  }, []);
+
   useEffect(() => {
-    const persistView = (type: 'photo' | 'story' | 'video', firestoreId?: string) => {
-      if (!firestoreId) return;
-      const key = `${type}_${firestoreId}`;
-      if (viewedTargetsRef.current.has(key)) return;
-      viewedTargetsRef.current.add(key);
-      if (type === 'photo') incrementPhotoCounter(firestoreId, 'viewCount', 1).catch(err => console.warn('Photo view save failed:', err));
-      if (type === 'story') incrementStoryCounter(firestoreId, 'viewCount', 1).catch(err => console.warn('Story view save failed:', err));
-      if (type === 'video') incrementVideoCounter(firestoreId, 'viewCount', 1).catch(err => console.warn('Video view save failed:', err));
-    };
-    persistView('photo', selectedPhoto?.firestoreId);
-    persistView('story', selectedStory?.firestoreId);
-    persistView('video', selectedVideo?.firestoreId);
-  }, [selectedPhoto?.firestoreId, selectedStory?.firestoreId, selectedVideo?.firestoreId]);
+    recordView('photo', selectedPhoto?.firestoreId);
+    recordView('story', selectedStory?.firestoreId);
+    recordView('video', selectedVideo?.firestoreId);
+  }, [recordView, selectedPhoto?.firestoreId, selectedStory?.firestoreId, selectedVideo?.firestoreId]);
 
   // ── Popstate Listener (Browser Back/Forward) ─────────────────────────────
   useEffect(() => {
@@ -716,7 +722,8 @@ const App: React.FC = () => {
         const photoSlug = decodeURIComponent(path.replace('/photo/', ''));
         const matchedPhoto = photos.find(p => matchesPhotoRoute(p, photoSlug));
         if (matchedPhoto) {
-          setSelectedPhoto(matchedPhoto);
+          setSelectedPhoto({ ...matchedPhoto, viewCount: (matchedPhoto.viewCount || 0) + 1 });
+          setPhotos(prev => prev.map(p => p.id === matchedPhoto.id ? { ...p, viewCount: (p.viewCount || 0) + 1 } : p));
         }
       } else if (path === '/terms') {
         setView('terms');
@@ -724,7 +731,8 @@ const App: React.FC = () => {
         const videoId = decodeURIComponent(path.replace('/video/', ''));
         const matchedVideo = videos.find((video) => matchesVideoRoute(video, videoId));
         if (matchedVideo) {
-          setSelectedVideo(matchedVideo);
+          setSelectedVideo({ ...matchedVideo, viewCount: (matchedVideo.viewCount || 0) + 1 });
+          setVideos(prev => prev.map(v => v.id === matchedVideo.id ? { ...v, viewCount: (v.viewCount || 0) + 1 } : v));
           setView('video-detail');
         }
       } else if (path.startsWith('/story/')) {
@@ -736,7 +744,8 @@ const App: React.FC = () => {
 
         const matchedStory = stories.find(s => matchesStoryRoute(s, slug));
         if (matchedStory) {
-          setSelectedStory({ ...matchedStory, viewCount: matchedStory.viewCount + 1 });
+          setSelectedStory({ ...matchedStory, viewCount: (matchedStory.viewCount || 0) + 1 });
+          setStories(prev => prev.map(s => s.id === matchedStory.id ? { ...s, viewCount: (s.viewCount || 0) + 1 } : s));
           setView('story-detail');
         }
       }
@@ -746,13 +755,14 @@ const App: React.FC = () => {
     if (currentStorySlug && !selectedStory) {
       const matchedStory = stories.find(s => matchesStoryRoute(s, currentStorySlug));
       if (matchedStory) {
-        setSelectedStory({ ...matchedStory, viewCount: matchedStory.viewCount + 1 });
+        setSelectedStory({ ...matchedStory, viewCount: (matchedStory.viewCount || 0) + 1 });
+        setStories(prev => prev.map(s => s.id === matchedStory.id ? { ...s, viewCount: (s.viewCount || 0) + 1 } : s));
         setView('story-detail');
       }
     }
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
-  }, [photos, stories, videos]);
+  }, [photos, recordView, stories, videos]);
 
   // ── Scroll to top on every view/page change ──
   useEffect(() => {
@@ -1096,21 +1106,23 @@ const App: React.FC = () => {
   const handleStoryClick = useCallback((story: Story) => {
     setSelectedStory({ ...story, viewCount: story.viewCount + 1 });
     setStories((prev) => prev.map((s) => s.id === story.id ? { ...s, viewCount: s.viewCount + 1 } : s));
+    recordView('story', story.firestoreId);
     setView('story-detail');
     const storyToken = story.slug || story.firestoreId || String(story.id);
     window.history.pushState({}, '', '/story/' + encodeURIComponent(storyToken));
     window.scrollTo(0, 0);
-  }, []);
+  }, [recordView]);
 
   const handleVideoClick = useCallback((video: Video) => {
     const updated = { ...video, viewCount: (video.viewCount || 0) + 1 };
     setSelectedVideo(updated);
     setVideos((prev) => prev.map((v) => v.id === video.id ? { ...v, viewCount: (v.viewCount || 0) + 1 } : v));
+    recordView('video', video.firestoreId);
     setView('video-detail');
     const videoToken = video.firestoreId || String(video.id);
     window.history.pushState({}, '', '/video/' + encodeURIComponent(videoToken));
     window.scrollTo(0, 0);
-  }, []);
+  }, [recordView]);
 
   const handleStoryLike = useCallback(() => {
     if (!selectedStory) return;
@@ -1442,13 +1454,14 @@ const App: React.FC = () => {
     setSelectedPhoto(updatedPhoto);
     if (photo) {
       setPhotos((prev) => prev.map((p) => p.id === photo.id ? { ...p, viewCount: (p.viewCount || 0) + 1 } : p));
+      recordView('photo', photo.firestoreId);
       window.scrollTo(0, 0);
       const photoId = photo.slug || photo.firestoreId || String(photo.id);
       window.history.pushState({}, '', '/photo/' + encodeURIComponent(photoId));
     } else {
       window.history.pushState({}, '', '/');
     }
-  }, []);
+  }, [recordView]);
 
   // ── Helper: Close Photo Modal ────────────────────────────────────────────
   const closePhoto = useCallback(() => {

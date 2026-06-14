@@ -19,6 +19,7 @@ import { getSiteSettings, saveSiteSettings, uploadHeroImage, uploadDefaultThumbn
 import { applyWatermark, bakeWatermarkOnFile } from '../utils/watermark';
 import { uploadVideoToStorage, uploadVideoThumbnailToStorage } from '../services/videoService';
 import { compressImageForAI, compressForUpload, generateThumbnail } from '../utils/imageCompressor';
+import { processGalleryImage } from '../utils/galleryImageProcessor';
 import { compressVideoForUpload } from '../utils/videoCompressor';
 import { readExifFromFile } from '../utils/exifReader';
 import { subscribeToContactMessages, deleteContactMessage, ContactMessage } from '../services/contactService';
@@ -1980,55 +1981,8 @@ const GalleryManagement: React.FC = () => {
   }, []);
 
   const handleFiles = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    // ── Inline image processor: compress + © WildSaura watermark + WebP ──
-    const processImage = async (file: File): Promise<{ blob: Blob; filename: string; width: number; height: number; format: 'webp' | 'jpeg'; sizeBytes: number }> => {
-      const compressed = await compressForUpload(file);
-      const url = URL.createObjectURL(compressed);
-      const img: HTMLImageElement = await new Promise((resolve, reject) => {
-        const i = document.createElement('img');
-        i.onload = () => resolve(i);
-        i.onerror = () => reject(new Error('Could not decode image'));
-        i.decoding = 'async';
-        i.src = url;
-      });
-      try {
-        const MAX_W = 2400;
-        const ratio = img.naturalWidth > MAX_W ? MAX_W / img.naturalWidth : 1;
-        const w = Math.round(img.naturalWidth * ratio);
-        const h = Math.round(img.naturalHeight * ratio);
-        const canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) throw new Error('Canvas not supported');
-        ctx.imageSmoothingEnabled = true;
-        (ctx as any).imageSmoothingQuality = 'high';
-        ctx.drawImage(img, 0, 0, w, h);
-        const fontSize = Math.max(16, Math.min(48, Math.round(Math.max(w, h) * 0.022)));
-        ctx.save();
-        ctx.font = `600 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-        ctx.textBaseline = 'bottom';
-        ctx.textAlign = 'right';
-        ctx.globalAlpha = 0.55;
-        ctx.shadowColor = 'rgba(0,0,0,0.6)';
-        ctx.shadowBlur = 4;
-        ctx.shadowOffsetY = 1;
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText('© WildSaura', w - 24, h - 24);
-        ctx.restore();
-        const toBlob = (type: string, q: number) => new Promise<Blob | null>(res => { try { canvas.toBlob(b => res(b), type, q); } catch { res(null); } });
-        let blob = await toBlob('image/webp', 0.82);
-        let format: 'webp' | 'jpeg' = 'webp';
-        if (blob && blob.size > 2 * 1024 * 1024) blob = await toBlob('image/webp', 0.72);
-        if (blob && blob.size > 2 * 1024 * 1024) blob = await toBlob('image/webp', 0.62);
-        if (!blob) blob = await toBlob('image/webp', 0.78);
-        if (!blob) { blob = await toBlob('image/jpeg', 0.85); format = 'jpeg'; }
-        if (!blob) throw new Error('Image encoding failed');
-        const baseName = file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9._-]/g, '_');
-        return { blob, filename: `${baseName}.${format}`, width: w, height: h, format, sizeBytes: blob.size };
-      } finally {
-        URL.revokeObjectURL(url);
-      }
-    };
+    // ── Gallery image processor: compress + © WildSaura watermark + WebP (max 700KB target) ──
+    const processImage = processGalleryImage;
 
     const selectedFiles = Array.from(event.target.files || []).filter(file => file.type.startsWith('image/'));
     event.target.value = '';
