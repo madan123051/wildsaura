@@ -53,13 +53,17 @@ export const Footer: React.FC<FooterProps> = ({ logoUrl, onTermsClick }) => {
           {onTermsClick && (
             <>
               <span className="text-wa-muted" style={{ fontSize: '0.7rem' }}>|</span>
-              <button
-                onClick={onTermsClick}
+              <a
+                href="/terms"
+                onClick={(e) => {
+                  e.preventDefault();
+                  onTermsClick();
+                }}
                 className="nav-link"
-                style={{ fontSize: '0.65rem', letterSpacing: '0.12em', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                style={{ fontSize: '0.65rem', letterSpacing: '0.12em', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'none' }}
               >
                 Terms & Conditions
-              </button>
+              </a>
             </>
           )}
         </div>

@@ -44,6 +44,20 @@ const ADMIN_EMAIL = 'madan123050@gmail.com';
 
 
 const safeLower = (value: unknown) => (typeof value === 'string' ? value.toLowerCase().trim() : '');
+const normalizeRouteToken = (value: unknown) =>
+  typeof value === 'string'
+    ? value.trim().toLowerCase().replace(/^\/+|\/+$/g, '')
+    : String(value ?? '').trim().toLowerCase();
+const matchesPhotoRoute = (photo: Photo, token: string) => {
+  const target = normalizeRouteToken(token);
+  if (!target) return false;
+  return [photo.slug, photo.firestoreId, photo.id].some((value) => normalizeRouteToken(value) === target);
+};
+const matchesStoryRoute = (story: Story, token: string) => {
+  const target = normalizeRouteToken(token);
+  if (!target) return false;
+  return [story.slug, story.firestoreId, story.id].some((value) => normalizeRouteToken(value) === target);
+};
 
 // ── Sample Photo Data ───────────────────────────────────────────────────────
 const SAMPLE_PHOTOS: Photo[] = [
@@ -423,9 +437,7 @@ const App: React.FC = () => {
 
         // Deep link: auto-open photo if pending (only on first snapshot)
         if (isFirstPhotoSnap && pendingPhotoSlug) {
-          const matchedPhoto = allPhotos.find(p =>
-            p.slug === pendingPhotoSlug
-          );
+          const matchedPhoto = allPhotos.find(p => matchesPhotoRoute(p, pendingPhotoSlug));
           if (matchedPhoto) {
             setTimeout(() => { setSelectedPhoto(matchedPhoto); setPendingPhotoSlug(null); }, 100);
           }
@@ -436,9 +448,7 @@ const App: React.FC = () => {
     }, (err) => {
       console.warn('Photo subscription error, falling back to samples:', err);
       if (pendingPhotoSlug) {
-        const matchedPhoto = SAMPLE_PHOTOS.find(p =>
-          p.slug === pendingPhotoSlug
-        );
+        const matchedPhoto = SAMPLE_PHOTOS.find(p => matchesPhotoRoute(p, pendingPhotoSlug));
         if (matchedPhoto) {
           setTimeout(() => { setSelectedPhoto(matchedPhoto); setPendingPhotoSlug(null); }, 100);
         }
@@ -481,7 +491,7 @@ const App: React.FC = () => {
 
         // Deep link: auto-open story if pending (only on first snapshot)
         if (isFirstStorySnap && pendingStorySlug) {
-          const matchedStory = allStories.find(s => s.slug === pendingStorySlug);
+          const matchedStory = allStories.find(s => matchesStoryRoute(s, pendingStorySlug));
           if (matchedStory) {
             setTimeout(() => {
               setSelectedStory({ ...matchedStory, viewCount: matchedStory.viewCount + 1 });
@@ -496,7 +506,7 @@ const App: React.FC = () => {
     }, (err) => {
       console.warn('Story subscription error:', err);
       if (pendingStorySlug) {
-        const matchedStory = SAMPLE_STORIES.find(s => s.slug === pendingStorySlug);
+        const matchedStory = SAMPLE_STORIES.find(s => matchesStoryRoute(s, pendingStorySlug));
         if (matchedStory) {
           setTimeout(() => {
             setSelectedStory({ ...matchedStory, viewCount: matchedStory.viewCount + 1 });
@@ -655,7 +665,7 @@ const App: React.FC = () => {
         setView('home');
       } else if (path.startsWith('/photo/')) {
         const photoSlug = decodeURIComponent(path.replace('/photo/', ''));
-        const matchedPhoto = photos.find(p => p.slug === photoSlug);
+        const matchedPhoto = photos.find(p => matchesPhotoRoute(p, photoSlug));
         if (matchedPhoto) {
           setSelectedPhoto(matchedPhoto);
         }
@@ -668,7 +678,7 @@ const App: React.FC = () => {
           return;
         }
 
-        const matchedStory = stories.find(s => s.slug === slug);
+        const matchedStory = stories.find(s => matchesStoryRoute(s, slug));
         if (matchedStory) {
           setSelectedStory({ ...matchedStory, viewCount: matchedStory.viewCount + 1 });
           setView('story-detail');
@@ -678,7 +688,7 @@ const App: React.FC = () => {
 
     const currentStorySlug = getStorySlugFromPath(window.location.pathname);
     if (currentStorySlug && !selectedStory) {
-      const matchedStory = stories.find(s => s.slug === currentStorySlug);
+      const matchedStory = stories.find(s => matchesStoryRoute(s, currentStorySlug));
       if (matchedStory) {
         setSelectedStory({ ...matchedStory, viewCount: matchedStory.viewCount + 1 });
         setView('story-detail');
@@ -746,8 +756,14 @@ const App: React.FC = () => {
   }, [isPullRefreshing, view]);
 
   const scrollToGallery = useCallback(() => {
+    if (view !== 'home') {
+      setView('photo-grid');
+      window.history.pushState({}, '', '/photos');
+      window.scrollTo(0, 0);
+      return;
+    }
     galleryRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, []);
+  }, [view]);
 
   const handleCategoryClick = useCallback((key: string) => {
     setSelectedCategory(key);
@@ -1325,11 +1341,10 @@ const App: React.FC = () => {
   }, []);
 
   const handleStoriesNavClick = useCallback(() => {
-    if (view !== 'home') setView('home');
-    setTimeout(() => {
-      document.getElementById('stories')?.scrollIntoView({ behavior: 'smooth' });
-    }, 100);
-  }, [view]);
+    setView('story-grid');
+    window.history.pushState({}, '', '/story-grid');
+    window.scrollTo(0, 0);
+  }, []);
 
   const handleProfileClick = useCallback(() => {
     setShowProfile(true);

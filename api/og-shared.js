@@ -38,6 +38,22 @@ export function buildMetaTags({ type = 'article', title, description, pageUrl, o
   `;
 }
 
+export function buildNoindexMetaTags({ title, description, pageUrl, ogImageUrl }) {
+  const img = ogImageUrl || DEFAULT_OG_IMAGE;
+  return `
+    <title>${esc(title)}</title>
+    <meta name="robots" content="noindex,nofollow">
+    <meta name="description" content="${esc(description)}">
+    <link rel="canonical" href="${esc(pageUrl)}">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="WILDS AURA Photography">
+    <meta property="og:title" content="${esc(title)}">
+    <meta property="og:description" content="${esc(description)}">
+    <meta property="og:url" content="${esc(pageUrl)}">
+    <meta property="og:image" content="${esc(img)}">
+  `;
+}
+
 export function buildJsonLdScript(data) {
   const removeEmpty = (value) => {
     if (Array.isArray(value)) return value.map(removeEmpty).filter((item) => item !== undefined);

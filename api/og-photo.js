@@ -1,11 +1,17 @@
 import { esc, injectSeoHtml, readBaseHtml, SITE_URL } from './seo-render.js';
-import { arrayField, getDocumentByIdOrSlug, strField } from './firestore-seo.js';
-import { buildJsonLdScript, buildMetaTags, buildOgImageUrl, sanitizeSlug } from './og-shared.js';
+import { arrayField, boolField, getDocumentByIdOrSlug, strField } from './firestore-seo.js';
+import { buildJsonLdScript, buildMetaTags, buildNoindexMetaTags, buildOgImageUrl, sanitizeSlug } from './og-shared.js';
 
 async function getPhotoById(photoId) {
   try {
     const doc = await getDocumentByIdOrSlug('photos', photoId);
     if (!doc) return null;
+    const source = strField(doc, 'source').trim();
+    const status = strField(doc, 'status').trim();
+    const ownerId = strField(doc, 'ownerId').trim();
+    const belongsToWildsaura = source === 'wildsaura' || (!source && !status && !ownerId);
+    if (!belongsToWildsaura || boolField(doc, 'isPrivate', false) === true || boolField(doc, 'published', true) === false) return null;
+    if (!strField(doc, 'title').trim()) return null;
     return {
       title: strField(doc, 'title') || 'Wildlife Photo',
       caption: strField(doc, 'caption'),
@@ -16,7 +22,8 @@ async function getPhotoById(photoId) {
       location: strField(doc, 'location'),
       animalName: strField(doc, 'animalName'),
       tags: arrayField(doc, 'tags'),
-      slug: strField(doc, 'slug') || doc.name?.split('/').pop() || photoId,
+      slug: strField(doc, 'slug'),
+      firestoreId: doc.name?.split('/').pop() || photoId,
       updatedAt: doc.updateTime || '',
     };
   } catch { return null; }
@@ -28,22 +35,22 @@ function buildDescription(photo) {
 }
 
 export default async function handler(req, res) {
-  const requestedSlug = sanitizeSlug(req.query.id || '');
-  if (!requestedSlug) return res.redirect(302, SITE_URL);
+  const requestedToken = String(req.query.id || '').trim();
+  if (!requestedToken) return res.redirect(302, SITE_URL);
   const baseHtml = readBaseHtml();
-  const photo = await getPhotoById(requestedSlug);
-  const pageUrl = `${SITE_URL}/photo/${encodeURIComponent(requestedSlug)}`;
+  const photo = await getPhotoById(requestedToken);
+  const pageUrl = `${SITE_URL}/photo/${encodeURIComponent(requestedToken)}`;
 
   if (!photo) {
-    const metaTags = buildMetaTags({ type: 'article', title: 'Wildlife Photo — WILDS AURA Photography', description: 'Explore wildlife photography on WILDS AURA.', pageUrl, ogImageUrl: `${SITE_URL}/photos/photo-wildlife.jpeg` });
-    const injected = injectSeoHtml(baseHtml, metaTags);
+    const metaTags = buildNoindexMetaTags({ title: 'Photo Not Found - WILDS AURA Photography', description: 'This WILDS AURA photo is not available publicly.', pageUrl, ogImageUrl: `${SITE_URL}/photos/photo-wildlife.jpeg` });
+    const injected = injectSeoHtml(baseHtml, metaTags, '<main><h1>Photo Not Found</h1><p>This photo is not available publicly.</p></main>');
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    return res.status(200).send(injected);
+    return res.status(404).send(injected);
   }
 
-  const canonicalSlug = sanitizeSlug(photo.slug || requestedSlug);
-  const canonicalUrl = `${SITE_URL}/photo/${encodeURIComponent(canonicalSlug)}`;
-  const ogImageUrl = buildOgImageUrl('photo', canonicalSlug, photo.updatedAt);
+  const canonicalToken = photo.slug ? sanitizeSlug(photo.slug) : (photo.firestoreId || requestedToken);
+  const canonicalUrl = `${SITE_URL}/photo/${encodeURIComponent(canonicalToken)}`;
+  const ogImageUrl = buildOgImageUrl('photo', canonicalToken, photo.updatedAt);
   const title = `${photo.title} — WILDS AURA Photography`;
   const description = buildDescription(photo);
   const jsonLd = buildJsonLdScript({
