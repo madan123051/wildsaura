@@ -33,13 +33,18 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, on
   const [imgLoaded, setImgLoaded] = React.useState(false);
   const [imgError, setImgError] = React.useState(false);
 
+  const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement | null;
+    if (target?.closest('button, a, input, textarea, select')) return;
+    onClick();
+  };
 
   return (
     <div
       className="photo-card"
       role="button"
       tabIndex={0}
-      onClick={onClick}
+      onClickCapture={handleCardClick}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
