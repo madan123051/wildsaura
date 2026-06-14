@@ -29,7 +29,7 @@ interface PhotoCardProps {
 }
 
 export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, onShare, onDownload, isLoggedIn: _isLoggedIn, onLoginRequired: _onLoginRequired }) => {
-  const gated = (action: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); action(); };
+  const gated = (action: () => void) => (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); action(); };
   const [imgLoaded, setImgLoaded] = React.useState(false);
   const [imgError, setImgError] = React.useState(false);
 
@@ -38,7 +38,6 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, on
   return (
     <div
       className="photo-card"
-      onClick={onClick}
       style={{
         position: 'relative',
         borderRadius: '0.75rem',
@@ -48,11 +47,12 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, on
       }}
     >
 
+      {/* Full-card link — preventDefault keeps navigation in-app via onClick */}
       <a
         href={`/photo/${photoSlug}`}
-        onClick={() => onClick()}
-        aria-label={`Open photo page for ${photo.title}`}
-        style={{ position: 'absolute', inset: 0, zIndex: 0 }}
+        onClick={(e) => { e.preventDefault(); onClick(); }}
+        aria-label={`Open photo: ${photo.title}`}
+        style={{ position: 'absolute', inset: 0, zIndex: 0, display: 'block' }}
       />
 
       {/* Image */}
@@ -85,8 +85,8 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, on
             else setImgLoaded(true);
           }}
         />
-        {/* Transparent overlay to block right-click save */}
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 }} />
+        {/* Transparent overlay to block right-click save — pointerEvents:none so taps pass through to card link */}
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: 'none' }} />
         {/* Watermark badge */}
         <span
           className="font-cinzel"
@@ -118,6 +118,7 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, on
             background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.2) 40%, transparent 100%)',
             opacity: 0,
             transition: 'opacity 0.3s',
+            pointerEvents: 'none',
           }}
         />
         {/* Actions on hover */}
@@ -156,14 +157,14 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, on
               <span style={{ fontSize: '0.75rem' }}>{photo.likeCount}</span>
             </button>
             <button
-              onClick={(e) => { e.stopPropagation(); onShare(); }}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onShare(); }}
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.8)' }}
               title="Share photo"
             >
               <Share2 size={15} />
             </button>
             <button
-              onClick={(e) => { e.stopPropagation(); onClick(); }}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClick(); }}
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.8)' }}
             >
               <MessageCircle size={15} />
@@ -179,7 +180,7 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, on
       </div>
 
       {/* Card Footer */}
-      <div style={{ padding: '0.6rem 0.75rem' }}>
+      <div style={{ padding: '0.6rem 0.75rem', position: 'relative', zIndex: 1 }}>
         <p className="font-playfair" style={{ fontSize: '0.75rem', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', opacity: 0.8 }}>
           {photo.title}
         </p>
