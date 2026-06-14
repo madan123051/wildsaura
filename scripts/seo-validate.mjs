@@ -1,5 +1,5 @@
 import fs from 'fs';
-import { buildMetaTags, buildOgImageUrl, sanitizeSlug } from '../api/og-shared.js';
+import { buildMetaTags, buildOgImageUrl, sanitizeSlug } from '../server/og-shared.js';
 
 function assert(cond, msg) { if (!cond) throw new Error(msg); }
 
@@ -25,10 +25,10 @@ function validateOgImageUrl(url, routeLabel) {
 
 const robots = fs.readFileSync('public/robots.txt', 'utf-8');
 const sitemapFn = fs.readFileSync('api/sitemap.js', 'utf-8');
-const seoRenderer = fs.readFileSync('api/seo-render.js', 'utf-8');
+const seoRenderer = fs.readFileSync('server/seo-render.js', 'utf-8');
 const indexHtml = fs.readFileSync('index.html', 'utf-8');
 const appTsx = fs.readFileSync('src/App.tsx', 'utf-8');
-const ogShared = fs.readFileSync('api/og-shared.js', 'utf-8');
+const ogShared = fs.readFileSync('server/og-shared.js', 'utf-8');
 const ogPhoto = fs.readFileSync('api/og-photo.js', 'utf-8');
 const ogStory = fs.readFileSync('api/og-story.js', 'utf-8');
 const ogVideo = fs.readFileSync('api/og-video.js', 'utf-8');

@@ -1,6 +1,6 @@
-import { boolField, listCollection, strField, timestampField } from './firestore-seo.js';
-import { SITE_URL } from './seo-render.js';
-import { DEFAULT_OG_IMAGE, isPublicHttpUrl } from './og-shared.js';
+import { boolField, listCollection, strField, timestampField } from '../server/firestore-seo.js';
+import { SITE_URL } from '../server/seo-render.js';
+import { DEFAULT_OG_IMAGE, isPublicHttpUrl } from '../server/og-shared.js';
 const CATEGORY_SLUGS = ['wildlife', 'birds', 'macro', 'domestic', 'landscape', 'nature', 'street', 'other'];
 const esc = (str = '') => String(str)
   .replace(/&/g, '&amp;')

@@ -1,5 +1,5 @@
-import { esc, injectSeoHtml, readBaseHtml, SITE_URL } from './seo-render.js';
-import { arrayField, getDocumentByIdOrSlug, intField, strField, timestampField } from './firestore-seo.js';
+import { esc, injectSeoHtml, readBaseHtml, SITE_URL } from '../server/seo-render.js';
+import { arrayField, getDocumentByIdOrSlug, intField, strField, timestampField } from '../server/firestore-seo.js';
 import {
   buildJsonLdScript,
   buildMetaTags,
@@ -7,7 +7,7 @@ import {
   DEFAULT_OG_IMAGE,
   isPublicHttpUrl,
   publicMediaUrl,
-} from './og-shared.js';
+} from '../server/og-shared.js';
 
 function isoDuration(value) {
   const raw = String(value || '').trim();

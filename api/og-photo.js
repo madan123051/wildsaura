@@ -1,6 +1,6 @@
-import { esc, injectSeoHtml, readBaseHtml, SITE_URL } from './seo-render.js';
-import { arrayField, boolField, getDocumentByIdOrSlug, strField } from './firestore-seo.js';
-import { buildJsonLdScript, buildMetaTags, buildNoindexMetaTags, buildOgImageUrl, publicMediaUrl, sanitizeSlug } from './og-shared.js';
+import { esc, injectSeoHtml, readBaseHtml, SITE_URL } from '../server/seo-render.js';
+import { arrayField, boolField, getDocumentByIdOrSlug, strField } from '../server/firestore-seo.js';
+import { buildJsonLdScript, buildMetaTags, buildNoindexMetaTags, buildOgImageUrl, publicMediaUrl, sanitizeSlug } from '../server/og-shared.js';
 
 async function getPhotoById(photoId) {
   try {

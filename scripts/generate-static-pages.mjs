@@ -1,8 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { esc, injectSeoHtml, SITE_URL } from '../api/seo-render.js';
-import { buildJsonLdScript, buildMetaTags, DEFAULT_OG_IMAGE } from '../api/og-shared.js';
+import { esc, injectSeoHtml, SITE_URL } from '../server/seo-render.js';
+import { buildJsonLdScript, buildMetaTags, DEFAULT_OG_IMAGE } from '../server/og-shared.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '..');

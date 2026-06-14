@@ -1,5 +1,5 @@
-import { esc, injectSeoHtml, readBaseHtml, SITE_URL } from './seo-render.js';
-import { buildJsonLdScript, buildMetaTags, buildOgImageUrl, sanitizeSlug } from './og-shared.js';
+import { esc, injectSeoHtml, readBaseHtml, SITE_URL } from '../server/seo-render.js';
+import { buildJsonLdScript, buildMetaTags, buildOgImageUrl, sanitizeSlug } from '../server/og-shared.js';
 
 const CATEGORY_COPY = {
   wildlife: {
