@@ -55,10 +55,12 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
   const shareMenuRef = useRef<HTMLDivElement>(null);
   const shareButtonRef = useRef<HTMLButtonElement>(null);
   const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
 
   const hasExif = photo.cameraModel || photo.lens || photo.aperture || photo.shutterSpeed || photo.iso || photo.focalLength;
 
-  const currentIndex = photos ? photos.findIndex(p => p.id === photo.id) : -1;
+  const getPhotoKey = useCallback((p: Photo) => p.firestoreId || p.slug || String(p.id), []);
+  const currentIndex = photos ? photos.findIndex(p => getPhotoKey(p) === getPhotoKey(photo)) : -1;
   const hasPrev = photos && currentIndex > 0;
   const hasNext = photos && currentIndex >= 0 && currentIndex < photos.length - 1;
 
@@ -92,12 +94,25 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showShareMenu]);
 
-  const handleTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.touches[0].clientX; };
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0]?.clientX ?? null;
+    touchStartY.current = e.touches[0]?.clientY ?? null;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    const dx = (e.touches[0]?.clientX ?? touchStartX.current) - touchStartX.current;
+    const dy = (e.touches[0]?.clientY ?? touchStartY.current) - touchStartY.current;
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 12) e.preventDefault();
+  };
+
   const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX.current === null) return;
-    const diff = touchStartX.current - e.changedTouches[0].clientX;
-    if (Math.abs(diff) >= 50) { if (diff > 0) goToNext(); else goToPrev(); }
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    const diffX = touchStartX.current - e.changedTouches[0].clientX;
+    const diffY = touchStartY.current - e.changedTouches[0].clientY;
+    if (Math.abs(diffX) >= 50 && Math.abs(diffX) > Math.abs(diffY) * 1.2) { if (diffX > 0) goToNext(); else goToPrev(); }
     touchStartX.current = null;
+    touchStartY.current = null;
   };
 
   const shareUrl = `${window.location.origin}/photo/${encodeURIComponent(photo.slug || photo.firestoreId || String(photo.id))}`;
@@ -163,9 +178,10 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
       >
         {/* ── Image ── */}
         <div
-          style={{ position: 'relative' }}
+          style={{ position: 'relative', touchAction: 'pan-y' }}
           onContextMenu={(e) => e.preventDefault()}
           onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
           <img
@@ -176,7 +192,7 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
             onDragStart={(e) => e.preventDefault()}
           />
           {/* Click blocker */}
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 }} />
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: 'none' }} />
 
           {/* Category badge — top left */}
           <div style={{ position: 'absolute', top: '0.6rem', left: '0.6rem', zIndex: 2 }}>
