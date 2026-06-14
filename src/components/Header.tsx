@@ -55,11 +55,11 @@ export const Header: React.FC<HeaderProps> = ({
   }, []);
 
   const navItems = [
-    { label: 'Home', href: '#top' },
-    { label: 'Gallery', href: '#gallery', onClick: onScrollToGallery },
-    { label: 'Stories', href: '#stories', onClick: onStoriesClick },
-    { label: 'About', href: '#about' },
-    { label: 'Contact', href: '#contact' },
+    { label: 'Home', href: '/' },
+    { label: 'Gallery', href: '/photos', onClick: onScrollToGallery },
+    { label: 'Stories', href: '/story-grid', onClick: onStoriesClick },
+    { label: 'About', href: '/about' },
+    { label: 'Contact', href: '/contact' },
     { label: 'Join Community', href: '/community', onClick: onCommunityClick },
   ];
 
@@ -84,7 +84,7 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="wa-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '72px' }}>
         {/* Left: Logo */}
         <a
-          href="#top"
+          href="/"
           onClick={(e) => {
             if (onLogoClick) {
               e.preventDefault();

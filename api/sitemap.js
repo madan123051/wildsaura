@@ -1,5 +1,5 @@
 import { boolField, listCollection, strField } from './firestore-seo.js';
-const SITE_URL = 'https://www.wildsaura.com';
+import { SITE_URL } from './seo-render.js';
 const CATEGORY_SLUGS = ['wildlife', 'birds', 'macro', 'domestic', 'landscape', 'nature', 'street', 'other'];
 const esc = (str = '') => String(str)
   .replace(/&/g, '&amp;')
@@ -19,6 +19,22 @@ function canonicalStorySlug(doc) {
   if (slug) return slug;
   const id = doc.name?.split('/').pop() || '';
   return id;
+}
+
+function isPublicWildsauraPhoto(doc) {
+  if (boolField(doc, 'published', true) === false) return false;
+  if (boolField(doc, 'isPrivate', false) === true) return false;
+  if (!strField(doc, 'title').trim()) return false;
+  const source = strField(doc, 'source').trim();
+  const status = strField(doc, 'status').trim();
+  const ownerId = strField(doc, 'ownerId').trim();
+  return source === 'wildsaura' || (!source && !status && !ownerId);
+}
+
+function isPublicStory(doc) {
+  if (boolField(doc, 'published', true) === false) return false;
+  if (boolField(doc, 'isPrivate', false) === true) return false;
+  return Boolean(strField(doc, 'title').trim());
 }
 
 function isoDate(doc) {
@@ -44,6 +60,9 @@ export default async function handler(req, res) {
     { loc: `${SITE_URL}/about`, changefreq: 'monthly', priority: '0.6', lastmod: today },
     { loc: `${SITE_URL}/contact`, changefreq: 'monthly', priority: '0.6', lastmod: today },
     { loc: `${SITE_URL}/terms`, changefreq: 'monthly', priority: '0.4', lastmod: today },
+    { loc: `${SITE_URL}/marketplace`, changefreq: 'monthly', priority: '0.5', lastmod: today },
+    { loc: `${SITE_URL}/ngo`, changefreq: 'monthly', priority: '0.5', lastmod: today },
+    { loc: `${SITE_URL}/video-grid`, changefreq: 'weekly', priority: '0.6', lastmod: today },
   ];
 
   const categoryPages = CATEGORY_SLUGS.map((slug) => ({ loc: `${SITE_URL}/category/${encodeURIComponent(slug)}`, changefreq: 'weekly', priority: '0.7', lastmod: today }));
@@ -54,7 +73,7 @@ export default async function handler(req, res) {
   }
 
   for (const doc of photos) {
-    if (boolField(doc, 'published', true) === false) continue;
+    if (!isPublicWildsauraPhoto(doc)) continue;
     const slug = canonicalPhotoSlug(doc);
     if (!slug) continue;
     const photoLoc = `${SITE_URL}/photo/${encodeURIComponent(slug)}`;
@@ -69,7 +88,7 @@ export default async function handler(req, res) {
   }
 
   for (const doc of stories) {
-    if (boolField(doc, 'published', true) === false) continue;
+    if (!isPublicStory(doc)) continue;
     const slug = canonicalStorySlug(doc);
     if (!slug) continue;
     urls.push(`  <url>\n    <loc>${esc(`${SITE_URL}/story/${encodeURIComponent(slug)}`)}</loc>\n    <lastmod>${isoDate(doc)}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.8</priority>\n  </url>`);
