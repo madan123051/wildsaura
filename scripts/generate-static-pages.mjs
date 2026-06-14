@@ -1,8 +1,16 @@
-import { esc, injectSeoHtml, readBaseHtml, SITE_URL } from './seo-render.js';
-import { buildJsonLdScript, buildMetaTags, buildOgImageUrl, DEFAULT_OG_IMAGE, sanitizeSlug } from './og-shared.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { esc, injectSeoHtml, SITE_URL } from '../api/seo-render.js';
+import { buildJsonLdScript, buildMetaTags, DEFAULT_OG_IMAGE } from '../api/og-shared.js';
 
-const PAGE_DEFINITIONS = {
-  home: {
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const rootDir = path.resolve(__dirname, '..');
+const distDir = path.join(rootDir, 'dist');
+const baseHtml = fs.readFileSync(path.join(distDir, 'index.html'), 'utf-8');
+
+const PAGE_DEFINITIONS = [
+  {
     path: '/',
     type: 'website',
     schemaType: 'WebSite',
@@ -12,7 +20,7 @@ const PAGE_DEFINITIONS = {
     body: 'Wildlife photos, nature stories, bird portraits, macro details, landscapes, and conservation-minded visual storytelling by Madan Shrestha.',
     keywords: ['wildlife photography', 'nature photography', 'bird photography', 'Nepal wildlife', 'Japan nature photography'],
   },
-  photos: {
+  {
     path: '/photos',
     type: 'website',
     schemaType: 'ImageGallery',
@@ -22,7 +30,7 @@ const PAGE_DEFINITIONS = {
     body: 'A curated photography gallery featuring wild animals, birds, flowers, landscapes, street scenes, portraits, and field observations.',
     keywords: ['wildlife photo gallery', 'bird photos', 'nature photo gallery', 'landscape photography'],
   },
-  'photo-grid': {
+  {
     path: '/photo-grid',
     canonicalPath: '/photos',
     type: 'website',
@@ -33,7 +41,7 @@ const PAGE_DEFINITIONS = {
     body: 'A curated photography gallery featuring wild animals, birds, flowers, landscapes, street scenes, portraits, and field observations.',
     keywords: ['wildlife photo gallery', 'bird photos', 'nature photo gallery', 'landscape photography'],
   },
-  'story-grid': {
+  {
     path: '/story-grid',
     type: 'website',
     schemaType: 'CollectionPage',
@@ -43,7 +51,7 @@ const PAGE_DEFINITIONS = {
     body: 'Field stories and visual essays behind the photographs, from birds and flowers to forests, mountains, and everyday wildlife encounters.',
     keywords: ['wildlife stories', 'nature stories', 'photography stories', 'field notes'],
   },
-  community: {
+  {
     path: '/community',
     type: 'website',
     schemaType: 'WebPage',
@@ -53,7 +61,7 @@ const PAGE_DEFINITIONS = {
     body: 'A place for photographers, wildlife lovers, and nature-minded visitors to connect around photos, stories, and animal protection.',
     keywords: ['wildlife photography community', 'nature photographers', 'WILDS AURA community'],
   },
-  about: {
+  {
     path: '/about',
     type: 'profile',
     schemaType: 'AboutPage',
@@ -63,7 +71,7 @@ const PAGE_DEFINITIONS = {
     body: 'WILDS AURA connects photography, field stories, and a mission to protect animals through visual storytelling.',
     keywords: ['Madan Shrestha photographer', 'WildSaura about', 'wildlife photographer Nepal'],
   },
-  contact: {
+  {
     path: '/contact',
     type: 'website',
     schemaType: 'ContactPage',
@@ -73,7 +81,7 @@ const PAGE_DEFINITIONS = {
     body: 'Reach out for wildlife photography partnerships, media inquiries, community work, volunteering, and conservation-focused collaborations.',
     keywords: ['contact wildlife photographer', 'WILDS AURA contact', 'Madan Shrestha contact'],
   },
-  terms: {
+  {
     path: '/terms',
     type: 'website',
     schemaType: 'WebPage',
@@ -83,7 +91,7 @@ const PAGE_DEFINITIONS = {
     body: 'Terms for using WILDS AURA photography, downloads, stories, comments, and community features.',
     keywords: ['WILDS AURA terms', 'photography usage terms'],
   },
-  marketplace: {
+  {
     path: '/marketplace',
     type: 'website',
     schemaType: 'CollectionPage',
@@ -93,7 +101,7 @@ const PAGE_DEFINITIONS = {
     body: 'A photography marketplace direction for authentic Nepal images, local creators, and animal support initiatives.',
     keywords: ['Nepal stock photography', 'buy Nepal photos', 'authentic photography marketplace'],
   },
-  ngo: {
+  {
     path: '/ngo',
     type: 'website',
     schemaType: 'WebPage',
@@ -103,7 +111,7 @@ const PAGE_DEFINITIONS = {
     body: 'A developing animal support mission focused on rescue, treatment, feeding, transparency, and verified local partners.',
     keywords: ['animal rescue Nepal', 'support animals Nepal', 'wildlife conservation Nepal'],
   },
-  'video-grid': {
+  {
     path: '/video-grid',
     type: 'website',
     schemaType: 'CollectionPage',
@@ -113,24 +121,15 @@ const PAGE_DEFINITIONS = {
     body: 'Short wildlife, nature, travel, and field videos from the WILDS AURA photography project.',
     keywords: ['wildlife videos', 'nature videos', 'WILDS AURA videos'],
   },
-};
-
-function getPage(slug) {
-  const key = sanitizeSlug(slug || 'home') || 'home';
-  return PAGE_DEFINITIONS[key] || PAGE_DEFINITIONS.home;
-}
+];
 
 function buildVisibleContent(page) {
   return `<main><article><h1>${esc(page.heading)}</h1><p>${esc(page.body)}</p><nav aria-label="Important WILDS AURA pages"><a href="/photos">Photos</a> <a href="/story-grid">Stories</a> <a href="/about">About</a> <a href="/contact">Contact</a></nav></article></main>`;
 }
 
-export default async function handler(req, res) {
-  const page = getPage(req.query.slug);
+function renderPage(page) {
   const canonicalPath = page.canonicalPath || page.path;
   const pageUrl = `${SITE_URL}${canonicalPath}`;
-  const ogImageUrl = page.path.startsWith('/category/')
-    ? buildOgImageUrl('category', page.path.split('/').pop(), '1')
-    : DEFAULT_OG_IMAGE;
   const jsonLd = buildJsonLdScript({
     '@context': 'https://schema.org',
     '@type': page.schemaType,
@@ -161,10 +160,21 @@ export default async function handler(req, res) {
     title: page.title,
     description: page.description,
     pageUrl,
-    ogImageUrl,
+    ogImageUrl: DEFAULT_OG_IMAGE,
   }) + jsonLd;
 
-  res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400');
-  return res.status(200).send(injectSeoHtml(readBaseHtml(), metaTags, buildVisibleContent(page)));
+  return injectSeoHtml(baseHtml, metaTags, buildVisibleContent(page));
 }
+
+function outputPathFor(pagePath) {
+  if (pagePath === '/') return path.join(distDir, 'index.html');
+  return path.join(distDir, pagePath.replace(/^\/+/, ''), 'index.html');
+}
+
+for (const page of PAGE_DEFINITIONS) {
+  const outputPath = outputPathFor(page.path);
+  fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+  fs.writeFileSync(outputPath, renderPage(page));
+}
+
+console.log(`Generated ${PAGE_DEFINITIONS.length} static SEO pages.`);

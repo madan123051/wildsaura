@@ -3,9 +3,6 @@
   "outputDirectory": "dist",
   "framework": "vite",
   "functions": {
-    "api/static-page.js": {
-      "includeFiles": "dist/index.html"
-    },
     "api/og-photo.js": {
       "includeFiles": "dist/index.html"
     },
@@ -17,50 +14,6 @@
     }
   },
   "rewrites": [
-    {
-      "source": "/",
-      "destination": "/api/static-page?slug=home"
-    },
-    {
-      "source": "/photos",
-      "destination": "/api/static-page?slug=photos"
-    },
-    {
-      "source": "/photo-grid",
-      "destination": "/api/static-page?slug=photo-grid"
-    },
-    {
-      "source": "/story-grid",
-      "destination": "/api/static-page?slug=story-grid"
-    },
-    {
-      "source": "/community",
-      "destination": "/api/static-page?slug=community"
-    },
-    {
-      "source": "/about",
-      "destination": "/api/static-page?slug=about"
-    },
-    {
-      "source": "/contact",
-      "destination": "/api/static-page?slug=contact"
-    },
-    {
-      "source": "/terms",
-      "destination": "/api/static-page?slug=terms"
-    },
-    {
-      "source": "/marketplace",
-      "destination": "/api/static-page?slug=marketplace"
-    },
-    {
-      "source": "/ngo",
-      "destination": "/api/static-page?slug=ngo"
-    },
-    {
-      "source": "/video-grid",
-      "destination": "/api/static-page?slug=video-grid"
-    },
     {
       "source": "/photo/:id",
       "destination": "/api/og-photo?id=:id"

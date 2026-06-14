@@ -26,13 +26,14 @@ function validateOgImageUrl(url, routeLabel) {
 const robots = fs.readFileSync('public/robots.txt', 'utf-8');
 const sitemapFn = fs.readFileSync('api/sitemap.js', 'utf-8');
 const seoRenderer = fs.readFileSync('api/seo-render.js', 'utf-8');
-const staticPageRenderer = fs.readFileSync('api/static-page.js', 'utf-8');
 const indexHtml = fs.readFileSync('index.html', 'utf-8');
 const appTsx = fs.readFileSync('src/App.tsx', 'utf-8');
 const ogShared = fs.readFileSync('api/og-shared.js', 'utf-8');
 const ogPhoto = fs.readFileSync('api/og-photo.js', 'utf-8');
 const ogStory = fs.readFileSync('api/og-story.js', 'utf-8');
 const vercelJson = fs.readFileSync('vercel.json', 'utf-8');
+const packageJson = fs.readFileSync('package.json', 'utf-8');
+const staticPageGenerator = fs.readFileSync('scripts/generate-static-pages.mjs', 'utf-8');
 const vercelConfig = JSON.parse(vercelJson);
 
 assert(/Sitemap:\s*https:\/\/www\.wildsaura\.com\/sitemap\.xml/.test(robots), 'robots.txt missing canonical sitemap declaration');
@@ -43,9 +44,10 @@ assert(/isPublicWildsauraPhoto/.test(sitemapFn), 'sitemap must filter shared-dat
 assert(/isPublicStory/.test(sitemapFn), 'sitemap must filter incomplete or private stories');
 assert(/stripSeoTags/.test(seoRenderer), 'seo renderer missing tag de-duplication');
 assert(/name="robots"/.test(seoRenderer), 'seo renderer must strip base robots tags before route injection');
-assert(/PAGE_DEFINITIONS/.test(staticPageRenderer), 'static page SEO renderer missing page definitions');
-assert(/About WILDS AURA/.test(staticPageRenderer), 'static page SEO renderer missing about page metadata');
-assert(/Wildlife Photo Gallery/.test(staticPageRenderer), 'static page SEO renderer missing photo gallery metadata');
+assert(/generate-static-pages\.mjs/.test(packageJson), 'build script must generate static SEO pages after Vite build');
+assert(/PAGE_DEFINITIONS/.test(staticPageGenerator), 'static page generator missing page definitions');
+assert(/About WILDS AURA/.test(staticPageGenerator), 'static page generator missing about page metadata');
+assert(/Wildlife Photo Gallery/.test(staticPageGenerator), 'static page generator missing photo gallery metadata');
 assert(!/property="og:/.test(indexHtml), 'base index.html must not contain OG meta tags');
 assert(!/twitter:card/.test(indexHtml), 'base index.html must not contain twitter OG tags');
 assert(!/updatePhotoMeta\(|updateStoryMeta\(|resetMeta\(/.test(appTsx), 'client runtime SEO mutations must be disabled');
@@ -60,9 +62,8 @@ assert(/status\(404\)/.test(ogStory), 'story renderer must return 404 for unavai
 assert(/"source": "\/photo\/:id"/.test(vercelJson), 'vercel rewrite missing /photo/:id');
 assert(/"source": "\/story\/:slug"/.test(vercelJson), 'vercel rewrite missing /story/:slug');
 assert(/"source": "\/category\/:slug"/.test(vercelJson), 'vercel rewrite missing /category/:slug');
+assert(!/api\/static-page/.test(vercelJson), 'static SEO pages should be generated at build time, not deployed as an extra function');
 assert(!vercelConfig.redirects?.some((r) => r.source === '/:path*' && String(r.destination).includes('www.wildsaura.com')), 'domain-level www redirects should stay in Vercel domain settings, not app routes');
-assert(vercelConfig.rewrites?.some((r) => r.source === '/about' && r.destination.includes('/api/static-page')), 'vercel rewrite missing static page SEO renderer for /about');
-assert(vercelConfig.rewrites?.some((r) => r.source === '/photos' && r.destination.includes('/api/static-page')), 'vercel rewrite missing static page SEO renderer for /photos');
 
 for (const [type, slug] of [['photo', 'sample-photo'], ['story', 'sample-story'], ['category', 'birds']]) {
   const sanitizedSlug = sanitizeSlug(slug);
