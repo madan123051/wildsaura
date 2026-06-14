@@ -29,15 +29,17 @@ interface PhotoCardProps {
 }
 
 export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, onShare, onDownload, isLoggedIn: _isLoggedIn, onLoginRequired: _onLoginRequired }) => {
-  const gated = (action: () => void) => (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); action(); };
+  const stopAndRun = (action: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); action(); };
   const [imgLoaded, setImgLoaded] = React.useState(false);
   const [imgError, setImgError] = React.useState(false);
-
-  const photoSlug = encodeURIComponent(photo.slug || photo.firestoreId || String(photo.id));
 
   return (
     <div
       className="photo-card"
+      onClick={onClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); }}
       style={{
         position: 'relative',
         borderRadius: '0.75rem',
@@ -46,15 +48,6 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, on
         background: 'var(--wa-dark-card)',
       }}
     >
-
-      {/* Full-card link — preventDefault keeps navigation in-app via onClick */}
-      <a
-        href={`/photo/${photoSlug}`}
-        onClick={(e) => { e.preventDefault(); onClick(); }}
-        aria-label={`Open photo: ${photo.title}`}
-        style={{ position: 'absolute', inset: 0, zIndex: 0, display: 'block' }}
-      />
-
       {/* Image */}
       <div
         style={{ aspectRatio: '1/1', position: 'relative', overflow: 'hidden' }}
@@ -85,8 +78,6 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, on
             else setImgLoaded(true);
           }}
         />
-        {/* Transparent overlay to block right-click save — pointerEvents:none so taps pass through to card link */}
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: 'none' }} />
         {/* Watermark badge */}
         <span
           className="font-cinzel"
@@ -141,7 +132,7 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, on
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <button
-              onClick={gated(onLike)}
+              onClick={stopAndRun(onLike)}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -157,21 +148,21 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, on
               <span style={{ fontSize: '0.75rem' }}>{photo.likeCount}</span>
             </button>
             <button
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onShare(); }}
+              onClick={stopAndRun(onShare)}
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.8)' }}
               title="Share photo"
             >
               <Share2 size={15} />
             </button>
             <button
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClick(); }}
+              onClick={stopAndRun(onClick)}
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.8)' }}
             >
               <MessageCircle size={15} />
             </button>
           </div>
           <button
-            onClick={gated(onDownload)}
+            onClick={stopAndRun(onDownload)}
             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.8)' }}
           >
             <Download size={15} />
