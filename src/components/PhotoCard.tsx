@@ -33,6 +33,9 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, on
   const [imgLoaded, setImgLoaded] = React.useState(false);
   const [imgError, setImgError] = React.useState(false);
 
+  // Use slug or firestoreId or id for the URL
+  const photoSlug = photo.slug || photo.firestoreId || photo.id;
+
   return (
     <div
       className="photo-card"
@@ -48,9 +51,28 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, on
         background: 'var(--wa-dark-card)',
       }}
     >
-      {/* Image */}
+      {/* Invisible SEO Link - Absolute overlay but doesn't block clicks because it's behind content or has pointer-events: none */}
+      <a 
+        href={`/photo/${photoSlug}`}
+        onClick={(e) => {
+          e.preventDefault();
+          onClick();
+        }}
+        style={{
+          position: 'absolute',
+          inset: 0,
+          zIndex: 0,
+          opacity: 0,
+          pointerEvents: 'auto'
+        }}
+        aria-label={`View ${photo.title}`}
+      >
+        {photo.title}
+      </a>
+
+      {/* Image Section */}
       <div
-        style={{ aspectRatio: '1/1', position: 'relative', overflow: 'hidden' }}
+        style={{ aspectRatio: '1/1', position: 'relative', overflow: 'hidden', zIndex: 1, pointerEvents: 'none' }}
         onContextMenu={(e) => e.preventDefault()}
       >
         {!imgLoaded && (
@@ -128,6 +150,7 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, on
             opacity: 0,
             transition: 'all 0.3s',
             transform: 'translateY(4px)',
+            pointerEvents: 'auto'
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -145,57 +168,82 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, on
               }}
             >
               <Heart size={15} fill={photo.liked ? 'currentColor' : 'none'} />
-              <span style={{ fontSize: '0.75rem' }}>{photo.likeCount}</span>
+              <span style={{ fontSize: '0.75rem', color: 'inherit' }}>{photo.likes || 0}</span>
             </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'rgba(255,255,255,0.8)' }}>
+              <MessageCircle size={15} />
+              <span style={{ fontSize: '0.75rem' }}>{photo.commentsCount || 0}</span>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <button
               onClick={stopAndRun(onShare)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.8)' }}
-              title="Share photo"
+              style={{
+                background: 'rgba(255,255,255,0.1)',
+                border: 'none',
+                padding: '0.4rem',
+                borderRadius: '50%',
+                cursor: 'pointer',
+                color: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
             >
-              <Share2 size={15} />
+              <Share2 size={14} />
             </button>
             <button
-              onClick={stopAndRun(onClick)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.8)' }}
+              onClick={stopAndRun(onDownload)}
+              style={{
+                background: 'var(--wa-gold)',
+                border: 'none',
+                padding: '0.4rem',
+                borderRadius: '50%',
+                cursor: 'pointer',
+                color: 'black',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
             >
-              <MessageCircle size={15} />
+              <Download size={14} />
             </button>
           </div>
-          <button
-            onClick={stopAndRun(onDownload)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.8)' }}
-          >
-            <Download size={15} />
-          </button>
         </div>
       </div>
 
-      {/* Card Footer */}
-      <div style={{ padding: '0.6rem 0.75rem', position: 'relative', zIndex: 1 }}>
-        <p className="font-playfair" style={{ fontSize: '0.75rem', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', opacity: 0.8 }}>
-          {photo.title}
-        </p>
-        {photo.location && (
-          <p className="text-wa-muted" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.7rem', marginTop: '0.2rem' }}>
-            <MapPin size={10} /> {photo.location}
-          </p>
-        )}
-        {formatPhotoDate(photo.createdAt) && (
-          <p className="text-wa-muted" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.7rem', marginTop: '0.15rem', color: '#9fcb8f' }}>
-            <CalendarDays size={10} /> {formatPhotoDate(photo.createdAt)}
-          </p>
-        )}
+      {/* Content Section */}
+      <div style={{ padding: '0.75rem', zIndex: 1, position: 'relative', pointerEvents: 'none' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.25rem' }}>
+          <h3
+            className="font-cinzel"
+            style={{
+              fontSize: '0.9rem',
+              color: 'var(--wa-gold)',
+              margin: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              flex: 1,
+            }}
+          >
+            {photo.title}
+          </h3>
+        </div>
+        
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+          {photo.location && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'rgba(255,255,255,0.5)', fontSize: '0.7rem' }}>
+              <MapPin size={10} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{photo.location}</span>
+            </div>
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'rgba(255,255,255,0.4)', fontSize: '0.65rem' }}>
+            <CalendarDays size={10} />
+            <span>{formatPhotoDate(photo.createdAt)}</span>
+          </div>
+        </div>
       </div>
-
-      <style>{`
-        .photo-card:hover .card-overlay { opacity: 1 !important; }
-        .photo-card:hover .card-actions { opacity: 1 !important; transform: translateY(0) !important; }
-        .photo-card:hover img { transform: scale(1.1); }
-        @keyframes shimmer {
-          0% { background-position: -200% 0; }
-          100% { background-position: 200% 0; }
-        }
-      `}</style>
     </div>
   );
 };
