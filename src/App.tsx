@@ -1113,6 +1113,13 @@ const App: React.FC = () => {
     window.scrollTo(0, 0);
   }, [recordView]);
 
+  // ── Helper: Returns 1 on first view, 0 on subsequent views (mirrors recordView dedup) ──
+  const getViewIncrement = useCallback((type: 'photo' | 'story' | 'video', firestoreId?: string): number => {
+    if (!firestoreId) return 1;
+    const key = `${type}_${firestoreId}`;
+    return viewedTargetsRef.current.has(key) ? 0 : 1;
+  }, []);
+
   const handleVideoClick = useCallback((video: Video) => {
     const viewIncrement = getViewIncrement('video', video.firestoreId);
     const updated = { ...video, viewCount: (video.viewCount || 0) + viewIncrement };
