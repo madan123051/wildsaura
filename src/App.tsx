@@ -39,7 +39,7 @@ import { NotificationPanel, AppNotification } from './components/NotificationPan
 import AdSenseHead from './components/AdSenseHead';
 
 import SelfAdPopup from './components/SelfAdPopup';
-const logoUrl = '/photos/logo.png';
+const logoUrl = '/photos/logo.jpeg';
 const ADMIN_EMAIL = 'madan123050@gmail.com';
 
 
@@ -185,7 +185,10 @@ const App: React.FC = () => {
       if (path === '/ngo') return 'ngo';
       if (path === '/about') return 'about';
       if (path === '/contact') return 'contact';
-      if (path === '/photos') return 'photos';
+      if (path === '/photos' || path === '/photo-grid') return 'photo-grid';
+      if (path === '/story-grid') return 'story-grid';
+      if (path === '/video-grid') return 'video-grid';
+      if (path.startsWith('/category/')) return 'photo-grid';
       // Admin session exists but start from home, not admin dashboard
     }
     return 'home';
@@ -194,7 +197,13 @@ const App: React.FC = () => {
     if (typeof window !== 'undefined') return localStorage.getItem('wa_admin_session') === 'true';
     return false;
   });
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedCategory, setSelectedCategory] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const match = window.location.pathname.match(/^\/category\/([^/]+)$/);
+      if (match) return decodeURIComponent(match[1]);
+    }
+    return 'all';
+  });
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [photos, setPhotos] = useState<Photo[]>(SAMPLE_PHOTOS);
   const [stories, setStories] = useState<Story[]>(SAMPLE_STORIES);
@@ -1372,7 +1381,9 @@ const App: React.FC = () => {
         <PhotoGridPage
           photos={photos}
           filterTabs={FILTER_TABS}
-          onBack={() => { setView('home'); window.history.pushState({}, '', '/'); window.scrollTo(0, 0); }}
+          initialCategory={selectedCategory}
+          onCategoryChange={setSelectedCategory}
+          onBack={() => { setView('home'); setSelectedCategory('all'); window.history.pushState({}, '', '/'); window.scrollTo(0, 0); }}
           onPhotoClick={openPhoto}
           onLike={handleLike}
           onShare={handleShare}

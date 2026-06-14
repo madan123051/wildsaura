@@ -37,3 +37,18 @@ export function buildMetaTags({ type = 'article', title, description, pageUrl, o
     <meta name="twitter:image" content="${esc(img)}">
   `;
 }
+
+export function buildJsonLdScript(data) {
+  const removeEmpty = (value) => {
+    if (Array.isArray(value)) return value.map(removeEmpty).filter((item) => item !== undefined);
+    if (value && typeof value === 'object') {
+      const entries = Object.entries(value)
+        .map(([key, val]) => [key, removeEmpty(val)])
+        .filter(([, val]) => val !== undefined && val !== '' && !(Array.isArray(val) && val.length === 0));
+      return Object.fromEntries(entries);
+    }
+    return value === undefined || value === null ? undefined : value;
+  };
+  return `
+    <script type="application/ld+json">${JSON.stringify(removeEmpty(data)).replace(/</g, '\u003c')}</script>`;
+}
