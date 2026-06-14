@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, CalendarDays, Heart, MapPin, Share2 } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Eye, Heart, MapPin, Share2, User } from 'lucide-react';
 import { Video } from '../types';
 
 interface VideoDetailProps {
@@ -109,6 +109,16 @@ export const VideoDetail: React.FC<VideoDetailProps> = ({ video, onBack, onLike 
                 {formatDate(video.createdAt)}
               </span>
             )}
+            {video.photographer && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                <User size={14} />
+                {video.photographer}
+              </span>
+            )}
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+              <Eye size={14} />
+              {video.viewCount || 0} views
+            </span>
           </div>
 
           {video.description && (

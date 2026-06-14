@@ -1,5 +1,5 @@
 import { db, storage } from '../firebase';
-import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, serverTimestamp, onSnapshot, Unsubscribe } from 'firebase/firestore';
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, serverTimestamp, onSnapshot, Unsubscribe, increment } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 
 export interface FirestoreStory {
@@ -13,6 +13,7 @@ export interface FirestoreStory {
   createdAt?: any;
   viewCount: number;
   likeCount: number;
+  photographer?: string;
 }
 
 const STORIES_COLLECTION = 'stories';
@@ -63,6 +64,10 @@ export async function deleteStoryFromFirestore(docId: string): Promise<void> {
 
 export async function updateStoryInFirestore(docId: string, data: Partial<FirestoreStory>): Promise<void> {
   await updateDoc(doc(db, STORIES_COLLECTION, docId), data);
+}
+
+export async function incrementStoryCounter(docId: string, field: 'viewCount' | 'likeCount', amount: number = 1): Promise<void> {
+  await updateDoc(doc(db, STORIES_COLLECTION, docId), { [field]: increment(amount) });
 }
 
 /**

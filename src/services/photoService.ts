@@ -1,5 +1,5 @@
 import { db, storage } from '../firebase';
-import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, serverTimestamp, onSnapshot, Unsubscribe } from 'firebase/firestore';
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, serverTimestamp, onSnapshot, Unsubscribe, increment } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 export interface FirestorePhoto {
@@ -20,6 +20,7 @@ export interface FirestorePhoto {
   iso?: string;
   focalLength?: string;
   likeCount: number;
+  viewCount?: number;
   type: string;
   photographer?: string;
   latitude?: number;
@@ -193,6 +194,10 @@ export async function deletePhotoFromFirestore(docId: string): Promise<void> {
 
 export async function updatePhotoInFirestore(docId: string, data: Partial<FirestorePhoto>): Promise<void> {
   await updateDoc(doc(db, PHOTOS_COLLECTION, docId), data);
+}
+
+export async function incrementPhotoCounter(docId: string, field: 'viewCount' | 'likeCount', amount: number = 1): Promise<void> {
+  await updateDoc(doc(db, PHOTOS_COLLECTION, docId), { [field]: increment(amount) });
 }
 
 /**

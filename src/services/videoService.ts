@@ -1,5 +1,5 @@
 import { db, storage } from '../firebase';
-import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, serverTimestamp, onSnapshot, Unsubscribe } from 'firebase/firestore';
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, serverTimestamp, onSnapshot, Unsubscribe, increment } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 /**
@@ -29,7 +29,9 @@ export interface FirestoreVideo {
   createdAt?: any;
   viewCount: number;
   likeCount: number;
+  photographer?: string;
   originalSize?: number;       // ← NEW: Original video file size in bytes
+  compressedSize?: number;     // Compressed upload size in bytes
   aspectRatio?: string;        // ← NEW: Video aspect ratio e.g. '16:9', '9:16', '1:1'
   videoWidth?: number;         // ← NEW: Original video width in pixels
   videoHeight?: number;        // ← NEW: Original video height in pixels
@@ -196,6 +198,10 @@ export async function deleteVideoFromFirestore(docId: string): Promise<void> {
 
 export async function updateVideoInFirestore(docId: string, data: Partial<FirestoreVideo>): Promise<void> {
   await updateDoc(doc(db, VIDEOS_COLLECTION, docId), data);
+}
+
+export async function incrementVideoCounter(docId: string, field: 'viewCount' | 'likeCount', amount: number = 1): Promise<void> {
+  await updateDoc(doc(db, VIDEOS_COLLECTION, docId), { [field]: increment(amount) });
 }
 
 /**

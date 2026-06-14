@@ -19,6 +19,7 @@ export interface Photo {
   animalName?: string;
   wikiSummary?: string;
   likeCount: number;
+  viewCount?: number;
   liked: boolean;
   published?: boolean;
   photographer?: string;
@@ -121,6 +122,7 @@ export interface Video {
   liked: boolean;
   photographer?: string;
   originalSize?: number;       // Original video file size in bytes
+  compressedSize?: number;     // Compressed upload size in bytes
   aspectRatio?: string;        // Video aspect ratio e.g. '16:9', '9:16', '1:1', '4:5'
   videoWidth?: number;         // Original video width in pixels
   videoHeight?: number;        // Original video height in pixels
@@ -150,5 +152,11 @@ export interface GalleryPhoto {
   category: GalleryCategory;
   imageUrl: string;
   storagePath?: string;
+  width?: number;
+  height?: number;
+  format?: 'webp' | 'jpeg';
+  sizeBytes?: number;
+  originalSize?: number;
+  photographer?: string;
   createdAt?: any;
 }

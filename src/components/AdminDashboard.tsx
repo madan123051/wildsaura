@@ -19,6 +19,7 @@ import { getSiteSettings, saveSiteSettings, uploadHeroImage, uploadDefaultThumbn
 import { applyWatermark, bakeWatermarkOnFile } from '../utils/watermark';
 import { uploadVideoToStorage, uploadVideoThumbnailToStorage } from '../services/videoService';
 import { compressImageForAI, compressForUpload, generateThumbnail } from '../utils/imageCompressor';
+import { compressVideoForUpload } from '../utils/videoCompressor';
 import { readExifFromFile } from '../utils/exifReader';
 import { subscribeToContactMessages, deleteContactMessage, ContactMessage } from '../services/contactService';
 import { addGalleryPhotoToFirestore, deleteGalleryPhoto, subscribeToGalleryPhotos, uploadGalleryBlobToStorage, updateGalleryPhotoTitle } from '../services/galleryService';
@@ -486,6 +487,7 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
         cameraModel: cameraModel || '', lens: lens || '', aperture: aperture || '',
         shutterSpeed: shutterSpeed || '', iso: iso || '', focalLength: focalLength || '',
         likeCount: initial?.likeCount || 0,
+        viewCount: initial?.viewCount || 0,
         type: mediaType === 'video' ? 'video' : 'photo',
         photographer: photographer || '',
         published: initial ? (initial.published !== false) : true,
@@ -531,7 +533,7 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
       photographer: photographer || '',
       originalSize: originalFileSize || undefined,
       compressedSize: compressedFile?.size || undefined,
-      likeCount: initial?.likeCount || 0, liked: initial?.liked || false,
+      likeCount: initial?.likeCount || 0, viewCount: initial?.viewCount || 0, liked: initial?.liked || false,
       published: initial?.published !== false,
     };
     if (hasValidLat) savedPhoto.latitude = parsedLat;
@@ -1187,13 +1189,18 @@ const VideoForm: React.FC<VideoFormProps> = ({ initial, onSave, onCancel, nextId
   const [videoWidth, setVideoWidth] = useState(initial?.videoWidth || 0);
   const [videoHeight, setVideoHeight] = useState(initial?.videoHeight || 0);
   const [detectedRatio, setDetectedRatio] = useState('');
+  const [videoOriginalSize, setVideoOriginalSize] = useState(initial?.originalSize || 0);
+  const [videoCompressedSize, setVideoCompressedSize] = useState(initial?.compressedSize || 0);
+  const [videoCompressionStatus, setVideoCompressionStatus] = useState('');
 
   const handleVideoUpload = useCallback(async (file: File) => {
     setUploadingVideo(true);
-    setVideoFile(file);
     const previewUrl = URL.createObjectURL(file);
     setVideoPreview(previewUrl);
     setVideoUrl(previewUrl);
+    setVideoOriginalSize(file.size);
+    setVideoCompressedSize(0);
+    setVideoCompressionStatus('Preparing video compression...');
     console.log(`🎬 Video selected: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
 
     // 🎬 Auto-detect video dimensions & aspect ratio
@@ -1235,6 +1242,20 @@ const VideoForm: React.FC<VideoFormProps> = ({ initial, onSave, onCancel, nextId
       });
     } catch (err) {
       console.warn('Video dimension detection failed:', err);
+    }
+
+    try {
+      const result = await compressVideoForUpload(file, (p) => setVideoUploadProgress(p));
+      setVideoFile(result.file);
+      setVideoCompressedSize(result.compressedSize);
+      setVideoCompressionStatus(result.message);
+    } catch (err: any) {
+      console.warn('Video compression failed, using original:', err);
+      setVideoFile(file);
+      setVideoCompressedSize(file.size);
+      setVideoCompressionStatus(`Compression failed, original will upload (${(file.size / 1024 / 1024).toFixed(1)}MB).`);
+    } finally {
+      setVideoUploadProgress(0);
     }
     setUploadingVideo(false);
   }, [aspectRatio]);
@@ -1345,6 +1366,8 @@ const VideoForm: React.FC<VideoFormProps> = ({ initial, onSave, onCancel, nextId
       location,
       duration,
       photographer,
+      originalSize: videoOriginalSize || initial?.originalSize,
+      compressedSize: videoCompressedSize || videoFile?.size || initial?.compressedSize,
       aspectRatio: aspectRatio || detectedRatio || undefined,
       videoWidth: videoWidth || undefined,
       videoHeight: videoHeight || undefined,
@@ -1367,6 +1390,11 @@ const VideoForm: React.FC<VideoFormProps> = ({ initial, onSave, onCancel, nextId
           accept="video/*"
           label="Video File"
         />
+        {videoCompressionStatus && (
+          <div style={{ marginTop: '0.6rem', padding: '0.65rem 0.8rem', borderRadius: 8, background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.18)', color: 'rgba(235,230,220,0.72)', fontSize: '0.75rem' }}>
+            {videoCompressionStatus}
+          </div>
+        )}
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: '1rem 0' }}>
@@ -1931,6 +1959,8 @@ const GALLERY_CATEGORY_OPTIONS: Array<{ value: GalleryCategory; label: string }>
 
 const GalleryManagement: React.FC = () => {
   const [category, setCategory] = useState<GalleryCategory>('wildlife');
+  const [batchTitle, setBatchTitle] = useState('');
+  const [batchPhotographer, setBatchPhotographer] = useState('Madan Shrestha');
   const [galleryPhotos, setGalleryPhotos] = useState<GalleryPhoto[]>([]);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -1950,10 +1980,10 @@ const GalleryManagement: React.FC = () => {
   }, []);
 
   const handleFiles = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    // ── Inline image processor: resize + © WildSaura watermark + WebP ──
+    // ── Inline image processor: compress + © WildSaura watermark + WebP ──
     const processImage = async (file: File): Promise<{ blob: Blob; filename: string; width: number; height: number; format: 'webp' | 'jpeg'; sizeBytes: number }> => {
-      const MAX_W = 2400;
-      const url = URL.createObjectURL(file);
+      const compressed = await compressForUpload(file);
+      const url = URL.createObjectURL(compressed);
       const img: HTMLImageElement = await new Promise((resolve, reject) => {
         const i = document.createElement('img');
         i.onload = () => resolve(i);
@@ -1962,6 +1992,7 @@ const GalleryManagement: React.FC = () => {
         i.src = url;
       });
       try {
+        const MAX_W = 2400;
         const ratio = img.naturalWidth > MAX_W ? MAX_W / img.naturalWidth : 1;
         const w = Math.round(img.naturalWidth * ratio);
         const h = Math.round(img.naturalHeight * ratio);
@@ -1987,6 +2018,8 @@ const GalleryManagement: React.FC = () => {
         const toBlob = (type: string, q: number) => new Promise<Blob | null>(res => { try { canvas.toBlob(b => res(b), type, q); } catch { res(null); } });
         let blob = await toBlob('image/webp', 0.82);
         let format: 'webp' | 'jpeg' = 'webp';
+        if (blob && blob.size > 2 * 1024 * 1024) blob = await toBlob('image/webp', 0.72);
+        if (blob && blob.size > 2 * 1024 * 1024) blob = await toBlob('image/webp', 0.62);
         if (!blob) blob = await toBlob('image/webp', 0.78);
         if (!blob) { blob = await toBlob('image/jpeg', 0.85); format = 'jpeg'; }
         if (!blob) throw new Error('Image encoding failed');
@@ -2008,10 +2041,18 @@ const GalleryManagement: React.FC = () => {
     setUploading(true);
     setProgress(0);
     try {
+      const cleanBatchTitle = batchTitle.trim();
+      const cleanPhotographer = batchPhotographer.trim();
       for (let index = 0; index < selectedFiles.length; index += 1) {
         const file = selectedFiles[index];
         const baseProgress = Math.round((index / selectedFiles.length) * 100);
         const processed = await processImage(file);
+        const fallbackTitle = file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ');
+        const uploadTitle = cleanBatchTitle
+          ? selectedFiles.length > 1
+            ? `${cleanBatchTitle} ${String(index + 1).padStart(2, '0')}`
+            : cleanBatchTitle
+          : fallbackTitle;
         const uploaded = await uploadGalleryBlobToStorage(
           processed.blob,
           processed.filename,
@@ -2021,7 +2062,7 @@ const GalleryManagement: React.FC = () => {
           }
         );
         await addGalleryPhotoToFirestore({
-          title: file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' '),
+          title: uploadTitle,
           category,
           imageUrl: uploaded.imageUrl,
           storagePath: uploaded.storagePath,
@@ -2029,6 +2070,8 @@ const GalleryManagement: React.FC = () => {
           height: processed.height,
           format: processed.format,
           sizeBytes: processed.sizeBytes,
+          originalSize: file.size,
+          photographer: cleanPhotographer,
         });
       }
       setProgress(100);
@@ -2104,7 +2147,7 @@ const GalleryManagement: React.FC = () => {
     <div style={{ display: 'grid', gap: '1.5rem' }}>
       <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.1)', borderRadius: '12px', padding: '1.5rem' }}>
         <h3 style={{ color: 'var(--wa-light)', fontSize: '1rem', marginBottom: '1rem' }}>Upload Gallery Photos</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 240px) 1fr', gap: '1rem', alignItems: 'end' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', alignItems: 'end' }}>
           <div>
             <label style={labelStyle}>Category</label>
             <select value={category} onChange={(e) => setCategory(e.target.value as GalleryCategory)} style={inputStyle} disabled={uploading}>
@@ -2112,10 +2155,21 @@ const GalleryManagement: React.FC = () => {
             </select>
           </div>
           <div>
+            <label style={labelStyle}>Batch Title</label>
+            <input value={batchTitle} onChange={(e) => setBatchTitle(e.target.value)} disabled={uploading} placeholder="e.g. Chitwan Safari" style={inputStyle} />
+          </div>
+          <div>
+            <label style={labelStyle}>Photographer</label>
+            <input value={batchPhotographer} onChange={(e) => setBatchPhotographer(e.target.value)} disabled={uploading} placeholder="e.g. Madan Shrestha" style={inputStyle} />
+          </div>
+          <div>
             <label style={labelStyle}>Photos (10-20 at once supported)</label>
             <input type="file" accept="image/*" multiple onChange={handleFiles} disabled={uploading} style={inputStyle} />
           </div>
         </div>
+        <p style={{ margin: '0.7rem 0 0', color: 'rgba(235,230,220,0.45)', fontSize: '0.72rem' }}>
+          Batch title fills all selected photos automatically as Title 01, Title 02, etc. Uploads are compressed to WebP before Firebase storage.
+        </p>
         {uploading || progress > 0 ? (
           <div style={{ marginTop: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem', color: 'rgba(235,230,220,0.65)', fontSize: '0.75rem' }}>
@@ -2283,6 +2337,10 @@ const GalleryManagement: React.FC = () => {
                       </div>
                     )}
                     <span style={{ display: 'inline-block', padding: '0.2rem 0.55rem', borderRadius: '999px', background: 'rgba(201,168,76,0.12)', color: 'var(--wa-gold)', fontSize: '0.62rem', textTransform: 'uppercase' }}>{photo.category}</span>
+                    <div style={{ marginTop: '0.45rem', color: 'rgba(235,230,220,0.42)', fontSize: '0.65rem', lineHeight: 1.4 }}>
+                      {photo.photographer && <div>By {photo.photographer}</div>}
+                      {photo.sizeBytes && <div>{(photo.sizeBytes / 1024 / 1024).toFixed(2)}MB {photo.format?.toUpperCase() || ''}</div>}
+                    </div>
                     {!selectMode && (<div style={{ marginTop: '0.75rem' }}>
                       {deleteId === photoKey ? (
                         <div style={{ display: 'flex', gap: '0.4rem' }}>

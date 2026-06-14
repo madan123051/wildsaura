@@ -14,6 +14,8 @@ export interface GalleryPhoto {
   height?: number;
   format?: 'webp' | 'jpeg';
   sizeBytes?: number;
+  originalSize?: number;
+  photographer?: string;
   createdAt?: any;
 }
 

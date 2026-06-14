@@ -26,10 +26,10 @@ import { downloadPhoto } from './utils/downloadPhoto';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './firebase';
 import { addUserLike, removeUserLike, getUserLikes } from './services/userLikesService';
-import { getPhotosFromFirestore, deletePhotoFromFirestore, updatePhotoInFirestore, subscribeToPhotos } from './services/photoService';
+import { getPhotosFromFirestore, deletePhotoFromFirestore, updatePhotoInFirestore, incrementPhotoCounter, subscribeToPhotos } from './services/photoService';
 import { subscribeToGalleryPhotos } from './services/galleryService';
-import { getStoriesFromFirestore, addStoryToFirestore, deleteStoryFromFirestore, updateStoryInFirestore, uploadStoryCoverToStorage, subscribeToStories } from './services/storyService';
-import { getVideosFromFirestore, addVideoToFirestore, deleteVideoFromFirestore, updateVideoInFirestore, uploadVideoThumbnailToStorage, uploadVideoToStorage, subscribeToVideos } from './services/videoService';
+import { getStoriesFromFirestore, addStoryToFirestore, deleteStoryFromFirestore, updateStoryInFirestore, incrementStoryCounter, uploadStoryCoverToStorage, subscribeToStories } from './services/storyService';
+import { getVideosFromFirestore, addVideoToFirestore, deleteVideoFromFirestore, updateVideoInFirestore, incrementVideoCounter, uploadVideoThumbnailToStorage, uploadVideoToStorage, subscribeToVideos } from './services/videoService';
 import { addCommentToFirestore, deleteCommentFromFirestore, getCommentsForTarget, getAllComments, subscribeToAllComments } from './services/commentService';
 import { saveVisitorToFirestore, getVisitorFromFirestore, updateVisitorDownloadCount, updateVisitorProfile, trackOnlineVisitor, subscribeToOnlineVisitors } from './services/visitorService';
 import { LiveStats } from './components/LiveStats';
@@ -235,6 +235,7 @@ const App: React.FC = () => {
   const [selectedStory, setSelectedStory] = useState<Story | null>(null);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const galleryRef = useRef<HTMLElement | null>(null);
+  const viewedTargetsRef = useRef<Set<string>>(new Set());
 
   // New state
   const [visitor, setVisitor] = useState<Visitor | null>(null);
@@ -433,6 +434,7 @@ const App: React.FC = () => {
         longitude: fp.longitude || undefined,
         published: fp.published !== false,
         likeCount: fp.likeCount || 0,
+        viewCount: fp.viewCount || 0,
         liked: false,
         createdAt: fp.createdAt || null,  // ← FIX: preserve Firestore Timestamp for date display
       }));
@@ -486,6 +488,7 @@ const App: React.FC = () => {
         viewCount: fs.viewCount || 0,
         likeCount: fs.likeCount || 0,
         liked: false,
+        photographer: fs.photographer || '',
       }));
 
       setStories(prev => {
@@ -556,10 +559,12 @@ const App: React.FC = () => {
         viewCount: fv.viewCount || 0,
         likeCount: fv.likeCount || 0,
         liked: false,
+        photographer: fv.photographer || '',
         aspectRatio: fv.aspectRatio || undefined,
         videoWidth: fv.videoWidth || undefined,
         videoHeight: fv.videoHeight || undefined,
         originalSize: fv.originalSize || undefined,
+        compressedSize: fv.compressedSize || undefined,
       }));
 
       setVideos(prev => {
@@ -675,6 +680,21 @@ const App: React.FC = () => {
       setVideos(prev => prev.map(v => ({ ...v, liked: userLikes.has(`video_${v.firestoreId || v.id}`) })));
     }
   }, [userLikes]);
+
+  useEffect(() => {
+    const persistView = (type: 'photo' | 'story' | 'video', firestoreId?: string) => {
+      if (!firestoreId) return;
+      const key = `${type}_${firestoreId}`;
+      if (viewedTargetsRef.current.has(key)) return;
+      viewedTargetsRef.current.add(key);
+      if (type === 'photo') incrementPhotoCounter(firestoreId, 'viewCount', 1).catch(err => console.warn('Photo view save failed:', err));
+      if (type === 'story') incrementStoryCounter(firestoreId, 'viewCount', 1).catch(err => console.warn('Story view save failed:', err));
+      if (type === 'video') incrementVideoCounter(firestoreId, 'viewCount', 1).catch(err => console.warn('Video view save failed:', err));
+    };
+    persistView('photo', selectedPhoto?.firestoreId);
+    persistView('story', selectedStory?.firestoreId);
+    persistView('video', selectedVideo?.firestoreId);
+  }, [selectedPhoto?.firestoreId, selectedStory?.firestoreId, selectedVideo?.firestoreId]);
 
   // ── Popstate Listener (Browser Back/Forward) ─────────────────────────────
   useEffect(() => {
@@ -813,7 +833,7 @@ const App: React.FC = () => {
       const newLiked = !photo.liked;
       const newLikeCount = newLiked ? photo.likeCount + 1 : photo.likeCount - 1;
       if (photo.firestoreId) {
-        updatePhotoInFirestore(photo.firestoreId, { likeCount: newLikeCount }).catch(err => console.warn('Like update failed:', err));
+        incrementPhotoCounter(photo.firestoreId, 'likeCount', newLiked ? 1 : -1).catch(err => console.warn('Like update failed:', err));
       }
       // Save per-user like to Firestore (keyed by firestoreId)
       const likeKey = photo?.firestoreId || String(id);
@@ -935,6 +955,7 @@ const App: React.FC = () => {
         tags: story.tags,
         viewCount: story.viewCount || 0,
         likeCount: story.likeCount || 0,
+        photographer: story.photographer || '',
       });
       story = { ...story, firestoreId, coverImageUrl: finalCoverUrl };
     } catch (err) {
@@ -973,6 +994,7 @@ const App: React.FC = () => {
         tags: finalUpdated.tags,
         viewCount: finalUpdated.viewCount,
         likeCount: finalUpdated.likeCount,
+        photographer: finalUpdated.photographer || '',
       }).catch(err => console.warn('Firestore story update failed:', err));
     }
     setStories((prev) => prev.map((s) => s.id === finalUpdated.id ? finalUpdated : s));
@@ -1007,10 +1029,12 @@ const App: React.FC = () => {
         duration: video.duration || '',
         viewCount: video.viewCount || 0,
         likeCount: video.likeCount || 0,
+        photographer: video.photographer || '',
         ...(video.aspectRatio ? { aspectRatio: video.aspectRatio } : {}),
         ...(video.videoWidth ? { videoWidth: video.videoWidth } : {}),
         ...(video.videoHeight ? { videoHeight: video.videoHeight } : {}),
         ...(video.originalSize ? { originalSize: video.originalSize } : {}),
+        ...(video.compressedSize ? { compressedSize: video.compressedSize } : {}),
       });
       video = { ...video, firestoreId, videoUrl: finalVideoUrl, thumbnailUrl: finalThumbnailUrl };
     } catch (err) {
@@ -1058,9 +1082,12 @@ const App: React.FC = () => {
         duration: finalUpdated.duration || '',
         viewCount: finalUpdated.viewCount,
         likeCount: finalUpdated.likeCount,
+        photographer: finalUpdated.photographer || '',
         ...(finalUpdated.aspectRatio ? { aspectRatio: finalUpdated.aspectRatio } : {}),
         ...(finalUpdated.videoWidth ? { videoWidth: finalUpdated.videoWidth } : {}),
         ...(finalUpdated.videoHeight ? { videoHeight: finalUpdated.videoHeight } : {}),
+        ...(finalUpdated.originalSize ? { originalSize: finalUpdated.originalSize } : {}),
+        ...(finalUpdated.compressedSize ? { compressedSize: finalUpdated.compressedSize } : {}),
       }).catch(err => console.warn('Firestore video update failed:', err));
     }
     setVideos((prev) => prev.map((v) => v.id === finalUpdated.id ? finalUpdated : v));
@@ -1076,7 +1103,9 @@ const App: React.FC = () => {
   }, []);
 
   const handleVideoClick = useCallback((video: Video) => {
-    setSelectedVideo(video);
+    const updated = { ...video, viewCount: (video.viewCount || 0) + 1 };
+    setSelectedVideo(updated);
+    setVideos((prev) => prev.map((v) => v.id === video.id ? { ...v, viewCount: (v.viewCount || 0) + 1 } : v));
     setView('video-detail');
     const videoToken = video.firestoreId || String(video.id);
     window.history.pushState({}, '', '/video/' + encodeURIComponent(videoToken));
@@ -1093,7 +1122,7 @@ const App: React.FC = () => {
     setSelectedStory(updated);
     setStories((prev) => prev.map((s) => s.id === updated.id ? updated : s));
     if (selectedStory.firestoreId) {
-      updateStoryInFirestore(selectedStory.firestoreId, { likeCount: updated.likeCount }).catch(err => console.warn('Story like update failed:', err));
+      incrementStoryCounter(selectedStory.firestoreId, 'likeCount', updated.liked ? 1 : -1).catch(err => console.warn('Story like update failed:', err));
     }
     // Save per-user like to Firestore
     const sLikeKey = selectedStory.firestoreId || String(selectedStory.id);
@@ -1276,7 +1305,7 @@ const App: React.FC = () => {
       const newLiked = !video.liked;
       const newLikeCount = newLiked ? video.likeCount + 1 : video.likeCount - 1;
       if (video.firestoreId) {
-        updateVideoInFirestore(video.firestoreId, { likeCount: newLikeCount }).catch(err => console.warn('Video like update failed:', err));
+        incrementVideoCounter(video.firestoreId, 'likeCount', newLiked ? 1 : -1).catch(err => console.warn('Video like update failed:', err));
       }
       // Save per-user like to Firestore
       const vLikeKey = video?.firestoreId || String(id);
@@ -1409,8 +1438,10 @@ const App: React.FC = () => {
 
   // ── Helper: Open/Close Photo with URL ────────────────────────────────────
   const openPhoto = useCallback((photo: Photo | null) => {
-    setSelectedPhoto(photo);
+    const updatedPhoto = photo ? { ...photo, viewCount: (photo.viewCount || 0) + 1 } : null;
+    setSelectedPhoto(updatedPhoto);
     if (photo) {
+      setPhotos((prev) => prev.map((p) => p.id === photo.id ? { ...p, viewCount: (p.viewCount || 0) + 1 } : p));
       window.scrollTo(0, 0);
       const photoId = photo.slug || photo.firestoreId || String(photo.id);
       window.history.pushState({}, '', '/photo/' + encodeURIComponent(photoId));

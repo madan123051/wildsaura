@@ -17,6 +17,7 @@ export interface UserProfile {
   email: string;
   displayName: string;
   avatarUrl?: string;
+  profilePhotoUrl?: string;
   avatarColor?: string; // Default avatar color if no image
   spiritAnimal?: string; // Animal spirit assigned by user
   bio?: string;

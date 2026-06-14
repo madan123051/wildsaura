@@ -43,7 +43,7 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
 
   // Determine if we should show spirit animal or initials
   const showSpiritAnimal = size === 'large' || (size === 'medium' && showBorder);
-  const initials = user.name
+  const initials = (user.displayName || user.email || 'User')
     .split(' ')
     .map((n) => n[0])
     .join('')
