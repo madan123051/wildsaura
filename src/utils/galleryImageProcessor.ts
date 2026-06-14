@@ -1,10 +1,9 @@
 // Gallery image processor: resize + compress to WebP + add © WildSaura watermark.
 // Pure Canvas API — works on iOS Safari, Android Chrome, and desktop.
 
-const MAX_WIDTH = 1800;
-const MIN_WIDTH = 480;
-const TARGET_MAX_BYTES = 700 * 1024;
-const QUALITY_STEPS = [0.78, 0.7, 0.62, 0.54, 0.46, 0.38, 0.3, 0.24, 0.18];
+const MAX_WIDTH = 2400;
+const QUALITY_PRIMARY = 0.82;
+const QUALITY_FALLBACK = 0.78;
 const WATERMARK_TEXT = '© WildSaura';
 const WATERMARK_OPACITY = 0.55;
 const WATERMARK_PADDING = 24;
@@ -72,9 +71,9 @@ export interface ProcessedImage {
 
 /**
  * Process an image for gallery upload:
- *   1. Resize to max 1800px width (preserve aspect ratio)
+ *   1. Resize to max 2400px width (preserve aspect ratio)
  *   2. Add © WildSaura watermark (bottom-right)
- *   3. Encode to WebP under 700KB where supported (fallback to JPEG if WebP unsupported)
+ *   3. Encode to WebP at q≈0.82 (fallback to JPEG if WebP unsupported)
  *   4. Returns a Blob ready to upload to Firebase Storage
  */
 export async function processGalleryImage(file: File): Promise<ProcessedImage> {
@@ -84,37 +83,33 @@ export async function processGalleryImage(file: File): Promise<ProcessedImage> {
 
   const { img, revoke } = await loadImage(file);
   try {
+    const { w, h } = fitWithin(img.naturalWidth, img.naturalHeight, MAX_WIDTH);
+
     const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Canvas 2D context unavailable on this browser.');
 
-    let { w, h } = fitWithin(img.naturalWidth, img.naturalHeight, MAX_WIDTH);
-    let blob: Blob | null = null;
+    // High-quality resampling
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, 0, 0, w, h);
+    drawWatermark(ctx, w, h);
+
+    // Try WebP first
+    let blob = await canvasToBlob(canvas, 'image/webp', QUALITY_PRIMARY);
     let format: 'webp' | 'jpeg' = 'webp';
 
-    for (const maxWidth of [MAX_WIDTH, 1600, 1400, 1200, 1000, 800, MIN_WIDTH]) {
-      ({ w, h } = fitWithin(img.naturalWidth, img.naturalHeight, maxWidth));
-      canvas.width = w;
-      canvas.height = h;
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
-      ctx.drawImage(img, 0, 0, w, h);
-      drawWatermark(ctx, w, h);
-
-      for (const quality of QUALITY_STEPS) {
-        blob = await canvasToBlob(canvas, 'image/webp', quality);
-        if (blob && blob.size <= TARGET_MAX_BYTES) break;
-      }
-      if (blob && blob.size <= TARGET_MAX_BYTES) break;
+    // Retry WebP at slightly lower quality if first attempt failed
+    if (!blob) {
+      blob = await canvasToBlob(canvas, 'image/webp', QUALITY_FALLBACK);
     }
 
-    // Final fallback: JPEG (older iOS Safari versions), still aiming for <=700KB.
+    // Final fallback: JPEG (older iOS Safari versions)
     if (!blob) {
+      blob = await canvasToBlob(canvas, 'image/jpeg', 0.85);
       format = 'jpeg';
-      for (const quality of [0.72, 0.62, 0.5, 0.4, 0.32, 0.25]) {
-        blob = await canvasToBlob(canvas, 'image/jpeg', quality);
-        if (blob && blob.size <= TARGET_MAX_BYTES) break;
-      }
     }
 
     if (!blob) {
