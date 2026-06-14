@@ -223,7 +223,7 @@ export const VisitorLogin: React.FC<VisitorLoginProps> = ({ isOpen, onClose, onL
               <Camera size={24} style={{ color: '#c9a84c' }} />
             </div>
             <h2 style={{ fontFamily: "'Cinzel', serif", fontSize: '1.15rem', color: '#fff', letterSpacing: '0.06em', margin: 0 }}>Welcome to Wilds Aura</h2>
-            <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.45)', marginTop: '0.5rem', lineHeight: 1.5 }}>Sign in to like, comment, share & download photos</p>
+            <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.45)', marginTop: '0.5rem', lineHeight: 1.5 }}>Browsing, sharing, likes, and comments are free. Sign in only to join/post in community or download photos.</p>
           </div>
           <button onClick={() => handleSocialLogin('google')} disabled={!!socialLoading} style={{ ...socialBtnBase, background: '#fff', color: '#333', opacity: socialLoading === 'google' ? 0.7 : 1 }}>
             {socialLoading === 'google' ? <span style={{ fontSize: '0.8rem' }}>Connecting...</span> : <><GoogleIcon /><span>Continue with Google</span></>}
