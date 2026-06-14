@@ -124,7 +124,7 @@ const PAGE_DEFINITIONS = [
 ];
 
 function buildVisibleContent(page) {
-  return `<main><article><h1>${esc(page.heading)}</h1><p>${esc(page.body)}</p><nav aria-label="Important WILDS AURA pages"><a href="/photos">Photos</a> <a href="/story-grid">Stories</a> <a href="/about">About</a> <a href="/contact">Contact</a></nav></article></main>`;
+  return `<main><article><h1>${esc(page.heading)}</h1><p>${esc(page.body)}</p><nav aria-label="Important WILDS AURA pages"><a href="/photos">Photos</a> <a href="/story-grid">Stories</a> <a href="/video-grid">Videos</a> <a href="/about">About</a> <a href="/contact">Contact</a></nav></article></main>`;
 }
 
 function renderPage(page) {

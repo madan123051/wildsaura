@@ -33,7 +33,10 @@ export function injectSeoHtml(baseHtml, metaTags, visibleContentHtml = '') {
   const cleaned = stripSeoTags(baseHtml);
   const withHead = cleaned.replace('</head>', `${metaTags}\n</head>`);
   if (!visibleContentHtml) return withHead;
-  return withHead.replace('<div id="root"></div>', `<div id="root">${visibleContentHtml}</div>`);
+  return withHead.replace(
+    /<div\s+id=["']root["'][^>]*>[\s\S]*?<\/div>/i,
+    `<div id="root">${visibleContentHtml}</div>`,
+  );
 }
 
 export function defaultRobotsMeta() {

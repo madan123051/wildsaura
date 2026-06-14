@@ -14,6 +14,7 @@ const useWindowSize = () => {
 
 interface VideoGridPageProps {
   videos: Video[];
+  onVideoClick: (video: Video) => void;
   onBack: () => void;
   visitor: Visitor | null;
   videoComments: Record<string, Comment[]>;
@@ -51,7 +52,7 @@ const formatDate = (dateStr: string): string => {
 };
 
 export const VideoGridPage: React.FC<VideoGridPageProps> = ({
-  videos, onBack, visitor, videoComments, onAddVideoComment, onVideoLike, onVisitorLoginClick, isAdmin, onDeleteComment,
+  videos, onVideoClick, onBack, visitor, videoComments, onAddVideoComment, onVideoLike, onVisitorLoginClick, isAdmin, onDeleteComment,
 }) => {
   const [selectedYear, setSelectedYear] = useState('all');
   const [selectedMonth, setSelectedMonth] = useState('all');
@@ -317,7 +318,18 @@ export const VideoGridPage: React.FC<VideoGridPageProps> = ({
                       fontSize: '0.95rem', fontWeight: 700, color: 'var(--wa-text)',
                       margin: '0 0 0.4rem', lineHeight: 1.4,
                       display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-                    }}>{video.title}</h3>
+                    }}>
+                      <a
+                        href={`/video/${encodeURIComponent(video.firestoreId || String(video.id))}`}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          onVideoClick(video);
+                        }}
+                        style={{ color: 'inherit', textDecoration: 'none' }}
+                      >
+                        {video.title}
+                      </a>
+                    </h3>
                     {video.description && (
                       <p style={{
                         fontSize: '0.78rem', color: 'var(--wa-text-muted)', margin: '0 0 0.6rem',

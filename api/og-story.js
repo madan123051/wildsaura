@@ -1,6 +1,6 @@
 import { esc, injectSeoHtml, readBaseHtml, SITE_URL } from './seo-render.js';
 import { arrayField, boolField, getDocumentByIdOrSlug, strField } from './firestore-seo.js';
-import { buildJsonLdScript, buildMetaTags, buildNoindexMetaTags, buildOgImageUrl, sanitizeSlug } from './og-shared.js';
+import { buildJsonLdScript, buildMetaTags, buildNoindexMetaTags, buildOgImageUrl, isPublicHttpUrl, publicMediaUrl, sanitizeSlug } from './og-shared.js';
 
 async function getStory(storyId) {
   try {
@@ -23,6 +23,26 @@ async function getStory(storyId) {
   } catch { return null; }
 }
 
+function buildStoryContentHtml(story) {
+  const parts = String(story.content || '').split(/(\[IMAGE:[^\]]+\])/g);
+  const body = parts.map((part) => {
+    const imageMatch = part.match(/^\[IMAGE:(.+)\]$/);
+    if (imageMatch) {
+      const imageUrl = imageMatch[1].trim();
+      return isPublicHttpUrl(imageUrl)
+        ? `<figure><img src="${esc(imageUrl)}" alt="${esc(story.title)} story photograph" loading="lazy"></figure>`
+        : '';
+    }
+    return part
+      .split(/\n{2,}/)
+      .map((paragraph) => paragraph.trim())
+      .filter(Boolean)
+      .map((paragraph) => `<p>${esc(paragraph)}</p>`)
+      .join('');
+  }).join('');
+  return body || `<p>${esc(story.excerpt || story.title)}</p>`;
+}
+
 export default async function handler(req, res) {
   const storyId = String(req.query.slug || req.query.id || '').trim();
   if (!storyId) return res.redirect(302, SITE_URL);
@@ -37,7 +57,10 @@ export default async function handler(req, res) {
   }
 
   const canonicalToken = story.slug ? sanitizeSlug(story.slug) : (story.firestoreId || storyId);
-  const ogImageUrl = buildOgImageUrl('story', canonicalToken, story.updatedAt);
+  const ogImageUrl = publicMediaUrl(
+    story.coverImageUrl,
+    buildOgImageUrl('story', canonicalToken, story.updatedAt),
+  );
   const title = `${story.title} — WILDS AURA Stories`;
   const description = (story.excerpt || `${story.title} by ${story.author}`).slice(0, 200);
   const canonicalUrl = `${SITE_URL}/story/${encodeURIComponent(canonicalToken)}`;
@@ -53,7 +76,10 @@ export default async function handler(req, res) {
     dateModified: story.updatedAt,
     keywords: story.tags?.join(', '),
   });
-  const visibleContent = `<main><article><h1>${esc(story.title)}</h1><p>${esc(description)}</p></article></main>`;
+  const coverHtml = isPublicHttpUrl(story.coverImageUrl)
+    ? `<figure><img src="${esc(story.coverImageUrl)}" alt="${esc(story.title)}" loading="eager"></figure>`
+    : '';
+  const visibleContent = `<main><article><h1>${esc(story.title)}</h1><p>By ${esc(story.author)}</p>${coverHtml}${buildStoryContentHtml(story)}</article></main>`;
   const metaTags = buildMetaTags({ type: 'article', title, description, pageUrl: canonicalUrl, ogImageUrl }) + jsonLd;
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');

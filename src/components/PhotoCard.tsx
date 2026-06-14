@@ -72,10 +72,11 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, on
           />
         )}
         <img
-          src={imgError ? PHOTO_PLACEHOLDER : (photo.imageUrl || PHOTO_PLACEHOLDER)}
+          src={imgError ? PHOTO_PLACEHOLDER : (photo.thumbnailUrl || photo.imageUrl || PHOTO_PLACEHOLDER)}
           alt={photo.title}
           style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.7s, opacity 0.25s', opacity: imgLoaded ? 1 : 0, userSelect: 'none', WebkitUserDrag: 'none' } as React.CSSProperties}
           loading="lazy"
+          decoding="async"
           draggable={false}
           onDragStart={(e) => e.preventDefault()}
           onLoad={() => setImgLoaded(true)}

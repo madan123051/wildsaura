@@ -1,18 +1,27 @@
 import { SITE_URL, esc } from './seo-render.js';
 
 export const DEFAULT_OG_IMAGE = `${SITE_URL}/photos/photo-wildlife.jpeg`;
-const OG_CDN_BASE = 'https://cdn.wildsaura.com/og';
+
+export function isPublicHttpUrl(value) {
+  try {
+    const url = new URL(String(value || ''));
+    return url.protocol === 'https:' || url.protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
+
+export function publicMediaUrl(value, fallback = DEFAULT_OG_IMAGE) {
+  return isPublicHttpUrl(value) ? String(value) : fallback;
+}
 
 export function sanitizeSlug(raw) {
   return String(raw || '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
 }
 
 export function buildOgImageUrl(type, slug, version = '') {
-  const safeType = sanitizeSlug(type) || 'photo';
-  const safeSlug = sanitizeSlug(slug);
-  if (!safeSlug) return DEFAULT_OG_IMAGE;
-  const base = `${OG_CDN_BASE}/${safeType}/${encodeURIComponent(safeSlug)}.jpg`;
-  return version ? `${base}?v=${encodeURIComponent(version)}` : base;
+  const cacheKey = [sanitizeSlug(type), sanitizeSlug(slug), version].filter(Boolean).join('-');
+  return cacheKey ? `${DEFAULT_OG_IMAGE}?v=${encodeURIComponent(cacheKey)}` : DEFAULT_OG_IMAGE;
 }
 
 export function buildMetaTags({ type = 'article', title, description, pageUrl, ogImageUrl }) {

@@ -111,7 +111,17 @@ export const StoriesSection: React.FC<StoriesSectionProps> = ({ stories, onStory
                   fontSize: '1.1rem', fontWeight: 700, color: 'var(--wa-text)',
                   marginBottom: '0.5rem', lineHeight: 1.3,
                 }}>
-                  {story.title}
+                  <a
+                    href={`/story/${encodeURIComponent(story.slug || story.firestoreId || String(story.id))}`}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      onStoryClick(story);
+                    }}
+                    style={{ color: 'inherit', textDecoration: 'none' }}
+                  >
+                    {story.title}
+                  </a>
                 </h3>
                 <p style={{
                   fontSize: '0.8rem', color: 'var(--wa-text-muted)', lineHeight: 1.6,

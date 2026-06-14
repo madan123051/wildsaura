@@ -9,6 +9,9 @@
     "api/og-story.js": {
       "includeFiles": "dist/index.html"
     },
+    "api/og-video.js": {
+      "includeFiles": "dist/index.html"
+    },
     "api/og-category.js": {
       "includeFiles": "dist/index.html"
     }
@@ -21,6 +24,10 @@
     {
       "source": "/story/:slug",
       "destination": "/api/og-story?slug=:slug"
+    },
+    {
+      "source": "/video/:id",
+      "destination": "/api/og-video?id=:id"
     },
     {
       "source": "/category/:slug",

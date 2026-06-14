@@ -66,7 +66,8 @@ export const StoryDetail: React.FC<StoryDetailProps> = ({
   const [shareToast, setShareToast] = useState(false);
 
   const handleShare = async () => {
-    const shareUrl = window.location.origin + '/story/' + encodeURIComponent(story.slug);
+    const storyToken = story.slug || story.firestoreId || String(story.id);
+    const shareUrl = window.location.origin + '/story/' + encodeURIComponent(storyToken);
     const shareData = {
       title: `${story.title} — WILDS AURA`,
       text: story.excerpt || `Read "${story.title}" on WILDS AURA Photography`,
@@ -91,7 +92,8 @@ export const StoryDetail: React.FC<StoryDetailProps> = ({
     setCommentText('');
   };
 
-  const shareUrl = window.location.origin + '/story/' + encodeURIComponent(story.slug);
+  const storyToken = story.slug || story.firestoreId || String(story.id);
+  const shareUrl = window.location.origin + '/story/' + encodeURIComponent(storyToken);
   const shareText = story.excerpt || `Read "${story.title}" on WILDS AURA Photography`;
   const shareLinks = {
     whatsapp: `https://api.whatsapp.com/send?text=${encodeURIComponent(`${story.title}\n${shareUrl}`)}`,

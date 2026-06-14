@@ -1,6 +1,6 @@
 import { esc, injectSeoHtml, readBaseHtml, SITE_URL } from './seo-render.js';
 import { arrayField, boolField, getDocumentByIdOrSlug, strField } from './firestore-seo.js';
-import { buildJsonLdScript, buildMetaTags, buildNoindexMetaTags, buildOgImageUrl, sanitizeSlug } from './og-shared.js';
+import { buildJsonLdScript, buildMetaTags, buildNoindexMetaTags, buildOgImageUrl, publicMediaUrl, sanitizeSlug } from './og-shared.js';
 
 async function getPhotoById(photoId) {
   try {
@@ -50,7 +50,10 @@ export default async function handler(req, res) {
 
   const canonicalToken = photo.slug ? sanitizeSlug(photo.slug) : (photo.firestoreId || requestedToken);
   const canonicalUrl = `${SITE_URL}/photo/${encodeURIComponent(canonicalToken)}`;
-  const ogImageUrl = buildOgImageUrl('photo', canonicalToken, photo.updatedAt);
+  const ogImageUrl = publicMediaUrl(
+    photo.imageUrl || photo.thumbnailUrl,
+    buildOgImageUrl('photo', canonicalToken, photo.updatedAt),
+  );
   const title = `${photo.title} — WILDS AURA Photography`;
   const description = buildDescription(photo);
   const jsonLd = buildJsonLdScript({
@@ -65,7 +68,7 @@ export default async function handler(req, res) {
     keywords: photo.tags?.join(', '),
     locationCreated: photo.location ? { '@type': 'Place', name: photo.location } : undefined,
   });
-  const visibleContent = `<main><article><h1>${esc(photo.title)}</h1><p>${esc(description)}</p><p>Category: ${esc(photo.category)}</p>${photo.location ? `<p>Location: ${esc(photo.location)}</p>` : ''}</article></main>`;
+  const visibleContent = `<main><article><h1>${esc(photo.title)}</h1><figure><img src="${esc(publicMediaUrl(photo.imageUrl || photo.thumbnailUrl))}" alt="${esc(photo.title)}" loading="eager"><figcaption>${esc(description)}</figcaption></figure><p>Category: ${esc(photo.category)}</p>${photo.location ? `<p>Location: ${esc(photo.location)}</p>` : ''}<p>Photographer: ${esc(photo.photographer)}</p></article></main>`;
   const metaTags = buildMetaTags({ type: 'article', title, description, pageUrl: canonicalUrl, ogImageUrl }) + jsonLd;
   const injected = injectSeoHtml(baseHtml, metaTags, visibleContent);
 

@@ -253,7 +253,19 @@ export const StoryGridPage: React.FC<StoryGridPageProps> = ({ stories, onBack, o
                     fontSize: '0.95rem', fontWeight: 700, color: 'var(--wa-text)',
                     margin: '0 0 0.5rem', lineHeight: 1.4,
                     display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-                  }}>{story.title}</h3>
+                  }}>
+                    <a
+                      href={`/story/${encodeURIComponent(story.slug || story.firestoreId || String(story.id))}`}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        onStoryClick(story);
+                      }}
+                      style={{ color: 'inherit', textDecoration: 'none' }}
+                    >
+                      {story.title}
+                    </a>
+                  </h3>
                   <p style={{
                     fontSize: '0.78rem', color: 'var(--wa-text-muted)', margin: '0 0 0.75rem',
                     lineHeight: 1.5,

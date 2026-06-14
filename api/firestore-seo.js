@@ -3,6 +3,12 @@ const FIREBASE_API_KEY = 'AIzaSyCXDJrFmn-pzbqys91tj4Fruqn4tl58p9Y';
 const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents`;
 
 export const strField = (doc, key) => doc.fields?.[key]?.stringValue || '';
+export const timestampField = (doc, key) => doc.fields?.[key]?.timestampValue || '';
+export const intField = (doc, key, fallback = 0) => {
+  const value = doc.fields?.[key]?.integerValue ?? doc.fields?.[key]?.doubleValue;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
 export const boolField = (doc, key, fallback = true) => {
   const v = doc.fields?.[key]?.booleanValue;
   return v === undefined ? fallback : v;

@@ -4,6 +4,7 @@ import { Video, Comment, Visitor } from '../types';
 
 interface VideoSectionProps {
   videos: Video[];
+  onVideoClick: (video: Video) => void;
   visitor: Visitor | null;
   videoComments: Record<string, Comment[]>;
   onAddVideoComment: (firestoreId: string, content: string) => void;
@@ -43,6 +44,7 @@ const timeAgo = (date: string | Date) => {
 
 export const VideoSection: React.FC<VideoSectionProps> = ({
   videos,
+  onVideoClick,
   visitor,
   videoComments,
   onAddVideoComment,
@@ -266,7 +268,16 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
                     fontSize: '1.1rem', fontWeight: 700, color: 'var(--wa-text)',
                     marginBottom: '0.5rem', lineHeight: 1.3,
                   }}>
-                    {video.title}
+                    <a
+                      href={`/video/${encodeURIComponent(video.firestoreId || String(video.id))}`}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        onVideoClick(video);
+                      }}
+                      style={{ color: 'inherit', textDecoration: 'none' }}
+                    >
+                      {video.title}
+                    </a>
                   </h3>
                   {video.description && (
                     <p style={{

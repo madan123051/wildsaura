@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { lazy, Suspense, useState, useRef, useCallback, useEffect } from 'react';
 import { Photo, Category, FilterTab, Visitor, Story, Comment, Video, GalleryPhoto } from './types';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
@@ -8,7 +8,6 @@ import { PhotoGallery } from './components/PhotoGallery';
 import { PhotoModal } from './components/PhotoModal';
 import { AboutSection } from './components/AboutSection';
 import { Footer } from './components/Footer';
-import { AdminDashboard } from './components/AdminDashboard';
 import { SearchBar } from './components/SearchBar';
 import { AIChatbot } from './components/AIChatbot';
 import { VisitorLogin } from './components/VisitorLogin';
@@ -20,6 +19,7 @@ import { StoryDetail } from './components/StoryDetail';
 import { PhotoGridPage } from './components/PhotoGridPage';
 import { StoryGridPage } from './components/StoryGridPage';
 import { VideoGridPage } from './components/VideoGridPage';
+import { VideoDetail } from './components/VideoDetail';
 import { ProfileModal } from './components/ProfileModal';
 import { CommunityPage } from './components/CommunityPage';
 import { downloadPhoto } from './utils/downloadPhoto';
@@ -39,6 +39,9 @@ import { NotificationPanel, AppNotification } from './components/NotificationPan
 import AdSenseHead from './components/AdSenseHead';
 
 import SelfAdPopup from './components/SelfAdPopup';
+const AdminDashboard = lazy(() =>
+  import('./components/AdminDashboard').then((module) => ({ default: module.AdminDashboard })),
+);
 const logoUrl = '/photos/logo-header.webp';
 const ADMIN_EMAIL = 'madan123050@gmail.com';
 
@@ -57,6 +60,11 @@ const matchesStoryRoute = (story: Story, token: string) => {
   const target = normalizeRouteToken(token);
   if (!target) return false;
   return [story.slug, story.firestoreId, story.id].some((value) => normalizeRouteToken(value) === target);
+};
+const matchesVideoRoute = (video: Video, token: string) => {
+  const target = normalizeRouteToken(token);
+  if (!target) return false;
+  return [video.firestoreId, video.id].some((value) => normalizeRouteToken(value) === target);
 };
 
 // ── Sample Photo Data ───────────────────────────────────────────────────────
@@ -186,13 +194,14 @@ const FILTER_TABS: FilterTab[] = [
 ];
 
 // ── App ─────────────────────────────────────────────────────────────────────
-type AppView = 'home' | 'admin-login' | 'admin-dashboard' | 'story-detail' | 'terms' | 'marketplace' | 'community' | 'ngo' | 'about' | 'contact' | 'photos' | 'photo-grid' | 'story-grid' | 'video-grid';
+type AppView = 'home' | 'admin-login' | 'admin-dashboard' | 'story-detail' | 'video-detail' | 'terms' | 'marketplace' | 'community' | 'ngo' | 'about' | 'contact' | 'photos' | 'photo-grid' | 'story-grid' | 'video-grid';
 
 const App: React.FC = () => {
   const [view, setView] = useState<AppView>(() => {
     if (typeof window !== 'undefined') {
       const path = window.location.pathname;
       if (path.startsWith('/story/')) return 'story-detail';
+      if (path.startsWith('/video/')) return 'video-detail';
       if (path === '/terms') return 'terms';
       if (path === '/marketplace') return 'marketplace';
       if (path === '/community') return 'community';
@@ -224,6 +233,7 @@ const App: React.FC = () => {
   const [videos, setVideos] = useState<Video[]>([]);
   const [galleryPhotos, setGalleryPhotos] = useState<GalleryPhoto[]>([]);
   const [selectedStory, setSelectedStory] = useState<Story | null>(null);
+  const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const galleryRef = useRef<HTMLElement | null>(null);
 
   // New state
@@ -385,11 +395,17 @@ const App: React.FC = () => {
     const m = window.location.pathname.match(/^\/story\/(.+)$/);
     return m ? decodeURIComponent(m[1]) : null;
   });
+  const [pendingVideoId, setPendingVideoId] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const m = window.location.pathname.match(/^\/video\/(.+)$/);
+    return m ? decodeURIComponent(m[1]) : null;
+  });
 
   // ── Real-time Data Subscriptions (LIVE updates across all browsers) ────────
   useEffect(() => {
     let isFirstPhotoSnap = true;
     let isFirstStorySnap = true;
+    let isFirstVideoSnap = true;
 
     // ── Real-time PHOTOS subscription ──────────────────────────────────
     const unsubPhotos = subscribeToPhotos((firestorePhotos) => {
@@ -548,13 +564,25 @@ const App: React.FC = () => {
 
       setVideos(prev => {
         const existingMap = new Map(prev.filter(v => v.firestoreId).map(v => [v.firestoreId, v]));
-        return mapped.map(m => {
+        const allVideos = mapped.map(m => {
           const existing = existingMap.get(m.firestoreId);
           if (existing) {
             return { ...m, liked: existing.liked, id: existing.id };
           }
           return m;
         });
+        if (isFirstVideoSnap && pendingVideoId) {
+          const matchedVideo = allVideos.find((video) => matchesVideoRoute(video, pendingVideoId));
+          if (matchedVideo) {
+            setTimeout(() => {
+              setSelectedVideo(matchedVideo);
+              setView('video-detail');
+              setPendingVideoId(null);
+            }, 100);
+          }
+        }
+        isFirstVideoSnap = false;
+        return allVideos;
       });
     }, (err) => {
       console.warn('Video subscription error:', err);
@@ -662,6 +690,7 @@ const App: React.FC = () => {
       if (path === '/' || path === '') {
         setSelectedPhoto(null);
         setSelectedStory(null);
+        setSelectedVideo(null);
         setView('home');
       } else if (path.startsWith('/photo/')) {
         const photoSlug = decodeURIComponent(path.replace('/photo/', ''));
@@ -671,6 +700,13 @@ const App: React.FC = () => {
         }
       } else if (path === '/terms') {
         setView('terms');
+      } else if (path.startsWith('/video/')) {
+        const videoId = decodeURIComponent(path.replace('/video/', ''));
+        const matchedVideo = videos.find((video) => matchesVideoRoute(video, videoId));
+        if (matchedVideo) {
+          setSelectedVideo(matchedVideo);
+          setView('video-detail');
+        }
       } else if (path.startsWith('/story/')) {
         const slug = getStorySlugFromPath(path);
         if (!slug) {
@@ -696,7 +732,7 @@ const App: React.FC = () => {
     }
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
-  }, [photos, stories]);
+  }, [photos, stories, videos]);
 
   // ── Scroll to top on every view/page change ──
   useEffect(() => {
@@ -1034,7 +1070,16 @@ const App: React.FC = () => {
     setSelectedStory({ ...story, viewCount: story.viewCount + 1 });
     setStories((prev) => prev.map((s) => s.id === story.id ? { ...s, viewCount: s.viewCount + 1 } : s));
     setView('story-detail');
-    window.history.pushState({}, '', '/story/' + encodeURIComponent(story.slug));
+    const storyToken = story.slug || story.firestoreId || String(story.id);
+    window.history.pushState({}, '', '/story/' + encodeURIComponent(storyToken));
+    window.scrollTo(0, 0);
+  }, []);
+
+  const handleVideoClick = useCallback((video: Video) => {
+    setSelectedVideo(video);
+    setView('video-detail');
+    const videoToken = video.firestoreId || String(video.id);
+    window.history.pushState({}, '', '/video/' + encodeURIComponent(videoToken));
     window.scrollTo(0, 0);
   }, []);
 
@@ -1387,6 +1432,13 @@ const App: React.FC = () => {
     window.history.pushState({}, '', '/');
   }, []);
 
+  const handleVideoBack = useCallback(() => {
+    setView('video-grid');
+    setSelectedVideo(null);
+    window.history.pushState({}, '', '/video-grid');
+    window.scrollTo(0, 0);
+  }, []);
+
   // Admin login removed — admin auto-detected by email
 
   // ── Photo Grid View ──
@@ -1450,6 +1502,7 @@ const App: React.FC = () => {
       <div style={{ minHeight: '100vh', background: 'var(--wa-bg)' }}>
         <VideoGridPage
           videos={videos}
+          onVideoClick={handleVideoClick}
           onBack={() => { setView('home'); window.history.pushState({}, '', '/'); window.scrollTo(0, 0); }}
           visitor={visitor}
           videoComments={videoComments}
@@ -1466,25 +1519,27 @@ const App: React.FC = () => {
   // ── Admin Dashboard View ──
   if (view === 'admin-dashboard') {
     return (
-      <AdminDashboard
-        logoUrl={logoUrl}
-        photos={photos}
-        onLogout={handleLogout}
-        onAddPhoto={handleAddPhoto}
-        onDeletePhoto={handleDeletePhoto}
-        onUpdatePhoto={handleUpdatePhoto}
-        onViewSite={() => { setView('home'); window.history.pushState({}, '', '/'); }}
-        stories={stories}
-        onAddStory={handleAddStory}
-        onDeleteStory={handleDeleteStory}
-        onUpdateStory={handleUpdateStory}
-        videos={videos}
-        onAddVideo={handleAddVideo}
-        allComments={allFirestoreComments}
-        onDeleteComment={handleDeleteComment}
-        onDeleteVideo={handleDeleteVideo}
-        onUpdateVideo={handleUpdateVideo}
-      />
+      <Suspense fallback={<main style={{ minHeight: '100vh', background: 'var(--wa-bg)', color: 'var(--wa-text)', padding: '6rem 1rem' }}>Loading dashboard...</main>}>
+        <AdminDashboard
+          logoUrl={logoUrl}
+          photos={photos}
+          onLogout={handleLogout}
+          onAddPhoto={handleAddPhoto}
+          onDeletePhoto={handleDeletePhoto}
+          onUpdatePhoto={handleUpdatePhoto}
+          onViewSite={() => { setView('home'); window.history.pushState({}, '', '/'); }}
+          stories={stories}
+          onAddStory={handleAddStory}
+          onDeleteStory={handleDeleteStory}
+          onUpdateStory={handleUpdateStory}
+          videos={videos}
+          onAddVideo={handleAddVideo}
+          allComments={allFirestoreComments}
+          onDeleteComment={handleDeleteComment}
+          onDeleteVideo={handleDeleteVideo}
+          onUpdateVideo={handleUpdateVideo}
+        />
+      </Suspense>
     );
   }
 
@@ -1576,6 +1631,43 @@ const App: React.FC = () => {
           onClose={() => setShowVisitorLogin(false)}
           onLogin={handleVisitorLogin}
         />
+      </div>
+    );
+  }
+
+  if (view === 'video-detail' && selectedVideo) {
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--wa-bg)', display: 'flex', flexDirection: 'column' }}>
+        <Header
+          onScrollToGallery={scrollToGallery}
+          logoUrl={logoUrl}
+          onLogoClick={handleLogoClick}
+          onSearchClick={() => setShowSearch(true)}
+          visitor={visitor}
+          onVisitorLoginClick={() => setShowVisitorLogin(true)}
+          onVisitorLogout={handleVisitorLogout}
+          onVisitorUpdate={handleVisitorUpdate}
+          onStoriesClick={handleStoriesNavClick}
+          notificationCount={unreadNotifCount}
+          onNotificationClick={() => setShowNotifPanel(p => !p)}
+          isAdmin={isAdmin}
+          onAdminClick={() => { setView('admin-dashboard'); window.history.pushState({}, '', '/admin'); }}
+        />
+        <div style={{ flex: 1 }}>
+          <VideoDetail
+            video={selectedVideo}
+            onBack={handleVideoBack}
+            onLike={() => {
+              handleVideoLike(selectedVideo.id);
+              setSelectedVideo((current) => current ? {
+                ...current,
+                liked: !current.liked,
+                likeCount: current.liked ? current.likeCount - 1 : current.likeCount + 1,
+              } : current);
+            }}
+          />
+        </div>
+        <Footer logoUrl={logoUrl} onTermsClick={handleTermsClick} />
       </div>
     );
   }
@@ -1791,6 +1883,7 @@ const App: React.FC = () => {
       <StoriesSection stories={stories} onStoryClick={handleStoryClick} onViewAll={() => { setView('story-grid'); window.scrollTo(0, 0); }} />
       <VideoSection 
         videos={videos} 
+        onVideoClick={handleVideoClick}
         visitor={visitor}
         videoComments={videoComments}
         onAddVideoComment={handleAddVideoComment}

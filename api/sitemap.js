@@ -1,5 +1,6 @@
-import { boolField, listCollection, strField } from './firestore-seo.js';
+import { boolField, listCollection, strField, timestampField } from './firestore-seo.js';
 import { SITE_URL } from './seo-render.js';
+import { DEFAULT_OG_IMAGE, isPublicHttpUrl } from './og-shared.js';
 const CATEGORY_SLUGS = ['wildlife', 'birds', 'macro', 'domestic', 'landscape', 'nature', 'street', 'other'];
 const esc = (str = '') => String(str)
   .replace(/&/g, '&amp;')
@@ -37,20 +38,41 @@ function isPublicStory(doc) {
   return Boolean(strField(doc, 'title').trim());
 }
 
+function isPublicVideo(doc) {
+  return Boolean(
+    strField(doc, 'title').trim() &&
+    isPublicHttpUrl(strField(doc, 'videoUrl').trim()),
+  );
+}
+
 function isoDate(doc) {
-  const ts = doc.updateTime || doc.createTime;
+  const ts = timestampField(doc, 'createdAt') || doc.updateTime || doc.createTime;
   return ts ? ts.split('T')[0] : new Date().toISOString().split('T')[0];
+}
+
+function storyImageUrls(doc) {
+  const urls = [];
+  const cover = strField(doc, 'coverImageUrl').trim();
+  if (isPublicHttpUrl(cover)) urls.push(cover);
+  const content = strField(doc, 'content');
+  for (const match of content.matchAll(/\[IMAGE:([^\]]+)\]/g)) {
+    const imageUrl = match[1].trim();
+    if (isPublicHttpUrl(imageUrl) && !urls.includes(imageUrl)) urls.push(imageUrl);
+  }
+  return urls;
 }
 
 export default async function handler(req, res) {
   const today = new Date().toISOString().split('T')[0];
-  const [photoDocs, storyDocs] = await Promise.allSettled([
+  const [photoDocs, storyDocs, videoDocs] = await Promise.allSettled([
     listCollection('photos'),
     listCollection('stories'),
+    listCollection('videos'),
   ]);
 
   const photos = photoDocs.status === 'fulfilled' ? photoDocs.value : [];
   const stories = storyDocs.status === 'fulfilled' ? storyDocs.value : [];
+  const videos = videoDocs.status === 'fulfilled' ? videoDocs.value : [];
 
   const staticPages = [
     { loc: `${SITE_URL}/`, changefreq: 'daily', priority: '1.0', lastmod: today },
@@ -91,10 +113,31 @@ export default async function handler(req, res) {
     if (!isPublicStory(doc)) continue;
     const slug = canonicalStorySlug(doc);
     if (!slug) continue;
-    urls.push(`  <url>\n    <loc>${esc(`${SITE_URL}/story/${encodeURIComponent(slug)}`)}</loc>\n    <lastmod>${isoDate(doc)}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.8</priority>\n  </url>`);
+    const title = strField(doc, 'title') || 'Wildlife Story';
+    const images = storyImageUrls(doc)
+      .map((imageUrl) => `\n    <image:image>\n      <image:loc>${esc(imageUrl)}</image:loc>\n      <image:title>${esc(title)}</image:title>\n    </image:image>`)
+      .join('');
+    urls.push(`  <url>\n    <loc>${esc(`${SITE_URL}/story/${encodeURIComponent(slug)}`)}</loc>\n    <lastmod>${isoDate(doc)}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.8</priority>${images}\n  </url>`);
   }
 
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n${urls.join('\n')}\n</urlset>`;
+  for (const doc of videos) {
+    if (!isPublicVideo(doc)) continue;
+    const id = doc.name?.split('/').pop() || '';
+    if (!id) continue;
+    const title = strField(doc, 'title').trim();
+    const description = (
+      strField(doc, 'description').trim() ||
+      `${title}, a wildlife and nature video by WILDS AURA Photography.`
+    ).slice(0, 200);
+    const videoUrl = strField(doc, 'videoUrl').trim();
+    const thumbnailUrl = isPublicHttpUrl(strField(doc, 'thumbnailUrl').trim())
+      ? strField(doc, 'thumbnailUrl').trim()
+      : DEFAULT_OG_IMAGE;
+    const publicationDate = timestampField(doc, 'createdAt') || doc.createTime || doc.updateTime;
+    urls.push(`  <url>\n    <loc>${esc(`${SITE_URL}/video/${encodeURIComponent(id)}`)}</loc>\n    <lastmod>${isoDate(doc)}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.8</priority>\n    <video:video>\n      <video:thumbnail_loc>${esc(thumbnailUrl)}</video:thumbnail_loc>\n      <video:title>${esc(title)}</video:title>\n      <video:description>${esc(description)}</video:description>\n      <video:content_loc>${esc(videoUrl)}</video:content_loc>${publicationDate ? `\n      <video:publication_date>${esc(publicationDate)}</video:publication_date>` : ''}\n    </video:video>\n  </url>`);
+  }
+
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">\n${urls.join('\n')}\n</urlset>`;
 
   res.setHeader('Content-Type', 'application/xml; charset=utf-8');
   res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=600');
