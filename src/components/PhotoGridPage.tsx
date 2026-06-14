@@ -23,6 +23,8 @@ interface PhotoGridPageProps {
   onDownload: (photo: Photo) => void;
   isLoggedIn: boolean;
   onLoginRequired: () => void;
+  initialCategory?: string;
+  onCategoryChange?: (category: string) => void;
 }
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -55,11 +57,25 @@ export const PhotoGridPage: React.FC<PhotoGridPageProps> = ({
   onDownload,
   isLoggedIn,
   onLoginRequired,
+  initialCategory = 'all',
+  onCategoryChange,
 }) => {
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedCategory, setSelectedCategoryState] = useState(initialCategory);
   const [selectedYear, setSelectedYear] = useState('all');
   const [selectedMonth, setSelectedMonth] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
+  useEffect(() => {
+    setSelectedCategoryState(initialCategory);
+  }, [initialCategory]);
+
+  const setSelectedCategory = (category: string) => {
+    setSelectedCategoryState(category);
+    onCategoryChange?.(category);
+    if (typeof window !== 'undefined') {
+      const nextPath = category === 'all' ? '/photo-grid' : `/category/${encodeURIComponent(category)}`;
+      window.history.pushState({}, '', nextPath);
+    }
+  };
   const width = useWindowSize();
   
   const getGridCols = () => {

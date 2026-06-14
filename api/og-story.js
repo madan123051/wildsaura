@@ -1,17 +1,22 @@
-import { injectSeoHtml, readBaseHtml, SITE_URL } from './seo-render.js';
-import { buildMetaTags, buildOgImageUrl, sanitizeSlug } from './og-shared.js';
-
-const FIREBASE_PROJECT_ID = 'wildsaura-1ef8a';
-const FIREBASE_API_KEY = 'AIzaSyCXDJrFmn-pzbqys91tj4Fruqn4tl58p9Y';
+import { esc, injectSeoHtml, readBaseHtml, SITE_URL } from './seo-render.js';
+import { arrayField, getDocumentByIdOrSlug, strField } from './firestore-seo.js';
+import { buildJsonLdScript, buildMetaTags, buildOgImageUrl, sanitizeSlug } from './og-shared.js';
 
 async function getStory(storyId) {
   try {
-    const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/stories/${encodeURIComponent(storyId)}?key=${FIREBASE_API_KEY}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
-    if (!res.ok) return null;
-    const doc = await res.json();
-    const f = doc.fields || {};
-    return { title: f.title?.stringValue || 'Wildlife Story', excerpt: f.excerpt?.stringValue || '', author: f.author?.stringValue || 'Madan Shrestha', slug: f.slug?.stringValue || storyId, updatedAt: doc.updateTime || '' };
+    const doc = await getDocumentByIdOrSlug('stories', storyId);
+    if (!doc) return null;
+    return {
+      title: strField(doc, 'title') || 'Wildlife Story',
+      excerpt: strField(doc, 'excerpt'),
+      content: strField(doc, 'content'),
+      coverImageUrl: strField(doc, 'coverImageUrl'),
+      author: strField(doc, 'author') || strField(doc, 'photographer') || 'Madan Shrestha',
+      tags: arrayField(doc, 'tags'),
+      slug: strField(doc, 'slug') || doc.name?.split('/').pop() || storyId,
+      updatedAt: doc.updateTime || '',
+      createdAt: doc.createTime || '',
+    };
   } catch { return null; }
 }
 
@@ -31,9 +36,23 @@ export default async function handler(req, res) {
   const ogImageUrl = buildOgImageUrl('story', slug, story.updatedAt);
   const title = `${story.title} — WILDS AURA Stories`;
   const description = (story.excerpt || `${story.title} by ${story.author}`).slice(0, 200);
-  const metaTags = buildMetaTags({ type: 'article', title, description, pageUrl: `${SITE_URL}/story/${encodeURIComponent(slug)}`, ogImageUrl });
+  const canonicalUrl = `${SITE_URL}/story/${encodeURIComponent(slug)}`;
+  const jsonLd = buildJsonLdScript({
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: story.title,
+    description,
+    image: story.coverImageUrl || ogImageUrl,
+    url: canonicalUrl,
+    author: { '@type': 'Person', name: story.author },
+    datePublished: story.createdAt,
+    dateModified: story.updatedAt,
+    keywords: story.tags?.join(', '),
+  });
+  const visibleContent = `<main><article><h1>${esc(story.title)}</h1><p>${esc(description)}</p></article></main>`;
+  const metaTags = buildMetaTags({ type: 'article', title, description, pageUrl: canonicalUrl, ogImageUrl }) + jsonLd;
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400');
-  return res.status(200).send(injectSeoHtml(baseHtml, metaTags));
+  return res.status(200).send(injectSeoHtml(baseHtml, metaTags, visibleContent));
 }

@@ -1,38 +1,11 @@
-const FIREBASE_PROJECT_ID = 'wildsaura-1ef8a';
-const FIREBASE_API_KEY = 'AIzaSyCXDJrFmn-pzbqys91tj4Fruqn4tl58p9Y';
+import { boolField, listCollection, strField } from './firestore-seo.js';
 const SITE_URL = 'https://www.wildsaura.com';
-const PAGE_SIZE = 1000;
-
 const CATEGORY_SLUGS = ['wildlife', 'birds', 'macro', 'domestic', 'landscape', 'nature', 'street', 'other'];
-
-async function listCollection(collectionId) {
-  const docs = [];
-  let pageToken = '';
-  do {
-    const url =
-      `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/${collectionId}` +
-      `?key=${FIREBASE_API_KEY}&pageSize=${PAGE_SIZE}` +
-      (pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : '');
-    const res = await fetch(url);
-    if (!res.ok) break;
-    const data = await res.json();
-    if (data.documents) docs.push(...data.documents);
-    pageToken = data.nextPageToken || '';
-  } while (pageToken);
-  return docs;
-}
-
 const esc = (str = '') => String(str)
   .replace(/&/g, '&amp;')
   .replace(/</g, '&lt;')
   .replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;');
-
-const strField = (doc, key) => doc.fields?.[key]?.stringValue || '';
-const boolField = (doc, key, fallback = true) => {
-  const v = doc.fields?.[key]?.booleanValue;
-  return v === undefined ? fallback : v;
-};
 
 function canonicalPhotoSlug(doc) {
   const slug = strField(doc, 'slug').trim();
