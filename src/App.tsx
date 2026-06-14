@@ -1114,7 +1114,8 @@ const App: React.FC = () => {
   }, [recordView]);
 
   const handleVideoClick = useCallback((video: Video) => {
-    const updated = { ...video, viewCount: (video.viewCount || 0) + 1 };
+    const viewIncrement = getViewIncrement('video', video.firestoreId);
+    const updated = { ...video, viewCount: (video.viewCount || 0) + viewIncrement };
     setSelectedVideo(updated);
     setVideos((prev) => prev.map((v) => v.id === video.id ? { ...v, viewCount: (v.viewCount || 0) + 1 } : v));
     recordView('video', video.firestoreId);
@@ -1450,7 +1451,8 @@ const App: React.FC = () => {
 
   // ── Helper: Open/Close Photo with URL ────────────────────────────────────
   const openPhoto = useCallback((photo: Photo | null) => {
-    const updatedPhoto = photo ? { ...photo, viewCount: (photo.viewCount || 0) + 1 } : null;
+    const viewIncrement = photo ? getViewIncrement('photo', photo.firestoreId) : 0;
+    const updatedPhoto = photo ? { ...photo, viewCount: (photo.viewCount || 0) + viewIncrement } : null;
     setSelectedPhoto(updatedPhoto);
     if (photo) {
       setPhotos((prev) => prev.map((p) => p.id === photo.id ? { ...p, viewCount: (p.viewCount || 0) + 1 } : p));
