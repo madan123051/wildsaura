@@ -16,19 +16,6 @@
       "includeFiles": "dist/index.html"
     }
   },
-  "redirects": [
-    {
-      "source": "/:path*",
-      "has": [
-        {
-          "type": "host",
-          "value": "wildsaura.com"
-        }
-      ],
-      "destination": "https://www.wildsaura.com/:path*",
-      "permanent": true
-    }
-  ],
   "rewrites": [
     {
       "source": "/",

@@ -60,7 +60,7 @@ assert(/status\(404\)/.test(ogStory), 'story renderer must return 404 for unavai
 assert(/"source": "\/photo\/:id"/.test(vercelJson), 'vercel rewrite missing /photo/:id');
 assert(/"source": "\/story\/:slug"/.test(vercelJson), 'vercel rewrite missing /story/:slug');
 assert(/"source": "\/category\/:slug"/.test(vercelJson), 'vercel rewrite missing /category/:slug');
-assert(vercelConfig.redirects?.some((r) => r.has?.some((h) => h.type === 'host' && h.value === 'wildsaura.com') && r.destination === 'https://www.wildsaura.com/:path*'), 'vercel redirect must consolidate non-www to www');
+assert(!vercelConfig.redirects?.some((r) => r.source === '/:path*' && String(r.destination).includes('www.wildsaura.com')), 'domain-level www redirects should stay in Vercel domain settings, not app routes');
 assert(vercelConfig.rewrites?.some((r) => r.source === '/about' && r.destination.includes('/api/static-page')), 'vercel rewrite missing static page SEO renderer for /about');
 assert(vercelConfig.rewrites?.some((r) => r.source === '/photos' && r.destination.includes('/api/static-page')), 'vercel rewrite missing static page SEO renderer for /photos');
 
