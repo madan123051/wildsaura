@@ -254,8 +254,237 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
             </button>
           )}
         </div>
-        {/* Modal content follows... (rest of the file remains same) */}
+        {/* ── Compact Info Section ── */}
+        <div style={{ padding: '0.75rem 1rem' }}>
+
+          {/* Title + meta — single compact row */}
+          <div style={{ marginBottom: '0.6rem' }}>
+            <h2 className="font-playfair" style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '0.2rem', lineHeight: 1.3 }}>
+              {photo.title}
+            </h2>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', fontSize: '0.65rem' }} className="text-wa-muted">
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}><User size={10} /> {photo.photographer || 'Unknown'}</span>
+              {photo.location && (
+                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(photo.location)}`} target="_blank" rel="noopener noreferrer"
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', color: '#9fcb8f', textDecoration: 'none' }}
+                  onClick={(e) => e.stopPropagation()}>
+                  <MapPin size={10} /> {photo.location}
+                </a>
+              )}
+              {formatPhotoDate(photo.createdAt) && (
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', color: '#9fcb8f' }}><CalendarDays size={10} /> {formatPhotoDate(photo.createdAt)}</span>
+              )}
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}><Tag size={10} /> {photo.category}</span>
+            </div>
+          </div>
+
+          {/* ── Actions row — compact ── */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '0.25rem',
+            paddingBottom: '0.6rem', borderBottom: '1px solid var(--wa-border)',
+            flexWrap: 'wrap',
+          }}>
+            {/* Like */}
+            <button onClick={onLike} style={{
+              display: 'flex', alignItems: 'center', gap: '0.3rem',
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: photo.liked ? 'var(--wa-gold)' : 'var(--wa-text-muted)',
+              padding: '0.35rem 0.6rem', borderRadius: '0.4rem',
+              fontSize: '0.75rem', transition: 'color 0.2s',
+            }}>
+              <Heart size={15} fill={photo.liked ? 'currentColor' : 'none'} />
+              <span>{photo.likeCount}</span>
+            </button>
+
+            {/* Share */}
+            <div style={{ position: 'relative' }}>
+              <button ref={shareButtonRef} onClick={() => setShowShareMenu(prev => !prev)} style={{
+                display: 'flex', alignItems: 'center', gap: '0.3rem',
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: showShareMenu ? 'var(--wa-gold)' : 'var(--wa-text-muted)',
+                padding: '0.35rem 0.6rem', borderRadius: '0.4rem', fontSize: '0.75rem',
+              }}>
+                <Share2 size={15} />
+                <span>Share</span>
+              </button>
+              {showShareMenu && (
+                <div ref={shareMenuRef} style={{
+                  position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)',
+                  marginBottom: '0.4rem', background: 'rgba(20,20,20,0.95)',
+                  border: '1px solid rgba(201,168,76,0.3)', borderRadius: '0.75rem',
+                  padding: '0.4rem', minWidth: '160px', boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+                  zIndex: 10, backdropFilter: 'blur(12px)',
+                  animation: 'shareMenuFadeIn 0.15s ease-out',
+                }}>
+                  <style>{`@keyframes shareMenuFadeIn { from { opacity:0; transform:translateX(-50%) translateY(4px);} to {opacity:1; transform:translateX(-50%) translateY(0);}}`}</style>
+                  {shareOptions.map((opt, i) => (
+                    <button key={i} onClick={() => { opt.onClick(); if (opt.label !== 'Copied!' && opt.label !== 'Copy Link') setShowShareMenu(false); }} style={{
+                      display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%',
+                      padding: '0.45rem 0.65rem', background: 'transparent', border: 'none',
+                      borderRadius: '0.5rem', cursor: 'pointer',
+                      color: opt.label === 'Copied!' ? '#9fcb8f' : 'rgba(247,251,248,0.7)',
+                      fontSize: '0.75rem', textAlign: 'left', whiteSpace: 'nowrap',
+                    }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(201,168,76,0.12)'; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}>
+                      <span style={{ width: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{opt.icon}</span>
+                      <span>{opt.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Download */}
+            <button onClick={onDownload} disabled={isDownloading} style={{
+              display: 'flex', alignItems: 'center', gap: '0.3rem',
+              background: 'none', border: 'none', cursor: isDownloading ? 'wait' : 'pointer',
+              color: 'var(--wa-text-muted)', padding: '0.35rem 0.6rem', borderRadius: '0.4rem', fontSize: '0.75rem',
+            }}>
+              <Download size={15} />
+              <span>{isDownloading ? 'Downloading...' : 'Download'}</span>
+            </button>
+
+            {/* AI Story (admin only) */}
+            {isAdmin && onGenerateStory && (
+              <button onClick={onGenerateStory} disabled={isGeneratingStory} style={{
+                display: 'flex', alignItems: 'center', gap: '0.3rem',
+                background: 'none', border: 'none', cursor: isGeneratingStory ? 'wait' : 'pointer',
+                color: 'var(--wa-gold)', padding: '0.35rem 0.6rem', borderRadius: '0.4rem', fontSize: '0.75rem',
+              }}>
+                <BookOpen size={15} />
+                <span>{isGeneratingStory ? 'Generating...' : 'AI Story'}</span>
+              </button>
+            )}
+
+            {/* Free download badge — inline small chip */}
+            <span style={{
+              marginLeft: 'auto', fontSize: '0.6rem', color: '#9fcb8f',
+              background: 'rgba(159,203,143,0.1)', border: '1px solid rgba(159,203,143,0.2)',
+              borderRadius: '9999px', padding: '0.2rem 0.5rem',
+              display: 'flex', alignItems: 'center', gap: '0.25rem', whiteSpace: 'nowrap',
+            }}>
+              <Download size={10} /> Free · No watermark 🎉
+            </span>
+          </div>
+
+          {/* ── Tabs ── */}
+          <div style={{ display: 'flex', gap: '0.2rem', margin: '0.6rem 0', padding: '0.2rem', borderRadius: '0.4rem', background: 'rgba(255,255,255,0.04)' }}>
+            {tabs.map((tab) => (
+              <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`tab-btn ${activeTab === tab.id ? 'active' : ''}`}
+                style={{ fontSize: '0.7rem', padding: '0.3rem 0.6rem' }}>
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* ── Info Tab ── */}
+          {activeTab === 'info' && (
+            <div>
+              {photo.caption && <p className="text-wa-mid" style={{ fontSize: '0.8rem', lineHeight: 1.5, marginBottom: '0.6rem' }}>{photo.caption}</p>}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                <InfoCard label="Photographer" value={photo.photographer || 'Unknown'} />
+                {photo.location && (
+                  <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(photo.location)}`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', color: 'inherit' }} onClick={(e) => e.stopPropagation()}>
+                    <InfoCard label="Location" value={photo.location} icon={<MapPin size={12} style={{ color: '#9fcb8f' }} />} />
+                  </a>
+                )}
+                <InfoCard label="Category" value={photo.category} />
+                {formatPhotoDate(photo.createdAt) && (
+                  <InfoCard label="Date" value={formatPhotoDate(photo.createdAt)} icon={<CalendarDays size={12} style={{ color: '#9fcb8f' }} />} />
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── EXIF Tab ── */}
+          {activeTab === 'exif' && hasExif && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.5rem' }}>
+              {photo.cameraModel && <ExifCard icon={<Camera size={11} />} label="Camera" value={photo.cameraModel} />}
+              {photo.lens && <ExifCard icon={<Maximize2 size={11} />} label="Lens" value={photo.lens} />}
+              {photo.aperture && <ExifCard icon={<Eye size={11} />} label="Aperture" value={photo.aperture} />}
+              {photo.shutterSpeed && <ExifCard icon={<Timer size={11} />} label="Shutter" value={photo.shutterSpeed} />}
+              {photo.iso && <ExifCard icon={<Zap size={11} />} label="ISO" value={`ISO ${photo.iso}`} />}
+              {photo.focalLength && <ExifCard icon={<Eye size={11} />} label="Focal Length" value={photo.focalLength} />}
+            </div>
+          )}
+
+          {/* ── Comments Tab ── */}
+          {activeTab === 'comments' && (
+            <div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.75rem', maxHeight: '10rem', overflowY: 'auto' }}>
+                {comments.length === 0 && (
+                  <p style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--wa-text-muted)', padding: '0.75rem 0' }}>
+                    No comments yet. Be the first!
+                  </p>
+                )}
+                {comments.map((c) => (
+                  <div key={c.id} style={{ display: 'flex', gap: '0.5rem', padding: '0.5rem 0.65rem', borderRadius: '0.5rem', background: 'var(--wa-dark-alt)', position: 'relative' }}>
+                    {c.avatarUrl ? (
+                      <img src={c.avatarUrl} alt={c.displayName} style={{ width: 24, height: 24, borderRadius: '50%', flexShrink: 0, objectFit: 'cover' }} referrerPolicy="no-referrer" />
+                    ) : (
+                      <div style={{ width: 24, height: 24, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.avatarColor || 'linear-gradient(135deg,#c9a84c,#f5d98b)', fontSize: '0.6rem', fontWeight: 700, color: '#000' }}>
+                        {c.displayName.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontSize: '0.65rem', fontWeight: 600, opacity: 0.7 }}>{c.displayName}</p>
+                      <p className="text-wa-mid" style={{ fontSize: '0.8rem', marginTop: '0.15rem' }}>{c.content}</p>
+                    </div>
+                    {isAdmin && c.firestoreId && onDeleteComment && (
+                      <button onClick={() => onDeleteComment(c.firestoreId!)} title="Delete comment" style={{ position: 'absolute', top: '0.4rem', right: '0.4rem', background: 'rgba(255,60,60,0.15)', border: '1px solid rgba(255,60,60,0.3)', borderRadius: '4px', cursor: 'pointer', padding: '0.15rem', color: 'rgba(255,100,100,0.8)', display: 'flex', alignItems: 'center' }}>
+                        <Trash2 size={11} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {visitor ? (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.35rem' }}>
+                    {visitor.avatarUrl ? (
+                      <img src={visitor.avatarUrl} alt={visitor.displayName} style={{ width: 18, height: 18, borderRadius: '50%', objectFit: 'cover' }} referrerPolicy="no-referrer" />
+                    ) : (
+                      <div style={{ width: 18, height: 18, borderRadius: '50%', background: visitor.avatarColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.55rem', fontWeight: 700, color: '#062013' }}>
+                        {visitor.displayName.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <span style={{ fontSize: '0.65rem', color: 'var(--wa-text-muted)' }}>{visitor.displayName}</span>
+                  </div>
+                  <textarea className="wa-input" placeholder="Write a comment..." value={commentText} onChange={(e) => setCommentText(e.target.value)} rows={2} style={{ resize: 'none', marginBottom: '0.4rem', fontSize: '0.8rem' }} />
+                  <button onClick={handlePostComment} className="btn-gold" style={{ width: '100%', padding: '0.45rem' }}>Post Comment</button>
+                </div>
+              ) : (
+                <div style={{ borderRadius: '8px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--wa-border)', padding: '0.65rem' }}>
+                  <p style={{ fontSize: '0.65rem', color: 'var(--wa-text-muted)', marginBottom: '0.35rem' }}>Commenting as guest</p>
+                  <textarea className="wa-input" placeholder="Write a comment as guest..." value={commentText} onChange={(e) => setCommentText(e.target.value)} rows={2} style={{ resize: 'none', marginBottom: '0.4rem', fontSize: '0.8rem' }} />
+                  <button onClick={handlePostComment} className="btn-gold" style={{ width: '100%', padding: '0.45rem' }}>Post Comment</button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 };
+
+const InfoCard: React.FC<{ label: string; value: string; icon?: React.ReactNode }> = ({ label, value, icon }) => (
+  <div style={{ borderRadius: '0.5rem', padding: '0.5rem 0.65rem', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+    <p className="font-cinzel text-wa-muted" style={{ fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.2rem' }}>{label}</p>
+    <p style={{ fontSize: '0.8rem', fontWeight: 500, opacity: 0.8, display: 'flex', alignItems: 'center', gap: '0.2rem', textTransform: 'capitalize' }}>
+      {icon} {value}
+    </p>
+  </div>
+);
+
+const ExifCard: React.FC<{ icon: React.ReactNode; label: string; value: string }> = ({ icon, label, value }) => (
+  <div className="exif-card">
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginBottom: '0.2rem' }}>
+      <span style={{ color: 'var(--wa-gold)' }}>{icon}</span>
+      <p className="font-cinzel text-wa-muted" style={{ fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{label}</p>
+    </div>
+    <p style={{ fontSize: '0.8rem', fontWeight: 500, opacity: 0.8 }}>{value}</p>
+  </div>
+);
