@@ -1113,6 +1113,13 @@ const App: React.FC = () => {
     window.scrollTo(0, 0);
   }, [recordView]);
 
+  const getViewIncrement = useCallback((type: string, id?: string): number => {
+    if (!id) return 0;
+    const key = `${type}:${id}`;
+    if (viewedTargetsRef.current.has(key)) return 0;
+    return 1;
+  }, []);
+
   const handleVideoClick = useCallback((video: Video) => {
     const viewIncrement = getViewIncrement('video', video.firestoreId);
     const updated = { ...video, viewCount: (video.viewCount || 0) + viewIncrement };
