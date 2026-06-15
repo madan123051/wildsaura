@@ -236,6 +236,7 @@ const App: React.FC = () => {
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const galleryRef = useRef<HTMLElement | null>(null);
   const viewedTargetsRef = useRef<Set<string>>(new Set());
+  const savedScrollRef = useRef<number>(0);
 
   // New state
   const [visitor, setVisitor] = useState<Visitor | null>(null);
@@ -1104,6 +1105,7 @@ const App: React.FC = () => {
   }, []);
 
   const handleStoryClick = useCallback((story: Story) => {
+    savedScrollRef.current = window.scrollY;
     setSelectedStory({ ...story, viewCount: story.viewCount + 1 });
     setStories((prev) => prev.map((s) => s.id === story.id ? { ...s, viewCount: s.viewCount + 1 } : s));
     recordView('story', story.firestoreId);
@@ -1121,6 +1123,7 @@ const App: React.FC = () => {
   }, []);
 
   const handleVideoClick = useCallback((video: Video) => {
+    savedScrollRef.current = window.scrollY;
     const viewIncrement = getViewIncrement('video', video.firestoreId);
     const updated = { ...video, viewCount: (video.viewCount || 0) + viewIncrement };
     setSelectedVideo(updated);
@@ -1460,22 +1463,23 @@ const App: React.FC = () => {
   const openPhoto = useCallback((photo: Photo | null) => {
     const viewIncrement = photo ? getViewIncrement('photo', photo.firestoreId) : 0;
     const updatedPhoto = photo ? { ...photo, viewCount: (photo.viewCount || 0) + viewIncrement } : null;
-    setSelectedPhoto(updatedPhoto);
     if (photo) {
+      savedScrollRef.current = window.scrollY;
       setPhotos((prev) => prev.map((p) => p.id === photo.id ? { ...p, viewCount: (p.viewCount || 0) + 1 } : p));
       recordView('photo', photo.firestoreId);
-      window.scrollTo(0, 0);
       const photoId = photo.slug || photo.firestoreId || String(photo.id);
       window.history.pushState({}, '', '/photo/' + encodeURIComponent(photoId));
     } else {
       window.history.pushState({}, '', '/');
     }
+    setSelectedPhoto(updatedPhoto);
   }, [recordView]);
 
   // ── Helper: Close Photo Modal ────────────────────────────────────────────
   const closePhoto = useCallback(() => {
     setSelectedPhoto(null);
     window.history.pushState({}, '', '/');
+    requestAnimationFrame(() => { window.scrollTo(0, savedScrollRef.current); });
   }, []);
 
   // ── Helper: Go back from story to home ───────────────────────────────────
@@ -1483,13 +1487,14 @@ const App: React.FC = () => {
     setView('home');
     setSelectedStory(null);
     window.history.pushState({}, '', '/');
+    requestAnimationFrame(() => { window.scrollTo(0, savedScrollRef.current); });
   }, []);
 
   const handleVideoBack = useCallback(() => {
-    setView('video-grid');
+    setView('home');
     setSelectedVideo(null);
-    window.history.pushState({}, '', '/video-grid');
-    window.scrollTo(0, 0);
+    window.history.pushState({}, '', '/');
+    requestAnimationFrame(() => { window.scrollTo(0, savedScrollRef.current); });
   }, []);
 
   // Admin login removed — admin auto-detected by email
