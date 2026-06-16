@@ -126,12 +126,9 @@ const CategoryCard: React.FC<{ cat: Category; onClick: () => void }> = ({ cat, o
     >
       {/* Skeleton loader while image loads */}
       {!loaded && !error && (
-        <div style={{
+        <div className="skeleton-image" style={{
           position: 'absolute',
           inset: 0,
-          background: 'linear-gradient(110deg, #1a2e1a 8%, #2a4a2a 18%, #1a2e1a 33%)',
-          backgroundSize: '200% 100%',
-          animation: 'shimmer 1.5s linear infinite',
         }} />
       )}
 
@@ -199,13 +196,7 @@ const CategoryCard: React.FC<{ cat: Category; onClick: () => void }> = ({ cat, o
         </div>
       </div>
 
-      {/* Shimmer animation keyframes */}
-      <style>{`
-        @keyframes shimmer {
-          0% { background-position: -200% 0; }
-          100% { background-position: 200% 0; }
-        }
-      `}</style>
+
     </button>
   );
 };

@@ -1639,7 +1639,7 @@ const App: React.FC = () => {
         onAdminClick={() => { setView('admin-dashboard'); window.history.pushState({}, '', '/admin'); }}
       />
       <div style={{ flex: 1 }}>
-      <div className="wa-container" style={{ paddingTop: '8rem', paddingBottom: '5rem', maxWidth: 900 }}>
+      <div className="wa-container" style={{ paddingTop: '1.5rem', paddingBottom: '5rem', maxWidth: 900 }}>
         <button
           onClick={() => { setView('home'); window.history.pushState({}, '', '/'); window.scrollTo(0, 0); }}
           style={{
