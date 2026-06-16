@@ -1721,10 +1721,13 @@ const App: React.FC = () => {
     const manual = siteSettings.categoryImages?.[settingsKey];
     if (manual) return manual;
 
-    // 2. Best photo from Firestore for this exact category (most liked = most engaging)
+    // 2. Best photo from Firestore for this category — match by category field OR tags
     const fromPhotos = photos
       .filter(
-        p => p.category === (photoCategory as any) &&
+        p => (
+          p.category === (photoCategory as any) ||
+          p.tags?.some(t => t.toLowerCase() === photoCategory.toLowerCase())
+        ) &&
              p.published !== false &&
              p.imageUrl &&
              !p.imageUrl.startsWith('/photos/')
@@ -1813,7 +1816,7 @@ const App: React.FC = () => {
         onCommunityClick={handleCommunityClick}
       />
       <Hero onExplore={scrollToGallery} logoUrl={logoUrl} heroImages={siteSettings.heroImages} onCommunityClick={handleCommunityClick} />
-      <CategorySection categories={dynamicCategories} onCategoryClick={handleCategoryClick} />
+      <CategorySection categories={dynamicCategories} onCategoryClick={handleCategoryClick} loading={photosLoading} />
       <Gallery
         photos={photos}
         filterTabs={FILTER_TABS}

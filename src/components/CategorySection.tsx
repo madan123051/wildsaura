@@ -8,7 +8,29 @@ const CATEGORY_PLACEHOLDER = '/images/placeholder-card.svg';
 interface CategorySectionProps {
   categories: Category[];
   onCategoryClick: (key: string) => void;
+  /** When true, renders shimmer skeleton placeholders while Firestore photos load */
+  loading?: boolean;
 }
+
+/** Skeleton placeholder card — matches CategoryCard dimensions exactly */
+const SkeletonCard: React.FC = () => (
+  <div
+    style={{
+      flexShrink: 0,
+      width: 115,
+      height: 145,
+      borderRadius: '6px',
+      overflow: 'hidden',
+      scrollSnapAlign: 'start',
+      background: '#111',
+    }}
+  >
+    <div className="skeleton-image" style={{ width: '100%', height: '100%' }} />
+  </div>
+);
+
+/** Number of skeleton cards to show while loading (matches real category count) */
+const SKELETON_COUNT = 7;
 
 /**
  * Optimize any image URL through wsrv.nl CDN proxy
@@ -34,7 +56,7 @@ function getOptimizedUrl(url: string, width = 300): string {
   }
 }
 
-export const CategorySection: React.FC<CategorySectionProps> = ({ categories, onCategoryClick }) => {
+export const CategorySection: React.FC<CategorySectionProps> = ({ categories, onCategoryClick, loading = false }) => {
   return (
     <section className="bg-wa-dark-alt" style={{ padding: '1.75rem 0 2rem' }}>
       <div className="wa-container" style={{ paddingLeft: 0, paddingRight: 0 }}>
@@ -65,9 +87,11 @@ export const CategorySection: React.FC<CategorySectionProps> = ({ categories, on
             scrollbarWidth: 'none',
           }}
         >
-          {categories.map((cat) => (
-            <CategoryCard key={cat.key} cat={cat} onClick={() => onCategoryClick(cat.key)} />
-          ))}
+          {loading
+            ? Array.from({ length: SKELETON_COUNT }).map((_, i) => <SkeletonCard key={i} />)
+            : categories.map((cat) => (
+                <CategoryCard key={cat.key} cat={cat} onClick={() => onCategoryClick(cat.key)} />
+              ))}
         </div>
 
         {/* Scroll hint dots */}
@@ -77,12 +101,14 @@ export const CategorySection: React.FC<CategorySectionProps> = ({ categories, on
           gap: '5px',
           marginTop: '0.15rem',
         }}>
-          {categories.map((_, i) => (
+          {Array.from({ length: loading ? SKELETON_COUNT : categories.length }).map((_, i) => (
             <div key={i} style={{
               width: i === 0 ? 14 : 5,
               height: 3,
               borderRadius: 2,
-              background: i === 0 ? NG_YELLOW : 'rgba(255,255,255,0.2)',
+              background: loading
+                ? 'rgba(255,255,255,0.12)'
+                : i === 0 ? NG_YELLOW : 'rgba(255,255,255,0.2)',
               transition: 'all 0.3s',
             }} />
           ))}
