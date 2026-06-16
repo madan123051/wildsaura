@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { Search, X } from 'lucide-react';
 import { Photo } from '../types';
+import { getOptimizedImageUrl } from '../utils/imageUrl';
 
 interface SearchBarProps {
   isOpen: boolean;
@@ -106,7 +107,13 @@ export const SearchBar: React.FC<SearchBarProps> = ({ isOpen, onClose, query, on
                       e.currentTarget.style.transform = 'scale(1)';
                     }}
                   >
-                    <img src={p.imageUrl} alt={p.title} style={{ width: '100%', height: 100, objectFit: 'cover' }} />
+                    <img
+                      src={getOptimizedImageUrl(p.thumbnailUrl || p.imageUrl, { width: 320, height: 200, quality: 70 }) || p.thumbnailUrl || p.imageUrl}
+                      alt={p.title}
+                      style={{ width: '100%', height: 100, objectFit: 'cover' }}
+                      loading="lazy"
+                      decoding="async"
+                    />
                     <div style={{ padding: '0.5rem' }}>
                       <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--wa-text)', marginBottom: '0.15rem' }}>{p.title}</p>
                       <p style={{ fontSize: '0.6rem', color: 'var(--wa-gold)', textTransform: 'capitalize' }}>{p.category}{p.location ? ` · ${p.location}` : ''}</p>

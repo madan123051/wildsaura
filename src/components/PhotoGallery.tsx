@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Camera, Search, ChevronLeft } from 'lucide-react';
 import { GalleryPhoto, GalleryCategory } from '../types';
+import { getOptimizedImageUrl } from '../utils/imageUrl';
 
 interface PhotoGalleryProps {
   photos: GalleryPhoto[];
@@ -28,6 +29,11 @@ const SmartImage: React.FC<{ src?: string | null; alt: string; height: number }>
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
   const resolvedSrc = error ? PHOTO_PLACEHOLDER : (src || PHOTO_PLACEHOLDER);
+  const optimizedSrc = getOptimizedImageUrl(resolvedSrc, {
+    width: 520,
+    height: Math.max(260, Math.round(height * 2)),
+    quality: 72,
+  });
 
   return (
     <div style={{ position: 'relative', height, overflow: 'hidden' }}>
@@ -35,7 +41,7 @@ const SmartImage: React.FC<{ src?: string | null; alt: string; height: number }>
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(110deg, #1a2e1a 8%, #2a4a2a 18%, #1a2e1a 33%)', backgroundSize: '200% 100%', animation: 'shimmer 1.5s linear infinite' }} />
       )}
       <img
-        src={resolvedSrc}
+        src={optimizedSrc || resolvedSrc}
         alt={alt}
         style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', opacity: loaded ? 1 : 0, transition: 'opacity 0.25s ease' }}
         loading='lazy'
@@ -316,9 +322,11 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
                 <div style={{ position: 'relative', height: 160, background: 'rgba(201,168,76,0.05)', overflow: 'hidden' }}>
                   {cat.cover ? (
                     <img
-                      src={cat.cover}
+                      src={getOptimizedImageUrl(cat.cover, { width: 520, height: 360, quality: 72 }) || cat.cover || PHOTO_PLACEHOLDER}
                       alt={cat.label}
                       style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                      loading="lazy"
+                      decoding="async"
                     />
                   ) : (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: '2.8rem' }}>

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Photo } from '../types';
 import { X, MapPin } from 'lucide-react';
+import { getOptimizedImageUrl } from '../utils/imageUrl';
 
 interface PhotoMapProps {
   photos: Photo[];
@@ -114,13 +115,23 @@ export const PhotoMap: React.FC<PhotoMapProps> = ({ photos, isOpen, onClose, onP
           const position = { lat: photo.latitude!, lng: photo.longitude! };
           bounds.extend(position);
           hasMarkers = true;
+          const markerImageUrl = getOptimizedImageUrl(photo.thumbnailUrl || photo.imageUrl, {
+            width: 160,
+            height: 160,
+            quality: 70,
+          }) || photo.thumbnailUrl || photo.imageUrl;
+          const popupImageUrl = getOptimizedImageUrl(photo.thumbnailUrl || photo.imageUrl, {
+            width: 360,
+            height: 220,
+            quality: 72,
+          }) || photo.thumbnailUrl || photo.imageUrl;
 
           const marker = new google.maps.Marker({
             position,
             map,
             title: photo.title,
             icon: {
-              url: photo.imageUrl,
+              url: markerImageUrl,
               scaledSize: new google.maps.Size(44, 44),
               origin: new google.maps.Point(0, 0),
               anchor: new google.maps.Point(22, 22),
@@ -133,7 +144,7 @@ export const PhotoMap: React.FC<PhotoMapProps> = ({ photos, isOpen, onClose, onP
             const escapedLocation = (photo.location || '').replace(/'/g, '&#39;').replace(/"/g, '&quot;');
             const content = `
               <div style="background:#1a1a2e;color:#fff;padding:0;border-radius:8px;max-width:240px;font-family:system-ui,-apple-system,sans-serif;overflow:hidden;">
-                <img src="${photo.imageUrl}" alt="${escapedTitle}" style="width:100%;height:140px;object-fit:cover;display:block;" />
+                <img src="${popupImageUrl}" alt="${escapedTitle}" style="width:100%;height:140px;object-fit:cover;display:block;" />
                 <div style="padding:10px 12px;">
                   <h4 style="margin:0 0 4px;font-size:0.9rem;color:#fff;">${escapedTitle}</h4>
                   <p style="margin:0 0 8px;font-size:0.75rem;color:#8a8a8a;">${escapedLocation}</p>

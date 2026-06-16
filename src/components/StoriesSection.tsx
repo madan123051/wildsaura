@@ -1,5 +1,7 @@
 import React from 'react';
 import { Clock, Eye, Heart, ArrowRight, CalendarDays } from 'lucide-react';
+import { Story } from '../types';
+import { getOptimizedImageUrl } from '../utils/imageUrl';
 
 const formatStoryDate = (dateStr: string): string => {
   if (!dateStr) return '';
@@ -8,7 +10,6 @@ const formatStoryDate = (dateStr: string): string => {
   const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 };
-import { Story } from '../types';
 
 interface StoriesSectionProps {
   stories: Story[];
@@ -130,10 +131,11 @@ export const StoriesSection: React.FC<StoriesSectionProps> = ({ stories, isLoadi
             >
               <div style={{ position: 'relative', overflow: 'hidden' }}>
                 <img
-                  src={story.coverImageUrl}
+                  src={getOptimizedImageUrl(story.coverImageUrl, { width: 560, height: 360, quality: 72 }) || story.coverImageUrl}
                   alt={story.title}
                   style={{ width: '100%', height: 200, objectFit: 'cover', transition: 'transform 0.5s' }}
                   loading="lazy"
+                  decoding="async"
                 />
                 <div style={{
                   position: 'absolute', bottom: 0, left: 0, right: 0,

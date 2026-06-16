@@ -1,6 +1,7 @@
 import React from 'react';
 import { Heart, Share2, Download, MapPin, MessageCircle, CalendarDays } from 'lucide-react';
 import { Photo } from '../types';
+import { getOptimizedImageUrl } from '../utils/imageUrl';
 
 const PHOTO_PLACEHOLDER = '/images/placeholder-card.svg';
 
@@ -35,6 +36,12 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, on
 
   // Use slug or firestoreId or id for the URL
   const photoSlug = photo.slug || photo.firestoreId || photo.id;
+  const sourceImage = photo.thumbnailUrl || photo.imageUrl || PHOTO_PLACEHOLDER;
+  const cardImageUrl = getOptimizedImageUrl(sourceImage, {
+    width: 520,
+    height: 520,
+    quality: 72,
+  }) || PHOTO_PLACEHOLDER;
 
   return (
     <div
@@ -87,7 +94,7 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, on
           />
         )}
         <img
-          src={imgError ? PHOTO_PLACEHOLDER : (photo.thumbnailUrl || photo.imageUrl || PHOTO_PLACEHOLDER)}
+          src={imgError ? PHOTO_PLACEHOLDER : cardImageUrl}
           alt={photo.title}
           style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.7s, opacity 0.25s', opacity: imgLoaded ? 1 : 0, userSelect: 'none', WebkitUserDrag: 'none' } as React.CSSProperties}
           loading="lazy"

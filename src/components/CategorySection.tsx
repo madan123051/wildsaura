@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Category } from '../types';
+import { getOptimizedImageUrl } from '../utils/imageUrl';
 
 const NG_YELLOW = '#9fcb8f';
 const PARCHMENT = '#e8f5e9';
@@ -31,30 +32,6 @@ const SkeletonCard: React.FC = () => (
 
 /** Number of skeleton cards to show while loading (matches real category count) */
 const SKELETON_COUNT = 7;
-
-/**
- * Optimize any image URL through wsrv.nl CDN proxy
- * Resizes to small thumbnail for fast loading on category cards
- */
-function getOptimizedUrl(url: string, width = 300): string {
-  if (!url) return CATEGORY_PLACEHOLDER;
-  // Don't proxy local static assets — they're already small
-  if (url.startsWith('/photos/') || url.startsWith('/images/')) return url;
-  // Don't double-proxy
-  if (url.includes('wsrv.nl')) return url;
-  
-  try {
-    // Ensure Firebase URLs have alt=media
-    let sourceUrl = url;
-    if (sourceUrl.includes('firebasestorage.googleapis.com') && !sourceUrl.includes('alt=media')) {
-      sourceUrl += (sourceUrl.includes('?') ? '&' : '?') + 'alt=media';
-    }
-    const encoded = encodeURIComponent(sourceUrl);
-    return `https://wsrv.nl/?url=${encoded}&w=${width}&h=${Math.round(width * 1.26)}&fit=cover&output=webp&q=75&maxage=7d`;
-  } catch {
-    return url;
-  }
-}
 
 export const CategorySection: React.FC<CategorySectionProps> = ({ categories, onCategoryClick, loading = false }) => {
   return (
@@ -122,7 +99,12 @@ export const CategorySection: React.FC<CategorySectionProps> = ({ categories, on
 const CategoryCard: React.FC<{ cat: Category; onClick: () => void }> = ({ cat, onClick }) => {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
-  const optimizedUrl = getOptimizedUrl(cat.imageUrl, 300);
+  const optimizedUrl = getOptimizedImageUrl(cat.imageUrl, {
+    width: 260,
+    height: 330,
+    quality: 68,
+    maxAge: '14d',
+  });
 
   return (
     <button
@@ -160,7 +142,7 @@ const CategoryCard: React.FC<{ cat: Category; onClick: () => void }> = ({ cat, o
 
       {/* Optimized thumbnail image */}
       <img
-        src={error ? (cat.imageUrl || CATEGORY_PLACEHOLDER) : optimizedUrl}
+        src={error ? (cat.imageUrl || CATEGORY_PLACEHOLDER) : (optimizedUrl || CATEGORY_PLACEHOLDER)}
         alt={cat.label}
         style={{
           position: 'absolute',

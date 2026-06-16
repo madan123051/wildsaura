@@ -1,6 +1,6 @@
 import { db, storage } from '../../firebase';
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 export interface FirestorePhoto {
   id?: string;
@@ -24,10 +24,44 @@ export interface FirestorePhoto {
 
 const PHOTOS_COLLECTION = 'photos';
 
+function dataUrlToBlob(dataUrl: string): Blob {
+  const [header, base64] = dataUrl.split(',');
+  const mime = header.match(/:(.*?);/)?.[1] || 'image/webp';
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+}
+
 export async function uploadPhotoToStorage(dataUrl: string, filename: string): Promise<string> {
   const storageRef = ref(storage, `photos/${Date.now()}_${filename}`);
-  await uploadString(storageRef, dataUrl, 'data_url');
-  return await getDownloadURL(storageRef);
+  const blob = dataUrlToBlob(dataUrl);
+  const contentType = blob.type || 'image/webp';
+
+  return new Promise<string>((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      uploadTask.cancel();
+      reject(new Error('Photo upload timed out after 90 seconds.'));
+    }, 90000);
+
+    const uploadTask = uploadBytesResumable(storageRef, blob, { contentType });
+    uploadTask.on(
+      'state_changed',
+      () => {},
+      (error) => {
+        clearTimeout(timeoutId);
+        reject(error);
+      },
+      async () => {
+        clearTimeout(timeoutId);
+        try {
+          resolve(await getDownloadURL(uploadTask.snapshot.ref));
+        } catch (err) {
+          reject(err);
+        }
+      },
+    );
+  });
 }
 
 export async function addPhotoToFirestore(photo: Omit<FirestorePhoto, 'id'>): Promise<string> {

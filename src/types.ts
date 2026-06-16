@@ -5,7 +5,7 @@ export interface Photo {
   title: string;
   category: 'wildlife' | 'birds' | 'macro' | 'domestic' | 'landscape' | 'street' | 'nature' | 'other';
   imageUrl: string;
-  thumbnailUrl?: string;       // Optimized gallery thumbnail (WebP ~150KB, 600px)
+  thumbnailUrl?: string;       // Optimized gallery thumbnail (WebP ~200-300KB, 720px)
   location?: string;
   caption?: string;
   type: 'photo' | 'video';

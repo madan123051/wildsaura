@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { ArrowLeft, BookOpen, SlidersHorizontal, X, Clock, Eye, Heart } from 'lucide-react';
 import { Story } from '../types';
+import { getOptimizedImageUrl } from '../utils/imageUrl';
 
 const useWindowSize = () => {
   const [width, setWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
@@ -228,9 +229,11 @@ export const StoryGridPage: React.FC<StoryGridPageProps> = ({ stories, onBack, o
               >
                 <div style={{ position: 'relative', overflow: 'hidden' }}>
                   <img
-                    src={story.coverImageUrl}
+                    src={getOptimizedImageUrl(story.coverImageUrl, { width: 560, height: 360, quality: 72 }) || story.coverImageUrl}
                     alt={story.title}
                     style={{ width: '100%', height: 180, objectFit: 'cover', display: 'block', transition: 'transform 0.5s' }}
+                    loading="lazy"
+                    decoding="async"
                   />
                   <div style={{
                     position: 'absolute', bottom: 0, left: 0, right: 0,

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Play, Eye, Heart, ArrowRight, MapPin, MessageCircle, Share2, Send, Trash2, CalendarDays } from 'lucide-react';
 import { Video, Comment, Visitor } from '../types';
+import { getOptimizedImageUrl } from '../utils/imageUrl';
 
 interface VideoSectionProps {
   videos: Video[];
@@ -220,10 +221,11 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
                     >
                       {video.thumbnailUrl ? (
                         <img
-                          src={video.thumbnailUrl}
+                          src={getOptimizedImageUrl(video.thumbnailUrl, { width: 720, height: 405, quality: 72 }) || video.thumbnailUrl}
                           alt={video.title}
                           style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s' }}
                           loading="lazy"
+                          decoding="async"
                         />
                       ) : (
                         <div style={{

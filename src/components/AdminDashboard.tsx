@@ -300,14 +300,14 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
     reader.onload = async () => {
       let dataUrl = reader.result as string;
 
-      // Smart compression: WebP, adaptive quality, targets 1-2MB max
+      // Smart compression: WebP, adaptive quality, targets ~1MB max
       // Also generates a small thumbnail for fast gallery loading
       if (!isVideo) {
         try {
           const webpFile = await compressForUpload(file);
           setCompressedFile(webpFile);
 
-          // Generate thumbnail for gallery (600px, ~150KB WebP)
+          // Generate thumbnail for gallery (720px, capped around 280KB WebP)
           try {
             const thumbFile = await generateThumbnail(webpFile);
             setThumbnailFile(thumbFile);
@@ -761,20 +761,13 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
   const handleCoverUpload = useCallback(async (file: File) => {
     setUploading(true);
     try {
-      // Compress cover image to prevent localStorage overflow (max ~200KB)
-      const bitmap = await createImageBitmap(file);
-      const MAX_DIM = 800;
-      let w = bitmap.width, h = bitmap.height;
-      if (w > MAX_DIM || h > MAX_DIM) {
-        const scale = MAX_DIM / Math.max(w, h);
-        w = Math.round(w * scale);
-        h = Math.round(h * scale);
-      }
-      const canvas = document.createElement('canvas');
-      canvas.width = w; canvas.height = h;
-      const ctx = canvas.getContext('2d')!;
-      ctx.drawImage(bitmap, 0, 0, w, h);
-      const compressedUrl = canvas.toDataURL('image/jpeg', 0.6);
+      const coverFile = await generateThumbnail(file, 800);
+      const compressedUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(coverFile);
+      });
       setPreviewUrl(compressedUrl);
       // Apply watermark
       let finalUrl = compressedUrl;
@@ -787,7 +780,7 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
       try {
         const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
         const { storage } = await import('../firebase');
-        const storageRef = ref(storage, `story-covers/${Date.now()}_${file.name}`);
+        const storageRef = ref(storage, `story-covers/${Date.now()}_${coverFile.name}`);
         const response = await fetch(finalUrl);
         const blob = await response.blob();
         await uploadBytes(storageRef, blob);
@@ -919,29 +912,10 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
   const handleInlineImageUpload = useCallback(async (file: File) => {
     setInlineUploading(true);
     try {
-      // Compress image before upload (max 1200px, WebP ~200KB)
       let uploadFile: File | Blob = file;
       try {
-        const bitmap = await createImageBitmap(file);
-        const MAX_DIM = 1200;
-        let w = bitmap.width, h = bitmap.height;
-        if (w > MAX_DIM || h > MAX_DIM) {
-          const scale = MAX_DIM / Math.max(w, h);
-          w = Math.round(w * scale);
-          h = Math.round(h * scale);
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
-        const ctx = canvas.getContext('2d')!;
-        ctx.drawImage(bitmap, 0, 0, w, h);
-        // Try WebP first, fallback to JPEG
-        let blob = await new Promise<Blob | null>(res => { try { canvas.toBlob(b => res(b), 'image/webp', 0.80); } catch { res(null); } });
-        if (!blob) blob = await new Promise<Blob | null>(res => canvas.toBlob(b => res(b), 'image/jpeg', 0.85));
-        if (blob) {
-          const ext = blob.type === 'image/webp' ? '.webp' : '.jpg';
-          uploadFile = new File([blob], file.name.replace(/\.[^.]+$/, '') + ext, { type: blob.type });
-          console.log(`📸 Story image compressed: ${(file.size/1024).toFixed(0)}KB → ${(blob.size/1024).toFixed(0)}KB`);
-        }
+        uploadFile = await generateThumbnail(file, 900);
+        console.log(`📸 Story image compressed: ${(file.size/1024).toFixed(0)}KB → ${(uploadFile.size/1024).toFixed(0)}KB`);
       } catch (compErr) {
         console.warn('Compression failed, using original:', compErr);
       }
@@ -1264,29 +1238,7 @@ const VideoForm: React.FC<VideoFormProps> = ({ initial, onSave, onCancel, nextId
   const handleThumbnailUpload = useCallback(async (file: File) => {
     setUploadingThumb(true);
     try {
-      // Compress thumbnail to WebP (max 800px, 80% quality — ~100-200KB)
-      const bitmap = await createImageBitmap(file);
-      const MAX_DIM = 800;
-      let w = bitmap.width, h = bitmap.height;
-      if (w > MAX_DIM || h > MAX_DIM) {
-        const scale = MAX_DIM / Math.max(w, h);
-        w = Math.round(w * scale);
-        h = Math.round(h * scale);
-      }
-      const canvas = document.createElement('canvas');
-      canvas.width = w; canvas.height = h;
-      const ctx = canvas.getContext('2d')!;
-      ctx.drawImage(bitmap, 0, 0, w, h);
-
-      // Generate WebP blob (better quality-to-size than JPEG)
-      const webpBlob = await new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob(
-          (blob) => blob ? resolve(blob) : reject(new Error('WebP blob failed')),
-          'image/webp',
-          0.80
-        );
-      });
-      const webpFile = new File([webpBlob], file.name.replace(/\.[^.]+$/, '') + '.webp', { type: 'image/webp' });
+      const webpFile = await generateThumbnail(file, 720);
       setThumbFile(webpFile);
 
       const previewUrl = URL.createObjectURL(webpFile);

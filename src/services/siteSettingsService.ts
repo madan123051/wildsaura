@@ -58,13 +58,14 @@ export async function saveSiteSettings(settings: Partial<SiteSettings>): Promise
 /**
  * Compress an image File to WebP format for fast website loading.
  * - Resizes to maxDimension (preserving aspect ratio)
- * - Targets small file size via quality parameter
+ * - Uses adaptive quality and smaller fallbacks until targetKB is reached
  * - Falls back to JPEG if WebP is not supported by the browser
  */
 function compressToWebP(
   file: File,
   maxDimension: number,
-  quality: number
+  quality: number,
+  targetKB: number
 ): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -72,44 +73,77 @@ function compressToWebP(
 
     img.onload = () => {
       try {
-        let w = img.naturalWidth;
-        let h = img.naturalHeight;
-
-        // Scale down if larger than maxDimension
-        if (w > maxDimension || h > maxDimension) {
-          const scale = maxDimension / Math.max(w, h);
-          w = Math.round(w * scale);
-          h = Math.round(h * scale);
-        }
-
         const canvas = document.createElement('canvas');
-        canvas.width = w;
-        canvas.height = h;
         const ctx = canvas.getContext('2d');
         if (!ctx) { reject(new Error('Canvas 2D not supported')); return; }
         ctx.imageSmoothingEnabled = true;
         (ctx as any).imageSmoothingQuality = 'high';
-        ctx.drawImage(img, 0, 0, w, h);
 
         const tryEncode = (type: string, q: number): Promise<Blob | null> =>
           new Promise(res => canvas.toBlob(b => res(b), type, q));
 
         (async () => {
-          // Try WebP at target quality
-          let blob = await tryEncode('image/webp', quality);
-          // If still > 1MB, reduce quality a bit more
-          if (blob && blob.size > 1024 * 1024) {
-            blob = await tryEncode('image/webp', Math.max(0.60, quality - 0.12));
+          const targetBytes = targetKB * 1024;
+          const dimensions = Array.from(new Set([
+            maxDimension,
+            Math.round(maxDimension * 0.86),
+            Math.round(maxDimension * 0.72),
+            Math.round(maxDimension * 0.58),
+          ].filter((n) => n >= 360)));
+          const qualities = Array.from(new Set([
+            quality,
+            Math.max(0.68, quality - 0.08),
+            Math.max(0.60, quality - 0.16),
+            Math.max(0.52, quality - 0.24),
+          ]));
+
+          let bestBlob: Blob | null = null;
+          let bestW = img.naturalWidth;
+          let bestH = img.naturalHeight;
+
+          for (const dim of dimensions) {
+            let w = img.naturalWidth;
+            let h = img.naturalHeight;
+            if (w > dim || h > dim) {
+              const scale = dim / Math.max(w, h);
+              w = Math.round(w * scale);
+              h = Math.round(h * scale);
+            }
+
+            canvas.width = w;
+            canvas.height = h;
+            ctx.imageSmoothingEnabled = true;
+            (ctx as any).imageSmoothingQuality = 'high';
+            ctx.drawImage(img, 0, 0, w, h);
+
+            for (const q of qualities) {
+              const blob = await tryEncode('image/webp', q);
+              if (!blob) continue;
+              bestBlob = blob;
+              bestW = w;
+              bestH = h;
+              if (blob.size <= targetBytes) {
+                const origKB = (file.size / 1024).toFixed(0);
+                const compKB = (blob.size / 1024).toFixed(0);
+                const saved = Math.round((1 - blob.size / file.size) * 100);
+                console.log(`🖼️ Compressed ${file.name}: ${origKB}KB → ${compKB}KB WebP ${w}×${h}px (${saved}% saved)`);
+                resolve(blob);
+                return;
+              }
+            }
           }
+
           // Fallback to JPEG if browser doesn't support WebP encoding
-          if (!blob) blob = await tryEncode('image/jpeg', quality);
-          if (!blob) { reject(new Error('Image encoding failed')); return; }
+          if (!bestBlob) {
+            bestBlob = await tryEncode('image/jpeg', Math.min(0.78, quality));
+          }
+          if (!bestBlob) { reject(new Error('Image encoding failed')); return; }
 
           const origKB = (file.size / 1024).toFixed(0);
-          const compKB = (blob.size / 1024).toFixed(0);
-          const saved = Math.round((1 - blob.size / file.size) * 100);
-          console.log(`🖼️ Compressed ${file.name}: ${origKB}KB → ${compKB}KB WebP ${w}×${h}px (${saved}% saved)`);
-          resolve(blob);
+          const compKB = (bestBlob.size / 1024).toFixed(0);
+          const saved = Math.round((1 - bestBlob.size / file.size) * 100);
+          console.log(`🖼️ Compressed ${file.name}: ${origKB}KB → ${compKB}KB ${bestBlob.type || 'image'} ${bestW}×${bestH}px (${saved}% saved)`);
+          resolve(bestBlob);
         })();
       } catch (err) {
         reject(err);
@@ -169,27 +203,27 @@ function uploadSiteAsset(filename: string, blob: Blob): Promise<string> {
 
 /**
  * Upload hero slider image.
- * Compressed to WebP, max 1920px, target ≤800KB.
+ * Compressed to WebP, max 1440px, target ~500KB.
  */
 export async function uploadHeroImage(file: File, index: number): Promise<string> {
-  const blob = await compressToWebP(file, 1920, 0.82);
+  const blob = await compressToWebP(file, 1440, 0.78, 500);
   return uploadSiteAsset(`hero-${index}-${Date.now()}.webp`, blob);
 }
 
 /**
  * Upload category section image.
- * Compressed to WebP, max 1200px, target ≤500KB.
+ * Compressed to WebP, max 640px, target ~240KB.
  */
 export async function uploadCategoryImage(category: string, file: File): Promise<string> {
-  const blob = await compressToWebP(file, 1200, 0.80);
+  const blob = await compressToWebP(file, 640, 0.78, 240);
   return uploadSiteAsset(`category-${category}-${Date.now()}.webp`, blob);
 }
 
 /**
  * Upload default post thumbnail.
- * Compressed to WebP, max 800px, target ≤300KB.
+ * Compressed to WebP, max 720px, target ~260KB.
  */
 export async function uploadDefaultThumbnail(file: File): Promise<string> {
-  const blob = await compressToWebP(file, 800, 0.78);
+  const blob = await compressToWebP(file, 720, 0.78, 260);
   return uploadSiteAsset(`default-thumbnail-${Date.now()}.webp`, blob);
 }

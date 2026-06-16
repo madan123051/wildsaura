@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { ArrowLeft, Play, SlidersHorizontal, X, Eye, Heart } from 'lucide-react';
 import { Video, Comment, Visitor } from '../types';
+import { getOptimizedImageUrl } from '../utils/imageUrl';
 
 const useWindowSize = () => {
   const [width, setWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
@@ -264,9 +265,11 @@ export const VideoGridPage: React.FC<VideoGridPageProps> = ({
                       >
                         {video.thumbnailUrl ? (
                           <img
-                            src={video.thumbnailUrl}
+                            src={getOptimizedImageUrl(video.thumbnailUrl, { width: 720, height: 405, quality: 72 }) || video.thumbnailUrl}
                             alt={video.title}
                             style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.4s' }}
+                            loading="lazy"
+                            decoding="async"
                           />
                         ) : (
                           <div style={{

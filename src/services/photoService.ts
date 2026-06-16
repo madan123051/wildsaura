@@ -9,7 +9,7 @@ export interface FirestorePhoto {
   caption: string;
   category: string;
   imageUrl: string;
-  thumbnailUrl?: string;       // ← Optimized gallery thumbnail (WebP, ~150KB)
+  thumbnailUrl?: string;       // ← Optimized gallery thumbnail (WebP, ~200-300KB)
   location: string;
   tags: string[];
   animalName?: string;
@@ -112,7 +112,7 @@ export async function uploadPhotoToStorage(
 /**
  * 🖼️ Upload a thumbnail to Firebase Storage.
  * Separate from main photo — stored in photos-thumbs/ folder.
- * No progress tracking needed (thumbnails are tiny ~150KB).
+ * No progress tracking needed (thumbnails are tiny ~200-300KB).
  */
 export async function uploadThumbnailToStorage(
   input: File | Blob,

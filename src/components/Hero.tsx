@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown, ChevronUp, ShoppingBag, Camera, Sparkles } from 'lucide-react';
+import { getOptimizedImageUrl, getOptimizedSrcSet } from '../utils/imageUrl';
 
 interface HeroProps {
   onExplore: () => void;
@@ -47,6 +48,16 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages, onCommunityCl
   const [fade, setFade] = useState(true);
   const [nptTime, setNptTime] = useState<{ dateStr: string; timeStr: string }>(getNPTDate);
   const [marketOpen, setMarketOpen] = useState(false);
+  const currentHeroImage = images[currentIndex] || '';
+  const optimizedHeroImage = getOptimizedImageUrl(currentHeroImage, {
+    width: 1280,
+    quality: 72,
+    fit: 'cover',
+  });
+  const optimizedHeroSrcSet = getOptimizedSrcSet(currentHeroImage, [640, 960, 1280, 1600], {
+    quality: 72,
+    fit: 'cover',
+  });
 
   useEffect(() => {
     const tick = setInterval(() => setNptTime(getNPTDate()), 1000);
@@ -156,10 +167,14 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages, onCommunityCl
           ) : (
             <>
               <img
-                src={images[currentIndex]}
+                src={optimizedHeroImage || currentHeroImage}
+                srcSet={optimizedHeroSrcSet}
+                sizes="(max-width: 768px) 100vw, 55vw"
                 alt="Wildlife photography"
                 loading="eager"
-                fetchPriority="high"
+                fetchpriority="high"
+                width={1280}
+                height={960}
                 style={{
                   width: '100%', height: '100%',
                   objectFit: 'cover', objectPosition: 'center',
