@@ -466,3 +466,42 @@ html[data-theme="light"] [style*="background: rgba(6,18,13"],
 html[data-theme="light"] [style*="background: rgba(14,38,28"] {
   background: rgba(255,255,255,0.92) !important;
 }
+
+/* ===== SKELETON LOADING ===== */
+@keyframes skeletonShimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton-box {
+  background: linear-gradient(110deg, #1a2e1a 8%, #2a4a2a 18%, #1a2e1a 33%);
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.5s linear infinite;
+  border-radius: 8px;
+}
+
+.skeleton-card {
+  background: #0f1f0f;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.skeleton-image {
+  background: linear-gradient(110deg, #1a2e1a 8%, #2a4a2a 18%, #1a2e1a 33%);
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.5s linear infinite;
+}
+
+.skeleton-text {
+  background: linear-gradient(110deg, #1a2e1a 8%, #2a4a2a 18%, #1a2e1a 33%);
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.5s linear infinite;
+  border-radius: 4px;
+  height: 14px;
+  margin: 6px 0;
+}
+
+.skeleton-text.short { width: 60%; }
+.skeleton-text.medium { width: 80%; }
+.skeleton-text.full { width: 100%; }

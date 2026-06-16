@@ -13,6 +13,7 @@ interface VideoSectionProps {
   isAdmin?: boolean;
   onDeleteComment?: (firestoreId: string) => void;
   onViewAll?: () => void;
+  isLoading?: boolean;
 }
 
 const INITIAL_COUNT = 3;
@@ -53,6 +54,7 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
   isAdmin,
   onDeleteComment,
   onViewAll,
+  isLoading,
 }) => {
   const [playingId, setPlayingId] = useState<number | null>(null);
   const [commentInputs, setCommentInputs] = useState<Record<number, string>>({});
@@ -60,7 +62,53 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
   const displayVideos = videos.slice(0, INITIAL_COUNT);
   const hasMore = videos.length > INITIAL_COUNT;
 
-  if (videos.length === 0) return null;
+  if (videos.length === 0 || isLoading) {
+    const SkeletonVideoCard = () => (
+      <div className="skeleton-card" style={{ overflow: 'hidden' }}>
+        <div className="skeleton-image" style={{ width: '100%', paddingBottom: '56.25%', position: 'relative' }}>
+          <div style={{ position: 'absolute', inset: 0 }} />
+        </div>
+        <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div className="skeleton-text medium" />
+          <div className="skeleton-text short" />
+        </div>
+      </div>
+    );
+
+    return (
+      <section id="videos" style={{ padding: '5rem 0', background: 'linear-gradient(180deg, var(--wa-dark) 0%, rgba(10,10,10,1) 100%)' }}>
+        <div className="wa-container">
+          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <p className="font-cinzel" style={{
+              fontSize: '0.7rem', letterSpacing: '0.3em', textTransform: 'uppercase',
+              color: 'var(--wa-gold)', marginBottom: '0.75rem',
+            }}>
+              Moving Moments
+            </p>
+            <h2 className="font-playfair" style={{
+              fontSize: 'clamp(1.75rem, 4vw, 2.5rem)', fontWeight: 700,
+              background: 'linear-gradient(135deg, var(--wa-gold), var(--wa-gold-light))',
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+              marginBottom: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+            }}>
+              🎬 Videos
+            </h2>
+            <p style={{ fontSize: '0.9rem', color: 'var(--wa-text-muted)', maxWidth: 500, margin: '0 auto' }}>
+              Experience the wild in motion — cinematic glimpses into the heart of nature.
+            </p>
+          </div>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            gap: '1.5rem',
+            alignItems: 'start',
+          }}>
+            {[1, 2, 3].map((i) => <SkeletonVideoCard key={i} />)}
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   /* ── share handler ──────────────────────────────────────── */
   const handleShare = async (video: Video) => {

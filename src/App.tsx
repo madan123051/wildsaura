@@ -67,109 +67,7 @@ const matchesVideoRoute = (video: Video, token: string) => {
   return [video.firestoreId, video.id].some((value) => normalizeRouteToken(value) === target);
 };
 
-// ── Sample Photo Data ───────────────────────────────────────────────────────
-const SAMPLE_PHOTOS: Photo[] = [
-  {
-    id: 1, title: 'Japanese Macaque', category: 'wildlife',
-    imageUrl: '/photos/photo-wildlife.jpeg',
-    location: 'Japan', caption: 'A curious Japanese macaque bathing in a hot spring, captured in intimate detail.',
-    type: 'photo',
-    tags: ['macaque', 'monkey', 'hot spring', 'japan', 'wildlife', 'primate'],
-    animalName: 'Japanese Macaque',
-    likeCount: 142, liked: false, published: true,
-  },
-  {
-    id: 2, title: 'Coastal Majesty', category: 'landscape',
-    imageUrl: '/photos/photo-landscape.jpeg',
-    location: 'Pacific Coast', caption: 'Dramatic rocky coastline meeting the vast ocean with mountain silhouettes in the distance.',
-    type: 'photo',
-    tags: ['coast', 'ocean', 'rocks', 'landscape', 'pacific', 'seascape'],
-    likeCount: 98, liked: false, published: true,
-  },
-  {
-    id: 3, title: 'Beach Portrait', category: 'other',
-    imageUrl: '/photos/photo-portrait.jpeg',
-    location: 'Seaside', caption: 'A serene portrait on the sandy shores, capturing natural beauty and calm.',
-    type: 'photo',
-    tags: ['portrait', 'beach', 'golden hour', 'seaside'],
-    likeCount: 89, liked: false, published: true,
-  },
-  {
-    id: 4, title: 'City Lights at Dusk', category: 'street',
-    imageUrl: '/photos/photo-street.jpeg',
-    location: 'Tokyo, Japan', caption: 'A moody cityscape framed by silhouetted trees under a dramatic twilight sky.',
-    type: 'photo',
-    tags: ['tokyo', 'city', 'dusk', 'urban', 'night', 'skyline'],
-    likeCount: 76, liked: false, published: true,
-  },
-];
 
-// ── Sample Stories ───────────────────────────────────────────────────────────
-const SAMPLE_STORIES: Story[] = [
-  {
-    id: 1,
-    title: 'Three Days with the Snow Monkeys of Nagano',
-    slug: 'three-days-snow-monkeys-nagano',
-    excerpt: 'A winter expedition into the mountains of Nagano, Japan, where Japanese macaques bathe in natural hot springs amidst falling snow.',
-    content: `The alarm went off at 4:30 AM. Outside the ryokan window, snow fell silently onto the cedar trees lining the valley. Today was the day I had been planning for months — my first encounter with the famous snow monkeys of Jigokudani.
-
-The trail to the monkey park winds through a dense forest blanketed in fresh powder. Every step crunched beneath my boots, and the only other sound was the distant rush of the Yokoyu River. I carried my Canon EOS R5 with the RF 100-500mm mounted and ready, my fingers already numb despite the heated gloves.
-
-When I arrived at the hot spring, the scene was almost surreal. Steam rose from the mineral-rich water, creating an ethereal mist that caught the first light of dawn. And there they were — a troop of about thirty macaques, some soaking contentedly, others grooming each other on the rocks.
-
-I spent three full days observing their behavior. The hierarchy within the troop became apparent: the dominant males claimed the warmest spots, while younger monkeys played at the edges, splashing and chasing each other with abandon. One juvenile became particularly curious about my camera, approaching within a meter before its mother called it back with a sharp bark.
-
-The key to wildlife photography is patience. On the second morning, I waited four hours in -12°C temperatures for a particular shot — a mother cradling her infant, both submerged to their shoulders, snowflakes landing on their fur. When the moment came, I had exactly three seconds before she turned away. That image became the centerpiece of this portfolio.`,
-    coverImageUrl: '/photos/photo-wildlife.jpeg',
-    tags: ['Wildlife', 'Japan', 'Winter'],
-    createdAt: '2026-02-15',
-    viewCount: 1240,
-    likeCount: 89,
-    liked: false,
-  },
-  {
-    id: 2,
-    title: 'Chasing Light on the Pacific Coast',
-    slug: 'chasing-light-pacific-coast',
-    excerpt: 'A solo road trip along the rugged Pacific coastline, capturing the interplay of ocean, rock, and golden hour light.',
-    content: `There is something about the Pacific Coast that draws photographers back again and again. Perhaps it is the way the light changes every fifteen minutes, painting the ancient sea stacks in hues that no filter can replicate. Perhaps it is the raw, untamed energy of waves meeting stone.
-
-I set out on a ten-day road trip with nothing but my camera gear, a sleeping bag, and a rough map of locations I had been studying on satellite imagery for months. The goal was simple: capture the coast in ways that felt both timeless and intimate.
-
-My first stop was a secluded beach accessible only by a steep, muddy trail. I arrived an hour before sunset and immediately understood why the hike was worth it. The beach was framed by towering basalt columns, and the retreating tide had left mirror-like pools that reflected the sky in perfect symmetry.
-
-I shot with the RF 15-35mm at f/8 to keep everything tack-sharp from foreground to infinity. The challenge with coastal photography is timing — you need to anticipate the waves, position your tripod between surges, and protect your gear from salt spray. I lost a lens cloth to a rogue wave on day three, but the images were worth every soggy moment.
-
-The most memorable morning came on day seven, when thick fog rolled in at dawn and I nearly packed up. But as the sun burned through, it created god rays streaming between the sea stacks — a phenomenon I had seen in paintings but never witnessed in person. I fired off two hundred frames in ten minutes. Three of those shots are now hanging in galleries.`,
-    coverImageUrl: '/photos/photo-landscape.jpeg',
-    tags: ['Landscape', 'Travel', 'Ocean'],
-    createdAt: '2026-01-28',
-    viewCount: 980,
-    likeCount: 67,
-    liked: false,
-  },
-  {
-    id: 3,
-    title: 'Neon Nights: Street Photography in Tokyo',
-    slug: 'neon-nights-street-photography-tokyo',
-    excerpt: 'Wandering through Tokyo\'s electric streets after dark, finding stories in the glow of neon signs and the rhythm of urban life.',
-    content: `Tokyo at night is a photographer's fever dream. Every corner offers a new composition — the glow of a ramen shop spilling warm light onto rain-slicked pavement, the silhouette of a salaryman framed by a thousand LED screens, the quiet beauty of a shrine tucked between skyscrapers.
-
-I spent two weeks exploring every neighborhood, from the sensory overload of Shibuya to the old-world charm of Yanaka. My approach was simple: no flash, no tripod, just the RF 35mm f/1.4L wide open and a willingness to walk until my feet ached.
-
-Street photography in Japan requires a certain sensitivity. The culture values privacy, and I was careful to capture the energy of the streets without intruding on individuals. The best shots came from moments of serendipity — a group of friends laughing under an umbrella, a cat perched on a vending machine, the geometric patterns of light and shadow in a subway station.
-
-One evening in Shinjuku, I found myself in a narrow alley I had never seen on any map. Paper lanterns hung overhead, their warm glow competing with the blue neon of a jazz bar. A musician was playing saxophone in the doorway, and a couple had stopped to listen, their reflections shimmering in a puddle at their feet. I raised my camera and captured the scene in a single frame — no cropping needed.
-
-The technical challenge of night street photography is real. At ISO 3200 and 1/60th of a second, every shot is a negotiation between sharpness and grain. But the imperfections are part of the story. The slight motion blur, the high-contrast shadows — they give the images a feeling of being alive, of existing in a specific moment that will never repeat.`,
-    coverImageUrl: '/photos/photo-street.jpeg',
-    tags: ['Street', 'Tokyo', 'Night'],
-    createdAt: '2026-03-01',
-    viewCount: 1560,
-    likeCount: 112,
-    liked: false,
-  },
-];
 
 const CATEGORIES: Category[] = [
   { key: 'wildlife', label: 'Wildlife', imageUrl: '/photos/photo-wildlife.jpeg' },
@@ -228,9 +126,12 @@ const App: React.FC = () => {
     return 'all';
   });
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
-  const [photos, setPhotos] = useState<Photo[]>(SAMPLE_PHOTOS);
-  const [stories, setStories] = useState<Story[]>(SAMPLE_STORIES);
+  const [photos, setPhotos] = useState<Photo[]>([]);
+  const [stories, setStories] = useState<Story[]>([]);
   const [videos, setVideos] = useState<Video[]>([]);
+  const [photosLoading, setPhotosLoading] = useState(true);
+  const [storiesLoading, setStoriesLoading] = useState(true);
+  const [videosLoading, setVideosLoading] = useState(true);
   const [galleryPhotos, setGalleryPhotos] = useState<GalleryPhoto[]>([]);
   const [selectedStory, setSelectedStory] = useState<Story | null>(null);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
@@ -411,6 +312,7 @@ const App: React.FC = () => {
 
     // ── Real-time PHOTOS subscription ──────────────────────────────────
     const unsubPhotos = subscribeToPhotos((firestorePhotos) => {
+      setPhotosLoading(false);
       const mapped = firestorePhotos.map((fp, idx) => ({
         id: Date.now() + idx,
         firestoreId: fp.id,
@@ -469,17 +371,13 @@ const App: React.FC = () => {
         return allPhotos;
       });
     }, (err) => {
-      console.warn('Photo subscription error, falling back to samples:', err);
-      if (pendingPhotoSlug) {
-        const matchedPhoto = SAMPLE_PHOTOS.find(p => matchesPhotoRoute(p, pendingPhotoSlug));
-        if (matchedPhoto) {
-          setTimeout(() => { setSelectedPhoto({ ...matchedPhoto, viewCount: (matchedPhoto.viewCount || 0) + 1 }); setPendingPhotoSlug(null); }, 100);
-        }
-      }
+      console.warn('Photo subscription error:', err);
+      setPhotosLoading(false);
     });
 
     // ── Real-time STORIES subscription ─────────────────────────────────
     const unsubStories = subscribeToStories((firestoreStories) => {
+      setStoriesLoading(false);
       const mapped: Story[] = firestoreStories.map((fs, idx) => ({
         id: Date.now() + idx + 5000,
         firestoreId: fs.id,
@@ -529,16 +427,7 @@ const App: React.FC = () => {
       });
     }, (err) => {
       console.warn('Story subscription error:', err);
-      if (pendingStorySlug) {
-        const matchedStory = SAMPLE_STORIES.find(s => matchesStoryRoute(s, pendingStorySlug));
-        if (matchedStory) {
-          setTimeout(() => {
-            setSelectedStory({ ...matchedStory, viewCount: matchedStory.viewCount + 1 });
-            setView('story-detail');
-            setPendingStorySlug(null);
-          }, 100);
-        }
-      }
+      setStoriesLoading(false);
     });
 
     // ── Real-time GALLERY subscription ─────────────────────────────────
@@ -550,6 +439,7 @@ const App: React.FC = () => {
 
     // ── Real-time VIDEOS subscription ──────────────────────────────────
     const unsubVideos = subscribeToVideos((firestoreVideos) => {
+      setVideosLoading(false);
       const mapped: Video[] = firestoreVideos.map((fv, idx) => ({
         id: Date.now() + idx + 9000,
         firestoreId: fv.id,
@@ -597,6 +487,7 @@ const App: React.FC = () => {
       });
     }, (err) => {
       console.warn('Video subscription error:', err);
+      setVideosLoading(false);
     });
 
     // ── Real-time COMMENTS subscription (already live!) ────────────────
@@ -1938,9 +1829,10 @@ const App: React.FC = () => {
         onViewAll={() => { setView('photo-grid'); window.scrollTo(0, 0); }}
       />
       <PhotoGallery photos={galleryPhotos} searchQuery={searchQuery} />
-      <StoriesSection stories={stories} onStoryClick={handleStoryClick} onViewAll={() => { setView('story-grid'); window.scrollTo(0, 0); }} />
+      <StoriesSection stories={stories} isLoading={storiesLoading} onStoryClick={handleStoryClick} onViewAll={() => { setView('story-grid'); window.scrollTo(0, 0); }} />
       <VideoSection 
-        videos={videos} 
+        videos={videos}
+        isLoading={videosLoading} 
         onVideoClick={handleVideoClick}
         visitor={visitor}
         videoComments={videoComments}
