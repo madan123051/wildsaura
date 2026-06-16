@@ -12,6 +12,7 @@ import { Story } from '../types';
 
 interface StoriesSectionProps {
   stories: Story[];
+  isLoading?: boolean;
   onStoryClick: (story: Story) => void;
   onViewAll?: () => void;
 }
@@ -19,9 +20,56 @@ interface StoriesSectionProps {
 const INITIAL_COUNT = 3;
 const estimateReadTime = (content: string): number => Math.max(1, Math.ceil(content.split(/\s+/).length / 200));
 
-export const StoriesSection: React.FC<StoriesSectionProps> = ({ stories, onStoryClick, onViewAll }) => {
+const SkeletonStoryCard = () => (
+  <div className="skeleton-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    <div className="skeleton-image" style={{ width: '100%', height: '160px', borderRadius: '8px' }} />
+    <div className="skeleton-text medium" />
+    <div className="skeleton-text short" />
+    <div className="skeleton-text full" />
+    <div className="skeleton-text full" />
+  </div>
+);
+
+export const StoriesSection: React.FC<StoriesSectionProps> = ({ stories, isLoading, onStoryClick, onViewAll }) => {
   const displayStories = stories.slice(0, INITIAL_COUNT);
   const hasMore = stories.length > INITIAL_COUNT;
+
+  if (isLoading) {
+    return (
+      <section id="stories" style={{ padding: '5rem 0', background: 'var(--wa-dark)' }}>
+        <div className="wa-container">
+          <div style={{ marginBottom: '3rem' }}>
+            <div style={{ textAlign: 'center' }}>
+              <p className="font-cinzel" style={{
+                fontSize: '0.7rem', letterSpacing: '0.3em', textTransform: 'uppercase',
+                color: 'var(--wa-gold)', marginBottom: '0.75rem',
+              }}>
+                Behind The Lens
+              </p>
+              <h2 className="font-playfair" style={{
+                fontSize: 'clamp(1.75rem, 4vw, 2.5rem)', fontWeight: 700,
+                background: 'linear-gradient(135deg, var(--wa-gold), var(--wa-gold-light))',
+                WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                marginBottom: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+              }}>
+                📖 Stories & Adventures
+              </h2>
+              <p style={{ fontSize: '0.9rem', color: 'var(--wa-text-muted)', maxWidth: 500, margin: '0 auto' }}>
+                Dive into the tales behind each expedition — the patience, the thrill, and the untold moments.
+              </p>
+            </div>
+          </div>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: '1.5rem',
+          }}>
+            {[1, 2, 3].map((i) => <SkeletonStoryCard key={i} />)}
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section id="stories" style={{ padding: '5rem 0', background: 'var(--wa-dark)' }}>
