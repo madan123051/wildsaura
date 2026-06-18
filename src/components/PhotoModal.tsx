@@ -164,11 +164,12 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
 
   return (
     <div 
-      className="modal-backdrop" 
+      className="modal-backdrop photo-modal-backdrop" 
       style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.5rem' }}
       onClick={onClose}
     >
       <div 
+        className="photo-modal-shell"
         onClick={(e) => e.stopPropagation()}
         style={{
           borderRadius: '1rem', maxWidth: '48rem', width: '100%', maxHeight: '96vh', overflowY: 'auto',
@@ -178,12 +179,14 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
       >
         {/* — Image — */}
         <div 
+          className="photo-modal-image-wrap"
           style={{ position: 'relative', touchAction: 'pan-y' }}
           onContextMenu={(e) => e.preventDefault()}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
         >
           <img 
+            className="photo-modal-image"
             src={photo.imageUrl} 
             alt={`${photo.title} - ${(photo.tags || []).join(', ')}`}
             style={{ width: '100%', objectFit: 'cover', borderRadius: '1rem 1rem 0 0', maxHeight: '50vh', userSelect: 'none', WebkitUserDrag: 'none' } as React.CSSProperties}
@@ -255,14 +258,14 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
           )}
         </div>
         {/* ── Compact Info Section ── */}
-        <div style={{ padding: '0.75rem 1rem' }}>
+        <div className="photo-modal-info" style={{ padding: '0.75rem 1rem' }}>
 
           {/* Title + meta — single compact row */}
-          <div style={{ marginBottom: '0.6rem' }}>
+          <div className="photo-modal-heading" style={{ marginBottom: '0.6rem' }}>
             <h2 className="font-playfair" style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '0.2rem', lineHeight: 1.3 }}>
               {photo.title}
             </h2>
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', fontSize: '0.65rem' }} className="text-wa-muted">
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', fontSize: '0.65rem' }} className="text-wa-muted photo-modal-meta">
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}><User size={10} /> {photo.photographer || 'Unknown'}</span>
               {photo.location && (
                 <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(photo.location)}`} target="_blank" rel="noopener noreferrer"
@@ -283,7 +286,7 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
             display: 'flex', alignItems: 'center', gap: '0.25rem',
             paddingBottom: '0.6rem', borderBottom: '1px solid var(--wa-border)',
             flexWrap: 'wrap',
-          }}>
+          }} className="photo-modal-actions">
             {/* Like */}
             <button onClick={onLike} style={{
               display: 'flex', alignItems: 'center', gap: '0.3rem',
@@ -363,13 +366,13 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
               background: 'rgba(159,203,143,0.1)', border: '1px solid rgba(159,203,143,0.2)',
               borderRadius: '9999px', padding: '0.2rem 0.5rem',
               display: 'flex', alignItems: 'center', gap: '0.25rem', whiteSpace: 'nowrap',
-            }}>
+            }} className="photo-modal-free-chip">
               <Download size={10} /> Free · No watermark 🎉
             </span>
           </div>
 
           {/* ── Tabs ── */}
-          <div style={{ display: 'flex', gap: '0.2rem', margin: '0.6rem 0', padding: '0.2rem', borderRadius: '0.4rem', background: 'rgba(255,255,255,0.04)' }}>
+          <div className="photo-modal-tabs" style={{ display: 'flex', gap: '0.2rem', margin: '0.6rem 0', padding: '0.2rem', borderRadius: '0.4rem', background: 'rgba(255,255,255,0.04)' }}>
             {tabs.map((tab) => (
               <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`tab-btn ${activeTab === tab.id ? 'active' : ''}`}
                 style={{ fontSize: '0.7rem', padding: '0.3rem 0.6rem' }}>
@@ -381,8 +384,8 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
           {/* ── Info Tab ── */}
           {activeTab === 'info' && (
             <div>
-              {photo.caption && <p className="text-wa-mid" style={{ fontSize: '0.8rem', lineHeight: 1.5, marginBottom: '0.6rem' }}>{photo.caption}</p>}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+              {photo.caption && <p className="text-wa-mid photo-modal-caption" style={{ fontSize: '0.8rem', lineHeight: 1.5, marginBottom: '0.6rem' }}>{photo.caption}</p>}
+              <div className="photo-modal-detail-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                 <InfoCard label="Photographer" value={photo.photographer || 'Unknown'} />
                 {photo.location && (
                   <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(photo.location)}`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', color: 'inherit' }} onClick={(e) => e.stopPropagation()}>
@@ -465,15 +468,140 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
             </div>
           )}
         </div>
+        <style>{`
+          @media (max-width: 640px) {
+            .photo-modal-backdrop {
+              padding: 0.35rem !important;
+              align-items: center !important;
+            }
+
+            .photo-modal-shell {
+              max-height: calc(100dvh - 0.7rem) !important;
+              border-radius: 0.8rem !important;
+              display: flex !important;
+              flex-direction: column !important;
+              overflow: hidden !important;
+            }
+
+            .photo-modal-image-wrap {
+              flex: 0 0 auto !important;
+              background: #030604;
+            }
+
+            .photo-modal-image {
+              display: block !important;
+              width: 100% !important;
+              max-height: 62dvh !important;
+              object-fit: contain !important;
+              border-radius: 0.8rem 0.8rem 0 0 !important;
+              background: #030604;
+            }
+
+            .photo-modal-info {
+              flex: 1 1 auto !important;
+              max-height: 38dvh !important;
+              overflow-y: auto !important;
+              padding: 0.55rem 0.7rem 0.7rem !important;
+              -webkit-overflow-scrolling: touch;
+            }
+
+            .photo-modal-heading {
+              margin-bottom: 0.4rem !important;
+            }
+
+            .photo-modal-heading h2 {
+              font-size: 0.95rem !important;
+              line-height: 1.15 !important;
+              margin-bottom: 0.18rem !important;
+            }
+
+            .photo-modal-meta {
+              gap: 0.28rem 0.45rem !important;
+              font-size: 0.58rem !important;
+              line-height: 1.2 !important;
+            }
+
+            .photo-modal-actions {
+              gap: 0.1rem !important;
+              padding-bottom: 0.42rem !important;
+              flex-wrap: nowrap !important;
+              overflow-x: auto !important;
+              scrollbar-width: none;
+            }
+
+            .photo-modal-actions::-webkit-scrollbar {
+              display: none;
+            }
+
+            .photo-modal-actions button {
+              padding: 0.26rem 0.42rem !important;
+              font-size: 0.64rem !important;
+              flex: 0 0 auto;
+            }
+
+            .photo-modal-actions button svg {
+              width: 13px !important;
+              height: 13px !important;
+            }
+
+            .photo-modal-free-chip {
+              display: none !important;
+            }
+
+            .photo-modal-tabs {
+              margin: 0.42rem 0 !important;
+              padding: 0.15rem !important;
+            }
+
+            .photo-modal-tabs .tab-btn {
+              padding: 0.25rem 0.35rem !important;
+              font-size: 0.58rem !important;
+              letter-spacing: 0.04em !important;
+              min-height: 28px;
+            }
+
+            .photo-modal-caption {
+              font-size: 0.68rem !important;
+              line-height: 1.35 !important;
+              margin-bottom: 0.45rem !important;
+              display: -webkit-box;
+              -webkit-line-clamp: 2;
+              -webkit-box-orient: vertical;
+              overflow: hidden;
+            }
+
+            .photo-modal-detail-grid {
+              grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+              gap: 0.35rem !important;
+            }
+
+            .photo-modal-detail-card {
+              padding: 0.38rem 0.46rem !important;
+              border-radius: 0.45rem !important;
+            }
+
+            .photo-modal-detail-card-label {
+              font-size: 0.48rem !important;
+              letter-spacing: 0.08em !important;
+              margin-bottom: 0.12rem !important;
+            }
+
+            .photo-modal-detail-card-value {
+              font-size: 0.66rem !important;
+              line-height: 1.2 !important;
+              gap: 0.12rem !important;
+            }
+          }
+        `}</style>
       </div>
     </div>
   );
 };
 
 const InfoCard: React.FC<{ label: string; value: string; icon?: React.ReactNode }> = ({ label, value, icon }) => (
-  <div style={{ borderRadius: '0.5rem', padding: '0.5rem 0.65rem', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-    <p className="font-cinzel text-wa-muted" style={{ fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.2rem' }}>{label}</p>
-    <p style={{ fontSize: '0.8rem', fontWeight: 500, opacity: 0.8, display: 'flex', alignItems: 'center', gap: '0.2rem', textTransform: 'capitalize' }}>
+  <div className="photo-modal-detail-card" style={{ borderRadius: '0.5rem', padding: '0.5rem 0.65rem', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+    <p className="font-cinzel text-wa-muted photo-modal-detail-card-label" style={{ fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.2rem' }}>{label}</p>
+    <p className="photo-modal-detail-card-value" style={{ fontSize: '0.8rem', fontWeight: 500, opacity: 0.8, display: 'flex', alignItems: 'center', gap: '0.2rem', textTransform: 'capitalize' }}>
       {icon} {value}
     </p>
   </div>
