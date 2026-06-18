@@ -11,18 +11,20 @@
   <link rel="canonical" href="https://www.wildsaura.com" />
   <meta name="theme-color" content="#07110d" />
 
-  <!-- Google AdSense Verification -->
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8751215990624046" crossorigin="anonymous"></script>
-
   <!-- Favicon & Icons -->
   <link rel="icon" type="image/x-icon" href="/favicon.ico" />
   <link rel="apple-touch-icon" sizes="192x192" href="/lion-192.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="/lion-192.png" />
+  <link rel="preload" as="image" href="/photos/photo-wildlife.jpeg" fetchpriority="high" />
 
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Noto+Serif+Devanagari:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=optional" />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Noto+Serif+Devanagari:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=optional" rel="stylesheet" media="print" onload="this.media='all'" />
+  <noscript>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Noto+Serif+Devanagari:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=optional" rel="stylesheet" />
+  </noscript>
 
   <!-- Structured Data / JSON-LD -->
   <script type="application/ld+json">
@@ -99,7 +101,7 @@
     }
     .wa-splash p {
       margin-top: 1.2rem;
-      font-family: 'Playfair Display', serif;
+      font-family: 'Cinzel', Georgia, serif;
       font-size: 1.1rem;
       letter-spacing: 0.15em;
       color: #c9a84c;

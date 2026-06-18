@@ -19,6 +19,7 @@ const C = {
   muted:        'rgba(191,209,183,0.72)',
   bg:           '#08120e',
 };
+const DEFAULT_HERO_IMAGE = '/photos/photo-wildlife.jpeg';
 
 function getNPTDate(): { dateStr: string; timeStr: string } {
   const now = new Date();
@@ -43,7 +44,7 @@ function getNPTDate(): { dateStr: string; timeStr: string } {
 
 export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages, onCommunityClick, isLoading }) => {
   const hasImages = heroImages && heroImages.length > 0;
-  const images = hasImages ? heroImages! : [];
+  const images = hasImages ? heroImages! : [DEFAULT_HERO_IMAGE];
   const [currentIndex, setCurrentIndex] = useState(0);
   const [fade, setFade] = useState(true);
   const [nptTime, setNptTime] = useState<{ dateStr: string; timeStr: string }>(getNPTDate);
@@ -158,7 +159,7 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, heroImages, onCommunityCl
 
         {/* RIGHT: Hero Image or Skeleton */}
         <div className="hero-split-image">
-          {isLoading || !hasImages ? (
+          {isLoading && hasImages ? (
             /* Skeleton shimmer — no hardcoded fallback image */
             <div
               className="skeleton-box"
