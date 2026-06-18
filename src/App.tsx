@@ -112,6 +112,8 @@ const updateVisitorDownloadCount = async (email: string, count: number) =>
   (await import('./services/visitorService')).updateVisitorDownloadCount(email, count);
 const updateVisitorProfile = async (email: string, profile: any) =>
   (await import('./services/visitorService')).updateVisitorProfile(email, profile);
+const trackVisitorEvent = async (event: any) =>
+  (await import('./services/analyticsService')).trackVisitorEvent(event);
 const RouteFallback = () => (
   <main style={{ minHeight: '100vh', background: 'var(--wa-bg)', color: 'var(--wa-text)', padding: '6rem 1rem' }}>
     Loading...
@@ -300,10 +302,35 @@ const App: React.FC = () => {
   const visitorRef = useRef<Visitor | null>(null);
   useEffect(() => { visitorRef.current = visitor; }, [visitor]);
 
+  const getTrackingVisitor = useCallback(() => {
+    const current = visitorRef.current;
+    if (!current) return null;
+    return {
+      email: current.email || '',
+      displayName: current.displayName,
+      avatarUrl: current.avatarUrl || '',
+      loginMethod: current.loginMethod || 'visitor',
+    };
+  }, []);
+
+  const trackSiteEvent = useCallback((event: any) => {
+    trackVisitorEvent({ ...event, visitor: getTrackingVisitor() }).catch((err) => {
+      console.warn('Analytics event failed:', err);
+    });
+  }, [getTrackingVisitor]);
+
   useEffect(() => {
     const timer = window.setTimeout(() => setDeferNonCritical(true), 1200);
     return () => window.clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    trackSiteEvent({
+      type: 'page_view',
+      page: window.location.pathname || '/',
+      category: selectedCategory !== 'all' ? selectedCategory : undefined,
+    });
+  }, [trackSiteEvent, view, selectedCategory, selectedPhoto?.firestoreId, selectedStory?.firestoreId, selectedVideo?.firestoreId]);
 
   useEffect(() => {
     let disposed = false;
@@ -851,8 +878,16 @@ const App: React.FC = () => {
 
   const handleCategoryClick = useCallback((key: string) => {
     setSelectedCategory(key);
+    trackSiteEvent({ type: 'category_view', page: `/category/${key}`, category: key });
     setTimeout(() => galleryRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-  }, []);
+  }, [trackSiteEvent]);
+
+  const handleGalleryCategoryChange = useCallback((key: string) => {
+    setSelectedCategory(key);
+    if (key !== 'all') {
+      trackSiteEvent({ type: 'category_view', page: `/category/${key}`, category: key });
+    }
+  }, [trackSiteEvent]);
 
   const handleLike = useCallback((id: number) => {
     setPhotos((prev) => {
@@ -865,6 +900,15 @@ const App: React.FC = () => {
       }
       // Save per-user like to Firestore (keyed by firestoreId)
       const likeKey = photo?.firestoreId || String(id);
+      if (newLiked) {
+        trackSiteEvent({
+          type: 'like',
+          page: window.location.pathname,
+          category: photo.category,
+          targetId: likeKey,
+          targetTitle: photo.title,
+        });
+      }
       if (visitor?.email) {
         if (newLiked) addUserLike(visitor.email, 'photo', likeKey).catch(console.warn);
         else removeUserLike(visitor.email, 'photo', likeKey).catch(console.warn);
@@ -884,7 +928,7 @@ const App: React.FC = () => {
         prev ? { ...prev, liked: !prev.liked, likeCount: prev.liked ? prev.likeCount - 1 : prev.likeCount + 1 } : null
       );
     }
-  }, [selectedPhoto, visitor]);
+  }, [selectedPhoto, visitor, trackSiteEvent]);
 
   const handleShare = useCallback(async (photo: Photo) => {
     const photoId = photo.slug || photo.firestoreId || String(photo.id);
@@ -899,6 +943,13 @@ const App: React.FC = () => {
           text: shareText,
           url: shareUrl,
         });
+        trackSiteEvent({
+          type: 'share',
+          page: window.location.pathname,
+          category: photo.category,
+          targetId: photo.firestoreId || String(photo.id),
+          targetTitle: photo.title,
+        });
         return;
       } catch (err) {
         // User cancelled or share failed, fall through to clipboard
@@ -908,6 +959,13 @@ const App: React.FC = () => {
     // Fallback: copy to clipboard with feedback
     try {
       await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
+      trackSiteEvent({
+        type: 'share',
+        page: window.location.pathname,
+        category: photo.category,
+        targetId: photo.firestoreId || String(photo.id),
+        targetTitle: photo.title,
+      });
       // Show toast
       const toast = document.createElement('div');
       toast.textContent = '✅ Link copied to clipboard!';
@@ -918,7 +976,7 @@ const App: React.FC = () => {
       // Last resort: prompt with URL
       window.prompt('Copy this link to share:', shareUrl);
     }
-  }, []);
+  }, [trackSiteEvent]);
 
   const handleLogin = useCallback(() => {
     setIsAdmin(true);
@@ -1126,11 +1184,17 @@ const App: React.FC = () => {
     setSelectedStory({ ...story, viewCount: story.viewCount + 1 });
     setStories((prev) => prev.map((s) => s.id === story.id ? { ...s, viewCount: s.viewCount + 1 } : s));
     recordView('story', story.firestoreId);
+    trackSiteEvent({
+      type: 'story_view',
+      page: `/story/${story.slug || story.firestoreId || story.id}`,
+      targetId: story.firestoreId || String(story.id),
+      targetTitle: story.title,
+    });
     setView('story-detail');
     const storyToken = story.slug || story.firestoreId || String(story.id);
     window.history.pushState({}, '', '/story/' + encodeURIComponent(storyToken));
     window.scrollTo(0, 0);
-  }, [recordView]);
+  }, [recordView, trackSiteEvent]);
 
   const getViewIncrement = useCallback((type: string, id?: string): number => {
     if (!id) return 0;
@@ -1146,11 +1210,17 @@ const App: React.FC = () => {
     setSelectedVideo(updated);
     setVideos((prev) => prev.map((v) => v.id === video.id ? { ...v, viewCount: (v.viewCount || 0) + 1 } : v));
     recordView('video', video.firestoreId);
+    trackSiteEvent({
+      type: 'video_view',
+      page: `/video/${video.firestoreId || video.id}`,
+      targetId: video.firestoreId || String(video.id),
+      targetTitle: video.title,
+    });
     setView('video-detail');
     const videoToken = video.firestoreId || String(video.id);
     window.history.pushState({}, '', '/video/' + encodeURIComponent(videoToken));
     window.scrollTo(0, 0);
-  }, [recordView]);
+  }, [recordView, trackSiteEvent]);
 
   const handleStoryLike = useCallback(() => {
     if (!selectedStory) return;
@@ -1166,6 +1236,14 @@ const App: React.FC = () => {
     }
     // Save per-user like to Firestore
     const sLikeKey = selectedStory.firestoreId || String(selectedStory.id);
+    if (updated.liked) {
+      trackSiteEvent({
+        type: 'like',
+        page: window.location.pathname,
+        targetId: sLikeKey,
+        targetTitle: selectedStory.title,
+      });
+    }
     if (visitor?.email) {
       if (updated.liked) addUserLike(visitor.email, 'story', sLikeKey).catch(console.warn);
       else removeUserLike(visitor.email, 'story', sLikeKey).catch(console.warn);
@@ -1176,7 +1254,7 @@ const App: React.FC = () => {
       else next.delete(`story_${sLikeKey}`);
       return next;
     });
-  }, [selectedStory, visitor]);
+  }, [selectedStory, visitor, trackSiteEvent]);
 
   // Visitor handlers
   const handleVisitorLogin = useCallback(async (v: Visitor) => {
@@ -1284,7 +1362,15 @@ const App: React.FC = () => {
       avatarUrl: actor.avatarUrl || '',
       content,
     }).catch(err => console.warn('Comment save failed:', err));
-  }, [visitor, getGuestIdentity]);
+    const photo = photos.find((p) => p.firestoreId === firestoreId);
+    trackSiteEvent({
+      type: 'comment',
+      page: window.location.pathname,
+      category: photo?.category,
+      targetId: firestoreId,
+      targetTitle: photo?.title,
+    });
+  }, [visitor, getGuestIdentity, photos, trackSiteEvent]);
 
   const handleAddStoryComment = useCallback((firestoreId: string, content: string) => {
     const actor = visitor || getGuestIdentity();
@@ -1308,7 +1394,14 @@ const App: React.FC = () => {
       avatarUrl: actor.avatarUrl || '',
       content,
     }).catch(err => console.warn('Comment save failed:', err));
-  }, [visitor, getGuestIdentity]);
+    const story = stories.find((s) => s.firestoreId === firestoreId);
+    trackSiteEvent({
+      type: 'comment',
+      page: window.location.pathname,
+      targetId: firestoreId,
+      targetTitle: story?.title,
+    });
+  }, [visitor, getGuestIdentity, stories, trackSiteEvent]);
 
   const handleAddVideoComment = useCallback((firestoreId: string, content: string) => {
     const actor = visitor || getGuestIdentity();
@@ -1332,7 +1425,14 @@ const App: React.FC = () => {
       avatarUrl: actor.avatarUrl || '',
       content,
     }).catch(err => console.warn('Video comment save failed:', err));
-  }, [visitor, getGuestIdentity]);
+    const video = videos.find((v) => v.firestoreId === firestoreId);
+    trackSiteEvent({
+      type: 'comment',
+      page: window.location.pathname,
+      targetId: firestoreId,
+      targetTitle: video?.title,
+    });
+  }, [visitor, getGuestIdentity, videos, trackSiteEvent]);
 
   const handleDeleteComment = useCallback((commentFirestoreId: string) => {
     if (!confirm('Delete this comment?')) return;
@@ -1351,6 +1451,14 @@ const App: React.FC = () => {
       }
       // Save per-user like to Firestore
       const vLikeKey = video?.firestoreId || String(id);
+      if (newLiked) {
+        trackSiteEvent({
+          type: 'like',
+          page: window.location.pathname,
+          targetId: vLikeKey,
+          targetTitle: video.title,
+        });
+      }
       if (visitor?.email) {
         if (newLiked) addUserLike(visitor.email, 'video', vLikeKey).catch(console.warn);
         else removeUserLike(visitor.email, 'video', vLikeKey).catch(console.warn);
@@ -1365,7 +1473,7 @@ const App: React.FC = () => {
         v.id === id ? { ...v, liked: newLiked, likeCount: newLikeCount } : v
       );
     });
-  }, [visitor]);
+  }, [visitor, trackSiteEvent]);
 
   const handleDownload = useCallback(async (photo: Photo) => {
     if (!visitor) { setShowVisitorLogin(true); return; }
@@ -1375,6 +1483,13 @@ const App: React.FC = () => {
       await downloadPhoto(photo.imageUrl, photo.title, applyWatermark);
       const newCount = downloadCount + 1;
       setDownloadCount(newCount);
+      trackSiteEvent({
+        type: 'download',
+        page: window.location.pathname,
+        category: photo.category,
+        targetId: photo.firestoreId || String(photo.id),
+        targetTitle: photo.title,
+      });
       // Persist download count to Firestore
       const userKey = visitor.email || '';
       if (userKey) {
@@ -1385,7 +1500,7 @@ const App: React.FC = () => {
     } finally {
       setIsDownloading(false);
     }
-  }, [visitor, downloadCount]);
+  }, [visitor, downloadCount, trackSiteEvent]);
 
   const handleGenerateStory = useCallback(async (photo: Photo) => {
     try {
@@ -1488,11 +1603,18 @@ const App: React.FC = () => {
       recordView('photo', photo.firestoreId);
       const photoId = photo.slug || photo.firestoreId || String(photo.id);
       window.history.pushState({}, '', '/photo/' + encodeURIComponent(photoId));
+      trackSiteEvent({
+        type: 'photo_view',
+        page: '/photo/' + encodeURIComponent(photoId),
+        category: photo.category,
+        targetId: photo.firestoreId || String(photo.id),
+        targetTitle: photo.title,
+      });
     } else {
       window.history.pushState({}, '', '/');
     }
     setSelectedPhoto(updatedPhoto);
-  }, [recordView]);
+  }, [recordView, trackSiteEvent]);
 
   // ── Helper: Close Photo Modal ────────────────────────────────────────────
   const closePhoto = useCallback(() => {
@@ -1527,7 +1649,7 @@ const App: React.FC = () => {
             photos={photos}
             filterTabs={FILTER_TABS}
             initialCategory={selectedCategory}
-            onCategoryChange={setSelectedCategory}
+            onCategoryChange={handleGalleryCategoryChange}
             onBack={() => { setView('home'); setSelectedCategory('all'); window.history.pushState({}, '', '/'); window.scrollTo(0, 0); }}
             onPhotoClick={openPhoto}
             onLike={handleLike}
@@ -1967,7 +2089,7 @@ const App: React.FC = () => {
         photos={photos}
         filterTabs={FILTER_TABS}
         selectedCategory={selectedCategory}
-        onCategoryChange={setSelectedCategory}
+        onCategoryChange={handleGalleryCategoryChange}
         onPhotoClick={openPhoto}
         onLike={handleLike}
         onShare={handleShare}

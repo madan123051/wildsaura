@@ -26,5 +26,24 @@ service cloud.firestore {
 
     // ✅ FIX: online_visitors — everyone can read/write (tracks anonymous + logged-in presence)
     match /online_visitors/{docId} { allow read, write: if true; }
+
+    // Analytics tracking — anonymous visitors can create/update their session stats,
+    // admin/authenticated users can read dashboards.
+    match /visitor_events/{docId} {
+      allow create: if true;
+      allow read, update, delete: if request.auth != null;
+    }
+    match /visitor_daily_stats/{docId} {
+      allow create, update: if true;
+      allow read, delete: if request.auth != null;
+    }
+    match /page_views/{docId} {
+      allow create: if true;
+      allow read, update, delete: if request.auth != null;
+    }
+    match /shares/{docId} {
+      allow create: if true;
+      allow read, update, delete: if request.auth != null;
+    }
   }
 }
