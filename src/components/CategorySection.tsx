@@ -153,7 +153,7 @@ const CategoryCard: React.FC<{ cat: Category; onClick: () => void }> = ({ cat, o
           opacity: loaded ? 1 : 0,
           transition: 'opacity 0.3s ease',
         }}
-        loading="eager"
+        loading="lazy"
         decoding="async"
         onLoad={() => setLoaded(true)}
         onError={() => {

@@ -1,3 +1,5 @@
+import { LOCAL_IMAGE_VARIANTS } from './localImageManifest';
+
 export interface OptimizedImageOptions {
   width: number;
   height?: number;
@@ -7,6 +9,7 @@ export interface OptimizedImageOptions {
 }
 
 const LOCAL_PREFIXES = ['/photos/', '/images/', 'data:', 'blob:'];
+const LOCAL_PHOTO_PREFIX = '/photos/';
 
 function shouldProxy(url: string): boolean {
   if (!url) return false;
@@ -21,8 +24,29 @@ function withFirebaseMediaParam(url: string): string {
   return `${url}${url.includes('?') ? '&' : '?'}alt=media`;
 }
 
+function stripQuery(url: string): string {
+  return url.split(/[?#]/)[0];
+}
+
+function getLocalOptimizedVariant(url: string, width: number): { path: string; width: number } | null {
+  const cleanUrl = stripQuery(url);
+  const widths = LOCAL_IMAGE_VARIANTS[cleanUrl];
+  if (!widths?.length) return null;
+
+  const selectedWidth = widths.find((candidate) => candidate >= width) ?? widths[widths.length - 1];
+  const fileName = cleanUrl.slice(LOCAL_PHOTO_PREFIX.length).toLowerCase().replace(/\./g, '-');
+  return { path: `${LOCAL_PHOTO_PREFIX}optimized/${fileName}-${selectedWidth}.webp`, width: selectedWidth };
+}
+
+function getLocalOptimizedPath(url: string, width: number): string {
+  return getLocalOptimizedVariant(url, width)?.path || '';
+}
+
 export function getOptimizedImageUrl(url: string | undefined | null, options: OptimizedImageOptions): string {
   if (!url) return '';
+  if (url.startsWith(LOCAL_PHOTO_PREFIX)) {
+    return getLocalOptimizedPath(url, options.width) || url;
+  }
   if (!shouldProxy(url)) return url;
 
   const sourceUrl = withFirebaseMediaParam(url);
@@ -45,7 +69,21 @@ export function getOptimizedSrcSet(
   widths: number[],
   options: Omit<OptimizedImageOptions, 'width'> = {},
 ): string | undefined {
-  if (!url || !shouldProxy(url)) return undefined;
+  if (!url) return undefined;
+
+  if (url.startsWith(LOCAL_PHOTO_PREFIX)) {
+    const seen = new Set<number>();
+    const entries: string[] = [];
+    widths.forEach((width) => {
+      const optimized = getLocalOptimizedVariant(url, width);
+      if (!optimized || seen.has(optimized.width)) return;
+      seen.add(optimized.width);
+      entries.push(`${optimized.path} ${optimized.width}w`);
+    });
+    return entries.length ? entries.join(', ') : undefined;
+  }
+
+  if (!shouldProxy(url)) return undefined;
 
   return widths
     .map((width) => `${getOptimizedImageUrl(url, { ...options, width })} ${width}w`)

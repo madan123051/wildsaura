@@ -53,8 +53,12 @@ export const AboutSection: React.FC<AboutSectionProps> = ({ onMapClick }) => {
                 boxShadow: '0 0 20px rgba(201,168,76,0.15)',
               }}>
                 <img
-                  src="/madan-about.png"
+                  src="/images/optimized/madan-about-png-280.webp"
                   alt="Madan - Wildlife & Nature Photographer"
+                  width={140}
+                  height={140}
+                  loading="lazy"
+                  decoding="async"
                   style={{
                     width: '100%',
                     height: '100%',
