@@ -5,121 +5,46 @@ import { Hero } from './components/Hero';
 import { CategorySection } from './components/CategorySection';
 import { Gallery } from './components/Gallery';
 import { PhotoGallery } from './components/PhotoGallery';
+import { PhotoModal } from './components/PhotoModal';
 import { AboutSection } from './components/AboutSection';
 import { Footer } from './components/Footer';
+import { SearchBar } from './components/SearchBar';
+import { AIChatbot } from './components/AIChatbot';
+import { VisitorLogin } from './components/VisitorLogin';
 import { StoriesSection } from './components/StoriesSection';
+import { VideoSection } from './components/VideoSection';
+import { TermsConditions } from './components/TermsConditions';
 import { OurAppsSection } from './components/OurAppsSection';
+import { StoryDetail } from './components/StoryDetail';
+import { PhotoGridPage } from './components/PhotoGridPage';
+import { StoryGridPage } from './components/StoryGridPage';
+import { VideoGridPage } from './components/VideoGridPage';
+import { VideoDetail } from './components/VideoDetail';
+import { ProfileModal } from './components/ProfileModal';
+import { CommunityPage } from './components/CommunityPage';
 import { downloadPhoto } from './utils/downloadPhoto';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { auth } from './firebase';
+import { addUserLike, removeUserLike, getUserLikes } from './services/userLikesService';
+import { getPhotosFromFirestore, deletePhotoFromFirestore, updatePhotoInFirestore, incrementPhotoCounter, subscribeToPhotos } from './services/photoService';
+import { subscribeToGalleryPhotos } from './services/galleryService';
+import { getStoriesFromFirestore, addStoryToFirestore, deleteStoryFromFirestore, updateStoryInFirestore, incrementStoryCounter, uploadStoryCoverToStorage, subscribeToStories } from './services/storyService';
+import { getVideosFromFirestore, addVideoToFirestore, deleteVideoFromFirestore, updateVideoInFirestore, incrementVideoCounter, uploadVideoThumbnailToStorage, uploadVideoToStorage, subscribeToVideos } from './services/videoService';
+import { addCommentToFirestore, deleteCommentFromFirestore, getCommentsForTarget, getAllComments, subscribeToAllComments } from './services/commentService';
+import { saveVisitorToFirestore, getVisitorFromFirestore, updateVisitorDownloadCount, updateVisitorProfile, trackOnlineVisitor, subscribeToOnlineVisitors } from './services/visitorService';
 import { LiveStats } from './components/LiveStats';
-import type { SiteSettings } from './services/siteSettingsService';
-import type { AppNotification } from './components/NotificationPanel';
+import { PhotoMap } from './components/PhotoMap';
+import { onSiteSettingsChange, SiteSettings } from './services/siteSettingsService';
+import { NotificationPanel, AppNotification } from './components/NotificationPanel';
+import AdSenseHead from './components/AdSenseHead';
 
+import SelfAdPopup from './components/SelfAdPopup';
+import { trackSiteVisit } from './services/siteTrackingService';
 const AdminDashboard = lazy(() =>
   import('./components/AdminDashboard').then((module) => ({ default: module.AdminDashboard })),
 );
-const PhotoModal = lazy(() =>
-  import('./components/PhotoModal').then((module) => ({ default: module.PhotoModal })),
-);
-const SearchBar = lazy(() =>
-  import('./components/SearchBar').then((module) => ({ default: module.SearchBar })),
-);
-const AIChatbot = lazy(() =>
-  import('./components/AIChatbot').then((module) => ({ default: module.AIChatbot })),
-);
-const VisitorLogin = lazy(() =>
-  import('./components/VisitorLogin').then((module) => ({ default: module.VisitorLogin })),
-);
-const VideoSection = lazy(() =>
-  import('./components/VideoSection').then((module) => ({ default: module.VideoSection })),
-);
-const TermsConditions = lazy(() =>
-  import('./components/TermsConditions').then((module) => ({ default: module.TermsConditions })),
-);
-const StoryDetail = lazy(() =>
-  import('./components/StoryDetail').then((module) => ({ default: module.StoryDetail })),
-);
-const PhotoGridPage = lazy(() =>
-  import('./components/PhotoGridPage').then((module) => ({ default: module.PhotoGridPage })),
-);
-const StoryGridPage = lazy(() =>
-  import('./components/StoryGridPage').then((module) => ({ default: module.StoryGridPage })),
-);
-const VideoGridPage = lazy(() =>
-  import('./components/VideoGridPage').then((module) => ({ default: module.VideoGridPage })),
-);
-const VideoDetail = lazy(() =>
-  import('./components/VideoDetail').then((module) => ({ default: module.VideoDetail })),
-);
-const ProfileModal = lazy(() =>
-  import('./components/ProfileModal').then((module) => ({ default: module.ProfileModal })),
-);
-const CommunityPage = lazy(() =>
-  import('./components/CommunityPage').then((module) => ({ default: module.CommunityPage })),
-);
-const PhotoMap = lazy(() =>
-  import('./components/PhotoMap').then((module) => ({ default: module.PhotoMap })),
-);
-const NotificationPanel = lazy(() =>
-  import('./components/NotificationPanel').then((module) => ({ default: module.NotificationPanel })),
-);
-const AdSenseHead = lazy(() => import('./components/AdSenseHead'));
-const SelfAdPopup = lazy(() => import('./components/SelfAdPopup'));
-
 const logoUrl = '/photos/logo-header.webp';
 const ADMIN_EMAIL = 'madan123050@gmail.com';
-type CounterField = 'viewCount' | 'likeCount';
-const addUserLike = async (email: string, targetType: 'photo' | 'story' | 'video', targetId: string) =>
-  (await import('./services/userLikesService')).addUserLike(email, targetType, targetId);
-const removeUserLike = async (email: string, targetType: 'photo' | 'story' | 'video', targetId: string) =>
-  (await import('./services/userLikesService')).removeUserLike(email, targetType, targetId);
-const getUserLikes = async (email: string) =>
-  (await import('./services/userLikesService')).getUserLikes(email);
-const deletePhotoFromFirestore = async (id: string) =>
-  (await import('./services/photoService')).deletePhotoFromFirestore(id);
-const incrementPhotoCounter = async (id: string, field: CounterField, amount: number) =>
-  (await import('./services/photoService')).incrementPhotoCounter(id, field, amount);
-const addStoryToFirestore = async (story: any) =>
-  (await import('./services/storyService')).addStoryToFirestore(story);
-const deleteStoryFromFirestore = async (id: string) =>
-  (await import('./services/storyService')).deleteStoryFromFirestore(id);
-const updateStoryInFirestore = async (id: string, story: any) =>
-  (await import('./services/storyService')).updateStoryInFirestore(id, story);
-const incrementStoryCounter = async (id: string, field: CounterField, amount: number) =>
-  (await import('./services/storyService')).incrementStoryCounter(id, field, amount);
-const uploadStoryCoverToStorage = async (dataUrl: string, fileName: string) =>
-  (await import('./services/storyService')).uploadStoryCoverToStorage(dataUrl, fileName);
-const addVideoToFirestore = async (video: any) =>
-  (await import('./services/videoService')).addVideoToFirestore(video);
-const deleteVideoFromFirestore = async (id: string) =>
-  (await import('./services/videoService')).deleteVideoFromFirestore(id);
-const updateVideoInFirestore = async (id: string, video: any) =>
-  (await import('./services/videoService')).updateVideoInFirestore(id, video);
-const incrementVideoCounter = async (id: string, field: CounterField, amount: number) =>
-  (await import('./services/videoService')).incrementVideoCounter(id, field, amount);
-const uploadVideoThumbnailToStorage = async (dataUrl: string, fileName: string) =>
-  (await import('./services/videoService')).uploadVideoThumbnailToStorage(dataUrl, fileName);
-const uploadVideoToStorage = async (dataUrl: string, fileName: string) =>
-  (await import('./services/videoService')).uploadVideoToStorage(dataUrl, fileName);
-const addCommentToFirestore = async (comment: any) =>
-  (await import('./services/commentService')).addCommentToFirestore(comment);
-const deleteCommentFromFirestore = async (id: string) =>
-  (await import('./services/commentService')).deleteCommentFromFirestore(id);
-const saveVisitorToFirestore = async (visitor: any) =>
-  (await import('./services/visitorService')).saveVisitorToFirestore(visitor);
-const getVisitorFromFirestore = async (email: string) =>
-  (await import('./services/visitorService')).getVisitorFromFirestore(email);
-const updateVisitorDownloadCount = async (email: string, count: number) =>
-  (await import('./services/visitorService')).updateVisitorDownloadCount(email, count);
-const updateVisitorProfile = async (email: string, profile: any) =>
-  (await import('./services/visitorService')).updateVisitorProfile(email, profile);
-const trackVisitorEvent = async (event: any) =>
-  (await import('./services/analyticsService')).trackVisitorEvent(event);
-const RouteFallback = () => (
-  <main style={{ minHeight: '100vh', background: 'var(--wa-bg)', color: 'var(--wa-text)', padding: '6rem 1rem' }}>
-    Loading...
-  </main>
-);
-const InlineFallback = () => null;
 
 
 const safeLower = (value: unknown) => (typeof value === 'string' ? value.toLowerCase().trim() : '');
@@ -208,7 +133,6 @@ const App: React.FC = () => {
   const [photosLoading, setPhotosLoading] = useState(true);
   const [storiesLoading, setStoriesLoading] = useState(true);
   const [videosLoading, setVideosLoading] = useState(true);
-  const [deferNonCritical, setDeferNonCritical] = useState(false);
   const [galleryPhotos, setGalleryPhotos] = useState<GalleryPhoto[]>([]);
   const [selectedStory, setSelectedStory] = useState<Story | null>(null);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
@@ -302,101 +226,68 @@ const App: React.FC = () => {
   const visitorRef = useRef<Visitor | null>(null);
   useEffect(() => { visitorRef.current = visitor; }, [visitor]);
 
-  const getTrackingVisitor = useCallback(() => {
-    const current = visitorRef.current;
-    if (!current) return null;
-    return {
-      email: current.email || '',
-      displayName: current.displayName,
-      avatarUrl: current.avatarUrl || '',
-      loginMethod: current.loginMethod || 'visitor',
-    };
-  }, []);
-
-  const trackSiteEvent = useCallback((event: any) => {
-    trackVisitorEvent({ ...event, visitor: getTrackingVisitor() }).catch((err) => {
-      console.warn('Analytics event failed:', err);
-    });
-  }, [getTrackingVisitor]);
+  // Track every page view — never misses a visitor
+  useEffect(() => {
+    const path = window.location.pathname;
+    const email = visitor?.email ?? undefined;
+    trackSiteVisit(path, email);
+  }, [view, visitor?.email]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setDeferNonCritical(true), 1200);
-    return () => window.clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    trackSiteEvent({
-      type: 'page_view',
-      page: window.location.pathname || '/',
-      category: selectedCategory !== 'all' ? selectedCategory : undefined,
-    });
-  }, [trackSiteEvent, view, selectedCategory, selectedPhoto?.firestoreId, selectedStory?.firestoreId, selectedVideo?.firestoreId]);
-
-  useEffect(() => {
-    let disposed = false;
-    let unsubscribe: (() => void) | undefined;
-
-    Promise.all([import('firebase/auth'), import('./firebase')]).then(([authModule, firebaseModule]) => {
-      if (disposed) return;
-      unsubscribe = authModule.onAuthStateChanged(firebaseModule.auth, async (firebaseUser) => {
-        if (firebaseUser && firebaseUser.email) {
-          // Only auto-restore if visitor not already set (page reload scenario)
-          if (!visitorRef.current) {
-            try {
-              const saved = await getVisitorFromFirestore(firebaseUser.email);
-              if (saved) {
-                setVisitor({
-                  displayName: saved.displayName || firebaseUser.displayName || firebaseUser.email.split('@')[0] || 'User',
-                  email: firebaseUser.email,
-                  avatarColor: saved.avatarColor || '#c9a84c',
-                  avatarUrl: saved.avatarUrl || firebaseUser.photoURL || undefined,
-                  avatarAnimal: saved.avatarAnimal || undefined,
-                  loginMethod: (saved.loginMethod || 'email') as any,
-                });
-                setDownloadCount(saved.downloadCount || 0);
-                // Auto-detect admin by email
-                if (firebaseUser.email.toLowerCase() === ADMIN_EMAIL) {
-                  setIsAdmin(true);
-                  localStorage.setItem('wa_admin_session', 'true');
-                }
-              } else {
-                setVisitor({
-                  displayName: firebaseUser.displayName || firebaseUser.email.split('@')[0] || 'User',
-                  email: firebaseUser.email,
-                  avatarColor: '#9fcb8f',
-                  avatarUrl: firebaseUser.photoURL || undefined,
-                  loginMethod: 'email',
-                });
-                // Auto-detect admin by email
-                if (firebaseUser.email.toLowerCase() === ADMIN_EMAIL) {
-                  setIsAdmin(true);
-                  localStorage.setItem('wa_admin_session', 'true');
-                }
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser && firebaseUser.email) {
+        // Only auto-restore if visitor not already set (page reload scenario)
+        if (!visitorRef.current) {
+          try {
+            const saved = await getVisitorFromFirestore(firebaseUser.email);
+            if (saved) {
+              setVisitor({
+                displayName: saved.displayName || firebaseUser.displayName || firebaseUser.email.split('@')[0] || 'User',
+                email: firebaseUser.email,
+                avatarColor: saved.avatarColor || '#c9a84c',
+                avatarUrl: saved.avatarUrl || firebaseUser.photoURL || undefined,
+                avatarAnimal: saved.avatarAnimal || undefined,
+                loginMethod: (saved.loginMethod || 'email') as any,
+              });
+              setDownloadCount(saved.downloadCount || 0);
+              // Auto-detect admin by email
+              if (firebaseUser.email.toLowerCase() === ADMIN_EMAIL) {
+                setIsAdmin(true);
+                localStorage.setItem('wa_admin_session', 'true');
               }
-              // Load user's likes
-              try {
-                const likes = await getUserLikes(firebaseUser.email);
-                const likeSet = new Set(likes.map(l => `${l.targetType}_${l.targetId}`));
-                setUserLikes(likeSet);
-              } catch {}
-            } catch (err) {
-              console.warn('Session restore failed:', err);
+            } else {
+              setVisitor({
+                displayName: firebaseUser.displayName || firebaseUser.email.split('@')[0] || 'User',
+                email: firebaseUser.email,
+                avatarColor: '#9fcb8f',
+                avatarUrl: firebaseUser.photoURL || undefined,
+                loginMethod: 'email',
+              });
+              // Auto-detect admin by email
+              if (firebaseUser.email.toLowerCase() === ADMIN_EMAIL) {
+                setIsAdmin(true);
+                localStorage.setItem('wa_admin_session', 'true');
+              }
             }
-          }
-        } else {
-          if (visitorRef.current) {
-            setVisitor(null);
-            setDownloadCount(0);
-            setUserLikes(new Set());
+            // Load user's likes
+            try {
+              const likes = await getUserLikes(firebaseUser.email);
+              const likeSet = new Set(likes.map(l => `${l.targetType}_${l.targetId}`));
+              setUserLikes(likeSet);
+            } catch {}
+          } catch (err) {
+            console.warn('Session restore failed:', err);
           }
         }
-      });
-    }).catch((err) => console.warn('Auth restore failed:', err));
-
-    return () => {
-      disposed = true;
-      unsubscribe?.();
-    };
+      } else {
+        if (visitorRef.current) {
+          setVisitor(null);
+          setDownloadCount(0);
+          setUserLikes(new Set());
+        }
+      }
+    });
+    return () => unsubscribe();
   }, []);
 
   // ── Deep Link State ──────────────────────────────────────────────────────
@@ -423,34 +314,12 @@ const App: React.FC = () => {
 
   // ── Real-time Data Subscriptions (LIVE updates across all browsers) ────────
   useEffect(() => {
-    let disposed = false;
-    const cleanups: Array<() => void> = [];
-
-    const startSubscriptions = async () => {
-      let isFirstPhotoSnap = true;
-      let isFirstStorySnap = true;
-      let isFirstVideoSnap = true;
-      const [
-        photoService,
-        storyService,
-        galleryService,
-        videoService,
-        commentService,
-        visitorService,
-        siteSettingsService,
-      ] = await Promise.all([
-        import('./services/photoService'),
-        import('./services/storyService'),
-        import('./services/galleryService'),
-        import('./services/videoService'),
-        import('./services/commentService'),
-        import('./services/visitorService'),
-        import('./services/siteSettingsService'),
-      ]);
-      if (disposed) return;
+    let isFirstPhotoSnap = true;
+    let isFirstStorySnap = true;
+    let isFirstVideoSnap = true;
 
     // ── Real-time PHOTOS subscription ──────────────────────────────────
-    const unsubPhotos = photoService.subscribeToPhotos((firestorePhotos) => {
+    const unsubPhotos = subscribeToPhotos((firestorePhotos) => {
       setPhotosLoading(false);
       const mapped = firestorePhotos.map((fp, idx) => ({
         id: Date.now() + idx,
@@ -515,7 +384,7 @@ const App: React.FC = () => {
     });
 
     // ── Real-time STORIES subscription ─────────────────────────────────
-    const unsubStories = storyService.subscribeToStories((firestoreStories) => {
+    const unsubStories = subscribeToStories((firestoreStories) => {
       setStoriesLoading(false);
       const mapped: Story[] = firestoreStories.map((fs, idx) => ({
         id: Date.now() + idx + 5000,
@@ -570,14 +439,14 @@ const App: React.FC = () => {
     });
 
     // ── Real-time GALLERY subscription ─────────────────────────────────
-    const unsubGallery = galleryService.subscribeToGalleryPhotos((photos) => {
+    const unsubGallery = subscribeToGalleryPhotos((photos) => {
       setGalleryPhotos(photos);
     }, (err) => {
       console.warn('Gallery subscription error:', err);
     });
 
     // ── Real-time VIDEOS subscription ──────────────────────────────────
-    const unsubVideos = videoService.subscribeToVideos((firestoreVideos) => {
+    const unsubVideos = subscribeToVideos((firestoreVideos) => {
       setVideosLoading(false);
       const mapped: Video[] = firestoreVideos.map((fv, idx) => ({
         id: Date.now() + idx + 9000,
@@ -630,7 +499,7 @@ const App: React.FC = () => {
     });
 
     // ── Real-time COMMENTS subscription (already live!) ────────────────
-    const unsubComments = commentService.subscribeToAllComments((allComments) => {
+    const unsubComments = subscribeToAllComments((allComments) => {
       const photoMap: Record<string, Comment[]> = {};
       const storyMap: Record<string, Comment[]> = {};
       const videoMap: Record<string, Comment[]> = {};
@@ -682,42 +551,28 @@ const App: React.FC = () => {
     }
     const displayName = visitorRef.current?.displayName || 'Guest';
     const avatarUrl = visitorRef.current?.avatarUrl || '';
-    const cleanupOnline = visitorService.trackOnlineVisitor(sessionId, displayName, avatarUrl);
+    const cleanupOnline = trackOnlineVisitor(sessionId, displayName, avatarUrl);
     onlineCleanupRef.current = cleanupOnline;
 
     // Subscribe to live online visitor count
-    const unsubOnline = visitorService.subscribeToOnlineVisitors((count) => {
+    const unsubOnline = subscribeToOnlineVisitors((count) => {
       setOnlineVisitorCount(count);
     });
 
     // Subscribe to site settings (hero images etc.)
-    const unsubSettings = siteSettingsService.onSiteSettingsChange((settings) => {
+    const unsubSettings = onSiteSettingsChange((settings) => {
       setSiteSettings(settings);
     });
 
-      cleanups.push(
-        unsubPhotos,
-        unsubStories,
-        unsubGallery,
-        unsubVideos,
-        unsubComments,
-        unsubOnline,
-        unsubSettings,
-        cleanupOnline,
-      );
-    };
-
-    startSubscriptions().catch((err) => {
-      console.warn('Realtime subscriptions failed:', err);
-      setPhotosLoading(false);
-      setStoriesLoading(false);
-      setVideosLoading(false);
-    });
-
     return () => {
-      disposed = true;
-      cleanups.forEach((cleanup) => cleanup());
-      onlineCleanupRef.current = null;
+      unsubPhotos();
+      unsubStories();
+      unsubGallery();
+      unsubVideos();
+      unsubComments();
+      unsubOnline();
+      unsubSettings();
+      if (onlineCleanupRef.current) onlineCleanupRef.current();
     };
   }, []);
 
@@ -878,16 +733,8 @@ const App: React.FC = () => {
 
   const handleCategoryClick = useCallback((key: string) => {
     setSelectedCategory(key);
-    trackSiteEvent({ type: 'category_view', page: `/category/${key}`, category: key });
     setTimeout(() => galleryRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-  }, [trackSiteEvent]);
-
-  const handleGalleryCategoryChange = useCallback((key: string) => {
-    setSelectedCategory(key);
-    if (key !== 'all') {
-      trackSiteEvent({ type: 'category_view', page: `/category/${key}`, category: key });
-    }
-  }, [trackSiteEvent]);
+  }, []);
 
   const handleLike = useCallback((id: number) => {
     setPhotos((prev) => {
@@ -900,15 +747,6 @@ const App: React.FC = () => {
       }
       // Save per-user like to Firestore (keyed by firestoreId)
       const likeKey = photo?.firestoreId || String(id);
-      if (newLiked) {
-        trackSiteEvent({
-          type: 'like',
-          page: window.location.pathname,
-          category: photo.category,
-          targetId: likeKey,
-          targetTitle: photo.title,
-        });
-      }
       if (visitor?.email) {
         if (newLiked) addUserLike(visitor.email, 'photo', likeKey).catch(console.warn);
         else removeUserLike(visitor.email, 'photo', likeKey).catch(console.warn);
@@ -928,7 +766,7 @@ const App: React.FC = () => {
         prev ? { ...prev, liked: !prev.liked, likeCount: prev.liked ? prev.likeCount - 1 : prev.likeCount + 1 } : null
       );
     }
-  }, [selectedPhoto, visitor, trackSiteEvent]);
+  }, [selectedPhoto, visitor]);
 
   const handleShare = useCallback(async (photo: Photo) => {
     const photoId = photo.slug || photo.firestoreId || String(photo.id);
@@ -943,13 +781,6 @@ const App: React.FC = () => {
           text: shareText,
           url: shareUrl,
         });
-        trackSiteEvent({
-          type: 'share',
-          page: window.location.pathname,
-          category: photo.category,
-          targetId: photo.firestoreId || String(photo.id),
-          targetTitle: photo.title,
-        });
         return;
       } catch (err) {
         // User cancelled or share failed, fall through to clipboard
@@ -959,13 +790,6 @@ const App: React.FC = () => {
     // Fallback: copy to clipboard with feedback
     try {
       await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
-      trackSiteEvent({
-        type: 'share',
-        page: window.location.pathname,
-        category: photo.category,
-        targetId: photo.firestoreId || String(photo.id),
-        targetTitle: photo.title,
-      });
       // Show toast
       const toast = document.createElement('div');
       toast.textContent = '✅ Link copied to clipboard!';
@@ -976,7 +800,7 @@ const App: React.FC = () => {
       // Last resort: prompt with URL
       window.prompt('Copy this link to share:', shareUrl);
     }
-  }, [trackSiteEvent]);
+  }, []);
 
   const handleLogin = useCallback(() => {
     setIsAdmin(true);
@@ -1184,17 +1008,11 @@ const App: React.FC = () => {
     setSelectedStory({ ...story, viewCount: story.viewCount + 1 });
     setStories((prev) => prev.map((s) => s.id === story.id ? { ...s, viewCount: s.viewCount + 1 } : s));
     recordView('story', story.firestoreId);
-    trackSiteEvent({
-      type: 'story_view',
-      page: `/story/${story.slug || story.firestoreId || story.id}`,
-      targetId: story.firestoreId || String(story.id),
-      targetTitle: story.title,
-    });
     setView('story-detail');
     const storyToken = story.slug || story.firestoreId || String(story.id);
     window.history.pushState({}, '', '/story/' + encodeURIComponent(storyToken));
     window.scrollTo(0, 0);
-  }, [recordView, trackSiteEvent]);
+  }, [recordView]);
 
   const getViewIncrement = useCallback((type: string, id?: string): number => {
     if (!id) return 0;
@@ -1210,17 +1028,11 @@ const App: React.FC = () => {
     setSelectedVideo(updated);
     setVideos((prev) => prev.map((v) => v.id === video.id ? { ...v, viewCount: (v.viewCount || 0) + 1 } : v));
     recordView('video', video.firestoreId);
-    trackSiteEvent({
-      type: 'video_view',
-      page: `/video/${video.firestoreId || video.id}`,
-      targetId: video.firestoreId || String(video.id),
-      targetTitle: video.title,
-    });
     setView('video-detail');
     const videoToken = video.firestoreId || String(video.id);
     window.history.pushState({}, '', '/video/' + encodeURIComponent(videoToken));
     window.scrollTo(0, 0);
-  }, [recordView, trackSiteEvent]);
+  }, [recordView]);
 
   const handleStoryLike = useCallback(() => {
     if (!selectedStory) return;
@@ -1236,14 +1048,6 @@ const App: React.FC = () => {
     }
     // Save per-user like to Firestore
     const sLikeKey = selectedStory.firestoreId || String(selectedStory.id);
-    if (updated.liked) {
-      trackSiteEvent({
-        type: 'like',
-        page: window.location.pathname,
-        targetId: sLikeKey,
-        targetTitle: selectedStory.title,
-      });
-    }
     if (visitor?.email) {
       if (updated.liked) addUserLike(visitor.email, 'story', sLikeKey).catch(console.warn);
       else removeUserLike(visitor.email, 'story', sLikeKey).catch(console.warn);
@@ -1254,7 +1058,7 @@ const App: React.FC = () => {
       else next.delete(`story_${sLikeKey}`);
       return next;
     });
-  }, [selectedStory, visitor, trackSiteEvent]);
+  }, [selectedStory, visitor]);
 
   // Visitor handlers
   const handleVisitorLogin = useCallback(async (v: Visitor) => {
@@ -1312,9 +1116,7 @@ const App: React.FC = () => {
   }, []);
 
   const handleVisitorLogout = useCallback(() => {
-    Promise.all([import('firebase/auth'), import('./firebase')])
-      .then(([authModule, firebaseModule]) => authModule.signOut(firebaseModule.auth))
-      .catch(console.warn);
+    signOut(auth).catch(console.warn);
     setVisitor(null);
     setIsAdmin(false);
     localStorage.removeItem('wa_admin_session');
@@ -1362,15 +1164,7 @@ const App: React.FC = () => {
       avatarUrl: actor.avatarUrl || '',
       content,
     }).catch(err => console.warn('Comment save failed:', err));
-    const photo = photos.find((p) => p.firestoreId === firestoreId);
-    trackSiteEvent({
-      type: 'comment',
-      page: window.location.pathname,
-      category: photo?.category,
-      targetId: firestoreId,
-      targetTitle: photo?.title,
-    });
-  }, [visitor, getGuestIdentity, photos, trackSiteEvent]);
+  }, [visitor, getGuestIdentity]);
 
   const handleAddStoryComment = useCallback((firestoreId: string, content: string) => {
     const actor = visitor || getGuestIdentity();
@@ -1394,14 +1188,7 @@ const App: React.FC = () => {
       avatarUrl: actor.avatarUrl || '',
       content,
     }).catch(err => console.warn('Comment save failed:', err));
-    const story = stories.find((s) => s.firestoreId === firestoreId);
-    trackSiteEvent({
-      type: 'comment',
-      page: window.location.pathname,
-      targetId: firestoreId,
-      targetTitle: story?.title,
-    });
-  }, [visitor, getGuestIdentity, stories, trackSiteEvent]);
+  }, [visitor, getGuestIdentity]);
 
   const handleAddVideoComment = useCallback((firestoreId: string, content: string) => {
     const actor = visitor || getGuestIdentity();
@@ -1425,14 +1212,7 @@ const App: React.FC = () => {
       avatarUrl: actor.avatarUrl || '',
       content,
     }).catch(err => console.warn('Video comment save failed:', err));
-    const video = videos.find((v) => v.firestoreId === firestoreId);
-    trackSiteEvent({
-      type: 'comment',
-      page: window.location.pathname,
-      targetId: firestoreId,
-      targetTitle: video?.title,
-    });
-  }, [visitor, getGuestIdentity, videos, trackSiteEvent]);
+  }, [visitor, getGuestIdentity]);
 
   const handleDeleteComment = useCallback((commentFirestoreId: string) => {
     if (!confirm('Delete this comment?')) return;
@@ -1451,14 +1231,6 @@ const App: React.FC = () => {
       }
       // Save per-user like to Firestore
       const vLikeKey = video?.firestoreId || String(id);
-      if (newLiked) {
-        trackSiteEvent({
-          type: 'like',
-          page: window.location.pathname,
-          targetId: vLikeKey,
-          targetTitle: video.title,
-        });
-      }
       if (visitor?.email) {
         if (newLiked) addUserLike(visitor.email, 'video', vLikeKey).catch(console.warn);
         else removeUserLike(visitor.email, 'video', vLikeKey).catch(console.warn);
@@ -1473,7 +1245,7 @@ const App: React.FC = () => {
         v.id === id ? { ...v, liked: newLiked, likeCount: newLikeCount } : v
       );
     });
-  }, [visitor, trackSiteEvent]);
+  }, [visitor]);
 
   const handleDownload = useCallback(async (photo: Photo) => {
     if (!visitor) { setShowVisitorLogin(true); return; }
@@ -1483,13 +1255,6 @@ const App: React.FC = () => {
       await downloadPhoto(photo.imageUrl, photo.title, applyWatermark);
       const newCount = downloadCount + 1;
       setDownloadCount(newCount);
-      trackSiteEvent({
-        type: 'download',
-        page: window.location.pathname,
-        category: photo.category,
-        targetId: photo.firestoreId || String(photo.id),
-        targetTitle: photo.title,
-      });
       // Persist download count to Firestore
       const userKey = visitor.email || '';
       if (userKey) {
@@ -1500,7 +1265,7 @@ const App: React.FC = () => {
     } finally {
       setIsDownloading(false);
     }
-  }, [visitor, downloadCount, trackSiteEvent]);
+  }, [visitor, downloadCount]);
 
   const handleGenerateStory = useCallback(async (photo: Photo) => {
     try {
@@ -1603,18 +1368,11 @@ const App: React.FC = () => {
       recordView('photo', photo.firestoreId);
       const photoId = photo.slug || photo.firestoreId || String(photo.id);
       window.history.pushState({}, '', '/photo/' + encodeURIComponent(photoId));
-      trackSiteEvent({
-        type: 'photo_view',
-        page: '/photo/' + encodeURIComponent(photoId),
-        category: photo.category,
-        targetId: photo.firestoreId || String(photo.id),
-        targetTitle: photo.title,
-      });
     } else {
       window.history.pushState({}, '', '/');
     }
     setSelectedPhoto(updatedPhoto);
-  }, [recordView, trackSiteEvent]);
+  }, [recordView]);
 
   // ── Helper: Close Photo Modal ────────────────────────────────────────────
   const closePhoto = useCallback(() => {
@@ -1644,42 +1402,40 @@ const App: React.FC = () => {
   if (view === 'photo-grid') {
     return (
       <div style={{ minHeight: '100vh', background: 'var(--wa-bg)' }}>
-        <Suspense fallback={<RouteFallback />}>
-          <PhotoGridPage
-            photos={photos}
-            filterTabs={FILTER_TABS}
-            initialCategory={selectedCategory}
-            onCategoryChange={handleGalleryCategoryChange}
-            onBack={() => { setView('home'); setSelectedCategory('all'); window.history.pushState({}, '', '/'); window.scrollTo(0, 0); }}
-            onPhotoClick={openPhoto}
-            onLike={handleLike}
-            onShare={handleShare}
-            onDownload={handleDownload}
-            isLoggedIn={!!visitor}
-            onLoginRequired={() => setShowVisitorLogin(true)}
+        <PhotoGridPage
+          photos={photos}
+          filterTabs={FILTER_TABS}
+          initialCategory={selectedCategory}
+          onCategoryChange={setSelectedCategory}
+          onBack={() => { setView('home'); setSelectedCategory('all'); window.history.pushState({}, '', '/'); window.scrollTo(0, 0); }}
+          onPhotoClick={openPhoto}
+          onLike={handleLike}
+          onShare={handleShare}
+          onDownload={handleDownload}
+          isLoggedIn={!!visitor}
+          onLoginRequired={() => setShowVisitorLogin(true)}
+        />
+        {selectedPhoto && (
+          <PhotoModal
+            photo={selectedPhoto}
+            onClose={closePhoto}
+            onLike={() => handleLike(selectedPhoto.id)}
+            onShare={() => handleShare(selectedPhoto)}
+            onDownload={() => handleDownload(selectedPhoto)}
+            onGenerateStory={() => handleGenerateStory(selectedPhoto)}
+            isGeneratingStory={false}
+            isAdmin={isAdmin}
+            visitor={visitor}
+            comments={photoComments[selectedPhoto.firestoreId || ''] || []}
+            onAddComment={(content) => handleAddPhotoComment(selectedPhoto.firestoreId || '', content)}
+            onDeleteComment={handleDeleteComment}
+            onVisitorLoginClick={() => setShowVisitorLogin(true)}
+            freeDownloadsLeft={Math.max(0, FREE_DOWNLOADS - downloadCount)}
+            isDownloading={isDownloading}
+            photos={photos.filter(p => p.published !== false)}
+            onNavigate={(photo) => openPhoto(photo)}
           />
-          {selectedPhoto && (
-            <PhotoModal
-              photo={selectedPhoto}
-              onClose={closePhoto}
-              onLike={() => handleLike(selectedPhoto.id)}
-              onShare={() => handleShare(selectedPhoto)}
-              onDownload={() => handleDownload(selectedPhoto)}
-              onGenerateStory={() => handleGenerateStory(selectedPhoto)}
-              isGeneratingStory={false}
-              isAdmin={isAdmin}
-              visitor={visitor}
-              comments={photoComments[selectedPhoto.firestoreId || ''] || []}
-              onAddComment={(content) => handleAddPhotoComment(selectedPhoto.firestoreId || '', content)}
-              onDeleteComment={handleDeleteComment}
-              onVisitorLoginClick={() => setShowVisitorLogin(true)}
-              freeDownloadsLeft={Math.max(0, FREE_DOWNLOADS - downloadCount)}
-              isDownloading={isDownloading}
-              photos={photos.filter(p => p.published !== false)}
-              onNavigate={(photo) => openPhoto(photo)}
-            />
-          )}
-        </Suspense>
+        )}
       </div>
     );
   }
@@ -1688,13 +1444,11 @@ const App: React.FC = () => {
   if (view === 'story-grid') {
     return (
       <div style={{ minHeight: '100vh', background: 'var(--wa-bg)' }}>
-        <Suspense fallback={<RouteFallback />}>
-          <StoryGridPage
-            stories={stories}
-            onBack={() => { setView('home'); window.history.pushState({}, '', '/'); window.scrollTo(0, 0); }}
-            onStoryClick={handleStoryClick}
-          />
-        </Suspense>
+        <StoryGridPage
+          stories={stories}
+          onBack={() => { setView('home'); window.history.pushState({}, '', '/'); window.scrollTo(0, 0); }}
+          onStoryClick={handleStoryClick}
+        />
       </div>
     );
   }
@@ -1703,20 +1457,18 @@ const App: React.FC = () => {
   if (view === 'video-grid') {
     return (
       <div style={{ minHeight: '100vh', background: 'var(--wa-bg)' }}>
-        <Suspense fallback={<RouteFallback />}>
-          <VideoGridPage
-            videos={videos}
-            onVideoClick={handleVideoClick}
-            onBack={() => { setView('home'); window.history.pushState({}, '', '/'); window.scrollTo(0, 0); }}
-            visitor={visitor}
-            videoComments={videoComments}
-            onAddVideoComment={handleAddVideoComment}
-            onVideoLike={handleVideoLike}
-            onVisitorLoginClick={() => setShowVisitorLogin(true)}
-            isAdmin={isAdmin}
-            onDeleteComment={handleDeleteComment}
-          />
-        </Suspense>
+        <VideoGridPage
+          videos={videos}
+          onVideoClick={handleVideoClick}
+          onBack={() => { setView('home'); window.history.pushState({}, '', '/'); window.scrollTo(0, 0); }}
+          visitor={visitor}
+          videoComments={videoComments}
+          onAddVideoComment={handleAddVideoComment}
+          onVideoLike={handleVideoLike}
+          onVisitorLoginClick={() => setShowVisitorLogin(true)}
+          isAdmin={isAdmin}
+          onDeleteComment={handleDeleteComment}
+        />
       </div>
     );
   }
@@ -1768,27 +1520,23 @@ const App: React.FC = () => {
           onAdminClick={() => { setView('admin-dashboard'); window.history.pushState({}, '', '/admin'); }}
         />
         <div style={{ flex: 1 }}>
-          <Suspense fallback={<RouteFallback />}>
-            <TermsConditions onBack={() => { setView('home'); window.history.pushState({}, '', '/'); window.scrollTo(0, 0); }} />
-          </Suspense>
+          <TermsConditions onBack={() => { setView('home'); window.history.pushState({}, '', '/'); window.scrollTo(0, 0); }} />
         </div>
         <Footer logoUrl={logoUrl} onTermsClick={handleTermsClick} />
-        <Suspense fallback={<InlineFallback />}>
-          {deferNonCritical && <AIChatbot photos={photos} onPhotoClick={openPhoto} />}
-          {showSearch && <SearchBar
-            isOpen={showSearch}
-            onClose={() => { setShowSearch(false); setSearchQuery(''); }}
-            query={searchQuery}
-            onQueryChange={setSearchQuery}
-            photos={photos}
-            onPhotoClick={openPhoto}
-          />}
-          {showVisitorLogin && <VisitorLogin
-            isOpen={showVisitorLogin}
-            onClose={() => setShowVisitorLogin(false)}
-            onLogin={handleVisitorLogin}
-          />}
-        </Suspense>
+        <AIChatbot photos={photos} onPhotoClick={openPhoto} />
+        <SearchBar
+          isOpen={showSearch}
+          onClose={() => { setShowSearch(false); setSearchQuery(''); }}
+          query={searchQuery}
+          onQueryChange={setSearchQuery}
+          photos={photos}
+          onPhotoClick={openPhoto}
+        />
+        <VisitorLogin
+          isOpen={showVisitorLogin}
+          onClose={() => setShowVisitorLogin(false)}
+          onLogin={handleVisitorLogin}
+        />
       </div>
     );
   }
@@ -1813,37 +1561,33 @@ const App: React.FC = () => {
           onAdminClick={() => { setView('admin-dashboard'); window.history.pushState({}, '', '/admin'); }}
         />
         <div style={{ flex: 1 }}>
-          <Suspense fallback={<RouteFallback />}>
-            <StoryDetail
-              story={selectedStory}
-              onBack={handleStoryBack}
-              onLike={handleStoryLike}
-              visitor={visitor}
-              comments={storyComments[selectedStory.firestoreId || ''] || []}
-              onAddComment={(content) => handleAddStoryComment(selectedStory.firestoreId || '', content)}
-              onVisitorLoginClick={() => setShowVisitorLogin(true)}
-              isAdmin={isAdmin}
-              onDeleteComment={handleDeleteComment}
-            />
-          </Suspense>
+          <StoryDetail
+            story={selectedStory}
+            onBack={handleStoryBack}
+            onLike={handleStoryLike}
+            visitor={visitor}
+            comments={storyComments[selectedStory.firestoreId || ''] || []}
+            onAddComment={(content) => handleAddStoryComment(selectedStory.firestoreId || '', content)}
+            onVisitorLoginClick={() => setShowVisitorLogin(true)}
+            isAdmin={isAdmin}
+            onDeleteComment={handleDeleteComment}
+          />
         </div>
         <Footer logoUrl={logoUrl} onTermsClick={handleTermsClick} />
-        <Suspense fallback={<InlineFallback />}>
-          {deferNonCritical && <AIChatbot photos={photos} onPhotoClick={openPhoto} />}
-          {showSearch && <SearchBar
-            isOpen={showSearch}
-            onClose={() => { setShowSearch(false); setSearchQuery(''); }}
-            query={searchQuery}
-            onQueryChange={setSearchQuery}
-            photos={photos}
-            onPhotoClick={(p) => { openPhoto(p); setView('home'); }}
-          />}
-          {showVisitorLogin && <VisitorLogin
-            isOpen={showVisitorLogin}
-            onClose={() => setShowVisitorLogin(false)}
-            onLogin={handleVisitorLogin}
-          />}
-        </Suspense>
+        <AIChatbot photos={photos} onPhotoClick={openPhoto} />
+        <SearchBar
+          isOpen={showSearch}
+          onClose={() => { setShowSearch(false); setSearchQuery(''); }}
+          query={searchQuery}
+          onQueryChange={setSearchQuery}
+          photos={photos}
+          onPhotoClick={(p) => { openPhoto(p); setView('home'); }}
+        />
+        <VisitorLogin
+          isOpen={showVisitorLogin}
+          onClose={() => setShowVisitorLogin(false)}
+          onLogin={handleVisitorLogin}
+        />
       </div>
     );
   }
@@ -1867,20 +1611,18 @@ const App: React.FC = () => {
           onAdminClick={() => { setView('admin-dashboard'); window.history.pushState({}, '', '/admin'); }}
         />
         <div style={{ flex: 1 }}>
-          <Suspense fallback={<RouteFallback />}>
-            <VideoDetail
-              video={selectedVideo}
-              onBack={handleVideoBack}
-              onLike={() => {
-                handleVideoLike(selectedVideo.id);
-                setSelectedVideo((current) => current ? {
-                  ...current,
-                  liked: !current.liked,
-                  likeCount: current.liked ? current.likeCount - 1 : current.likeCount + 1,
-                } : current);
-              }}
-            />
-          </Suspense>
+          <VideoDetail
+            video={selectedVideo}
+            onBack={handleVideoBack}
+            onLike={() => {
+              handleVideoLike(selectedVideo.id);
+              setSelectedVideo((current) => current ? {
+                ...current,
+                liked: !current.liked,
+                likeCount: current.liked ? current.likeCount - 1 : current.likeCount + 1,
+              } : current);
+            }}
+          />
         </div>
         <Footer logoUrl={logoUrl} onTermsClick={handleTermsClick} />
       </div>
@@ -1931,38 +1673,38 @@ const App: React.FC = () => {
   );
   if (view === 'marketplace') return <StaticPage title="Buy & Sell Authentic Nepal Photography" text="Support local photographers by purchasing high-quality images. Use them for personal or commercial projects. Option A: Buy Now via Google Form/DM and payment by eSewa or bank. Option B: Stripe or Gumroad links." cta="20% of every purchase supports animal rescue in Nepal." />;
   if (view === 'community') return (
-    <Suspense fallback={<RouteFallback />}>
+    <>
       <CommunityPage
-          onBack={() => { setView('home'); window.history.pushState({}, '', '/'); }}
-          logoUrl={logoUrl}
-          onScrollToGallery={scrollToGallery}
-          onSearchClick={() => setShowSearch(true)}
-          visitor={visitor}
-          onVisitorLoginClick={() => setShowVisitorLogin(true)}
-          onVisitorLogout={handleVisitorLogout}
-          onVisitorUpdate={handleVisitorUpdate}
-          onStoriesClick={handleStoriesNavClick}
-          notificationCount={notificationCount}
-          onNotificationClick={() => setShowNotifPanel(true)}
-          isAdmin={isAdmin}
-          onAdminClick={() => { setView('admin-dashboard'); window.history.pushState({}, '', '/admin'); }}
-          onTermsClick={handleTermsClick}
-          onProfileClick={handleProfileClick}
-        />
-        {showVisitorLogin && <VisitorLogin
-          isOpen={showVisitorLogin}
-          onClose={() => setShowVisitorLogin(false)}
-          onLogin={handleVisitorLogin}
-        />}
-        {showProfile && <ProfileModal
-          isOpen={showProfile}
-          visitor={visitor}
-          onClose={() => setShowProfile(false)}
-          onVisitorUpdate={handleVisitorUpdate}
-          onLogout={handleVisitorLogout}
-          downloadCount={downloadCount}
-        />}
-    </Suspense>
+        onBack={() => { setView('home'); window.history.pushState({}, '', '/'); }}
+        logoUrl={logoUrl}
+        onScrollToGallery={scrollToGallery}
+        onSearchClick={() => setShowSearch(true)}
+        visitor={visitor}
+        onVisitorLoginClick={() => setShowVisitorLogin(true)}
+        onVisitorLogout={handleVisitorLogout}
+        onVisitorUpdate={handleVisitorUpdate}
+        onStoriesClick={handleStoriesNavClick}
+        notificationCount={notificationCount}
+        onNotificationClick={() => setShowNotifPanel(true)}
+        isAdmin={isAdmin}
+        onAdminClick={() => { setView('admin-dashboard'); window.history.pushState({}, '', '/admin'); }}
+        onTermsClick={handleTermsClick}
+        onProfileClick={handleProfileClick}
+      />
+      <VisitorLogin
+        isOpen={showVisitorLogin}
+        onClose={() => setShowVisitorLogin(false)}
+        onLogin={handleVisitorLogin}
+      />
+      <ProfileModal
+        isOpen={showProfile}
+        visitor={visitor}
+        onClose={() => setShowProfile(false)}
+        onVisitorUpdate={handleVisitorUpdate}
+        onLogout={handleVisitorLogout}
+        downloadCount={downloadCount}
+      />
+    </>
   );
   if (view === 'ngo') return <StaticPage title="Save Animal Nepal" text="We are building a system to support injured and abandoned animals across Nepal. Through photography and community support, we aim to create real impact. Mission: rescue, treatment, and feeding. Future plan: transparent monthly reporting and verified rescue partners." />;
   if (view === 'about') return <StaticPage title="About WildSaura" text="WildSaura connects photographers, nature lovers, and a mission to protect animals in Nepal. Start small, grow fast, and use visual storytelling for impact." />;
@@ -2044,9 +1786,7 @@ const App: React.FC = () => {
 // ── Home View ──
   return (
     <div style={{ minHeight: '100vh', background: 'var(--wa-bg)' }}>
-      {deferNonCritical && <Suspense fallback={<InlineFallback />}>
-        <AdSenseHead />
-      </Suspense>}
+      <AdSenseHead />
       {(pullDistance > 0 || isPullRefreshing) && (
         <div
           style={{
@@ -2089,7 +1829,7 @@ const App: React.FC = () => {
         photos={photos}
         filterTabs={FILTER_TABS}
         selectedCategory={selectedCategory}
-        onCategoryChange={handleGalleryCategoryChange}
+        onCategoryChange={setSelectedCategory}
         onPhotoClick={openPhoto}
         onLike={handleLike}
         onShare={handleShare}
@@ -2101,21 +1841,19 @@ const App: React.FC = () => {
       />
       <PhotoGallery photos={galleryPhotos} searchQuery={searchQuery} />
       <StoriesSection stories={stories} isLoading={storiesLoading} onStoryClick={handleStoryClick} onViewAll={() => { setView('story-grid'); window.scrollTo(0, 0); }} />
-      <Suspense fallback={<InlineFallback />}>
-        <VideoSection
-          videos={videos}
-          isLoading={videosLoading}
-          onVideoClick={handleVideoClick}
-          visitor={visitor}
-          videoComments={videoComments}
-          onAddVideoComment={handleAddVideoComment}
-          onVideoLike={handleVideoLike}
-          onVisitorLoginClick={() => setShowVisitorLogin(true)}
-          isAdmin={isAdmin}
-          onDeleteComment={handleDeleteComment}
-          onViewAll={() => { setView('video-grid'); window.scrollTo(0, 0); }}
-        />
-      </Suspense>
+      <VideoSection 
+        videos={videos}
+        isLoading={videosLoading} 
+        onVideoClick={handleVideoClick}
+        visitor={visitor}
+        videoComments={videoComments}
+        onAddVideoComment={handleAddVideoComment}
+        onVideoLike={handleVideoLike}
+        onVisitorLoginClick={() => setShowVisitorLogin(true)}
+        isAdmin={isAdmin}
+        onDeleteComment={handleDeleteComment}
+        onViewAll={() => { setView('video-grid'); window.scrollTo(0, 0); }}
+      />
       <AboutSection onMapClick={() => setShowMap(true)} />
       <OurAppsSection />
       <Footer logoUrl={logoUrl} onTermsClick={handleTermsClick} />
@@ -2131,75 +1869,71 @@ const App: React.FC = () => {
       )}
 
       {selectedPhoto && (
-        <Suspense fallback={<InlineFallback />}>
-          <PhotoModal
-            photo={selectedPhoto}
-            onClose={closePhoto}
-            onLike={() => handleLike(selectedPhoto.id)}
-            onShare={() => handleShare(selectedPhoto)}
-            onDownload={() => handleDownload(selectedPhoto)}
-            onGenerateStory={() => handleGenerateStory(selectedPhoto)}
-            isGeneratingStory={false}
-            isAdmin={isAdmin}
-            visitor={visitor}
-            comments={photoComments[selectedPhoto.firestoreId || ''] || []}
-            onAddComment={(content) => handleAddPhotoComment(selectedPhoto.firestoreId || '', content)}
-            onDeleteComment={handleDeleteComment}
-            onVisitorLoginClick={() => setShowVisitorLogin(true)}
-            freeDownloadsLeft={Math.max(0, FREE_DOWNLOADS - downloadCount)}
-            isDownloading={isDownloading}
-            photos={photos.filter(p => p.published !== false)}
-            onNavigate={(photo) => openPhoto(photo)}
-          />
-        </Suspense>
+        <PhotoModal
+          photo={selectedPhoto}
+          onClose={closePhoto}
+          onLike={() => handleLike(selectedPhoto.id)}
+          onShare={() => handleShare(selectedPhoto)}
+          onDownload={() => handleDownload(selectedPhoto)}
+          onGenerateStory={() => handleGenerateStory(selectedPhoto)}
+          isGeneratingStory={false}
+          isAdmin={isAdmin}
+          visitor={visitor}
+          comments={photoComments[selectedPhoto.firestoreId || ''] || []}
+          onAddComment={(content) => handleAddPhotoComment(selectedPhoto.firestoreId || '', content)}
+          onDeleteComment={handleDeleteComment}
+          onVisitorLoginClick={() => setShowVisitorLogin(true)}
+          freeDownloadsLeft={Math.max(0, FREE_DOWNLOADS - downloadCount)}
+          isDownloading={isDownloading}
+          photos={photos.filter(p => p.published !== false)}
+          onNavigate={(photo) => openPhoto(photo)}
+        />
       )}
 
-      <Suspense fallback={<InlineFallback />}>
-        {showMap && <PhotoMap
-          photos={photos}
-          isOpen={showMap}
-          onClose={() => setShowMap(false)}
-          onPhotoClick={(photo) => { setShowMap(false); openPhoto(photo); }}
-        />}
+      <PhotoMap
+        photos={photos}
+        isOpen={showMap}
+        onClose={() => setShowMap(false)}
+        onPhotoClick={(photo) => { setShowMap(false); openPhoto(photo); }}
+      />
 
-        {deferNonCritical && <AIChatbot photos={photos} onPhotoClick={openPhoto} />}
+      <AIChatbot photos={photos} onPhotoClick={openPhoto} />
 
-        {showSearch && <SearchBar
-          isOpen={showSearch}
-          onClose={() => { setShowSearch(false); setSearchQuery(''); }}
-          query={searchQuery}
-          onQueryChange={setSearchQuery}
-          photos={searchablePhotos}
-          onPhotoClick={openPhoto}
-        />}
+      <SearchBar
+        isOpen={showSearch}
+        onClose={() => { setShowSearch(false); setSearchQuery(''); }}
+        query={searchQuery}
+        onQueryChange={setSearchQuery}
+        photos={searchablePhotos}
+        onPhotoClick={openPhoto}
+      />
 
-        {showVisitorLogin && <VisitorLogin
-          isOpen={showVisitorLogin}
-          onClose={() => setShowVisitorLogin(false)}
-          onLogin={handleVisitorLogin}
-        />}
+      <VisitorLogin
+        isOpen={showVisitorLogin}
+        onClose={() => setShowVisitorLogin(false)}
+        onLogin={handleVisitorLogin}
+      />
 
-        {showProfile && <ProfileModal
-          isOpen={showProfile}
-          visitor={visitor}
-          onClose={() => setShowProfile(false)}
-          onVisitorUpdate={handleVisitorUpdate}
-          onLogout={handleVisitorLogout}
-          downloadCount={downloadCount}
-        />}
+      <ProfileModal
+        isOpen={showProfile}
+        visitor={visitor}
+        onClose={() => setShowProfile(false)}
+        onVisitorUpdate={handleVisitorUpdate}
+        onLogout={handleVisitorLogout}
+        downloadCount={downloadCount}
+      />
 
-        {deferNonCritical && <SelfAdPopup />}
+      <SelfAdPopup />
 
-        {showNotifPanel && <NotificationPanel
-          isOpen={showNotifPanel}
-          onClose={() => setShowNotifPanel(false)}
-          notifications={notifications}
-          onMarkRead={handleMarkRead}
-          onMarkAllRead={handleMarkAllRead}
-          onDelete={handleDeleteNotif}
-          onClearAll={handleClearAllNotifs}
-        />}
-      </Suspense>
+      <NotificationPanel
+        isOpen={showNotifPanel}
+        onClose={() => setShowNotifPanel(false)}
+        notifications={notifications}
+        onMarkRead={handleMarkRead}
+        onMarkAllRead={handleMarkAllRead}
+        onDelete={handleDeleteNotif}
+        onClearAll={handleClearAllNotifs}
+      />
     </div>
   );
 };
