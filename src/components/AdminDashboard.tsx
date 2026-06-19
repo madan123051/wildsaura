@@ -23,7 +23,6 @@ import { processGalleryImage } from '../utils/galleryImageProcessor';
 import { compressVideoForUpload } from '../utils/videoCompressor';
 import { readExifFromFile } from '../utils/exifReader';
 import { subscribeToContactMessages, deleteContactMessage, ContactMessage } from '../services/contactService';
-import DashboardHome from './DashboardHome';
 import { addGalleryPhotoToFirestore, deleteGalleryPhoto, subscribeToGalleryPhotos, uploadGalleryBlobToStorage, updateGalleryPhotoTitle } from '../services/galleryService';
 
 
@@ -2774,7 +2773,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           }}><Eye size={14} />{!isMobile && ' View Site'}</button>
         </header>
 
-        <div style={{ padding: isMobile ? '1rem' : '2rem', flex: 1, overflowY:          {view === 'dashboard' && (
+        <div style={{ padding: isMobile ? '1rem' : '2rem', flex: 1, overflowY: 'auto' }}>
+          {view === 'dashboard' && (
             <DashboardHome
               photos={photos}
               stories={stories}
@@ -2787,7 +2787,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             />
           )}
 
-          {/* Monetization / AdSense Settings View */} {/* Monetization / AdSense Settings View */}
+                    {/* Monetization / AdSense Settings View */}
           {view === 'monetization' && (
             <div style={{ maxWidth: 700 }}>
               <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.1)', borderRadius: '12px', padding: '1.5rem', marginBottom: '1.5rem' }}>
