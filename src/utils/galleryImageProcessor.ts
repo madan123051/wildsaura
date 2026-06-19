@@ -3,8 +3,8 @@
 
 const MAX_WIDTH = 1800;
 const MIN_WIDTH = 480;
-const TARGET_MAX_BYTES = 700 * 1024;
-const QUALITY_STEPS = [0.78, 0.7, 0.62, 0.54, 0.46, 0.38, 0.3, 0.24, 0.18];
+const TARGET_MAX_BYTES = 1400 * 1024; // 1.4MB — better quality for gallery
+const QUALITY_STEPS = [0.88, 0.82, 0.78, 0.7, 0.62, 0.54, 0.46, 0.38, 0.3, 0.24];
 const WATERMARK_TEXT = '© WildSaura';
 const WATERMARK_OPACITY = 0.55;
 const WATERMARK_PADDING = 24;
@@ -74,7 +74,7 @@ export interface ProcessedImage {
  * Process an image for gallery upload:
  *   1. Resize to max 1800px width (preserve aspect ratio)
  *   2. Add © WildSaura watermark (bottom-right)
- *   3. Encode to WebP under 700KB where supported (fallback to JPEG if WebP unsupported)
+ *   3. Encode to WebP under 1.4MB where supported (fallback to JPEG if WebP unsupported)
  *   4. Returns a Blob ready to upload to Firebase Storage
  */
 export async function processGalleryImage(file: File): Promise<ProcessedImage> {
@@ -108,10 +108,10 @@ export async function processGalleryImage(file: File): Promise<ProcessedImage> {
       if (blob && blob.size <= TARGET_MAX_BYTES) break;
     }
 
-    // Final fallback: JPEG (older iOS Safari versions), still aiming for <=700KB.
+    // Final fallback: JPEG (older iOS Safari versions), still aiming for <=1.4MB.
     if (!blob) {
       format = 'jpeg';
-      for (const quality of [0.72, 0.62, 0.5, 0.4, 0.32, 0.25]) {
+      for (const quality of [0.78, 0.68, 0.58, 0.48, 0.38, 0.28]) {
         blob = await canvasToBlob(canvas, 'image/jpeg', quality);
         if (blob && blob.size <= TARGET_MAX_BYTES) break;
       }

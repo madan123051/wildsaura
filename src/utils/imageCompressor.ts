@@ -2,24 +2,24 @@ import imageCompression from 'browser-image-compression';
 
 /**
  * ═══════════════════════════════════════════════════════════════════════
- *  WILDSAURA — Smart Image Compression Engine v2.0
+ *  WILDSAURA — Smart Image Compression Engine v2.1
  * ═══════════════════════════════════════════════════════════════════════
  *
  *  🎯 Goal: Maximum visual quality in minimum file size
  *
  *  ✅ OUTPUT FORMAT:   WebP  (25-35% smaller than JPEG at same quality)
- *  ✅ TARGET SIZE:     Around 1 MB for full uploads
+ *  ✅ TARGET SIZE:     Around 2 MB for full uploads
  *  ✅ MAX RESOLUTION:  2560px first pass, then smaller fallbacks
  *  ✅ QUALITY LOGIC:   Adaptive — starts high and reduces ONLY if needed
  *  ✅ EXIF:            Removed from served files to save bytes
- *  ✅ THUMBNAILS:      Auto-generated 720px WebP, capped around 280KB
+ *  ✅ THUMBNAILS:      Auto-generated 720px WebP, capped around 500KB
  *
  *  How adaptive quality works:
  *  ─────────────────────────────
- *  1. First try: 88% quality → if result ≤ 1MB, done ✅ (best quality)
+ *  1. First try: 88% quality → if result ≤ 2MB, done ✅ (best quality)
  *  2. If still too big: try 84%, 80%, 76%, 72% …
  *  3. If still too big: reduce resolution to 2048px / 1600px and try again
- *  4. Result: smallest possible quality loss while staying around 1MB
+ *  4. Result: smallest possible quality loss while staying around 2MB
  *
  *  Why WebP?
  *  ─────────
@@ -39,18 +39,18 @@ export interface CompressionStats {
 }
 
 /**
- * 📸 Smart compress for upload — targets ~1MB WebP with maximum quality.
+ * 📸 Smart compress for upload — targets ~2MB WebP with maximum quality.
  *
  * Uses adaptive quality: starts high and reduces ONLY if the file is still
- * over 1MB. Camera metadata is already stored separately in Firestore, so EXIF
+ * over 2MB. Camera metadata is already stored separately in Firestore, so EXIF
  * is stripped from the served image to keep pages fast.
  */
 export async function compressForUpload(
   file: File,
   onProgress?: (progress: number) => void
 ): Promise<File> {
-  const TARGET_MAX_MB = 1;       // Hard ceiling target for fast public loading
-  const IDEAL_MB = 0.9;          // Sweet spot for quality vs size
+  const TARGET_MAX_MB = 2;       // Hard ceiling target for fast public loading
+  const IDEAL_MB = 1.8;          // Sweet spot for quality vs size
   const MAX_RES_PRIMARY = 2560;  // Sharp enough for web viewing
   const MAX_RES_FALLBACK = 2048; // Fallback if the image is still too big
   const originalMB = file.size / 1024 / 1024;
@@ -65,7 +65,7 @@ export async function compressForUpload(
   }
 
   // ── Phase 1: High quality at web-large resolution ─────────────────────
-  const qualityLevels = [0.88, 0.84, 0.80, 0.76, 0.72, 0.68];
+  const qualityLevels = [0.90, 0.88, 0.84, 0.80, 0.76, 0.72, 0.68];
 
   for (let i = 0; i < qualityLevels.length; i++) {
     const quality = qualityLevels[i];
@@ -105,7 +105,7 @@ export async function compressForUpload(
   console.log('📸 Phase 2: Reducing to 2048px resolution...');
   if (onProgress) onProgress(32);
 
-  for (const quality of [0.82, 0.76, 0.70, 0.64]) {
+  for (const quality of [0.84, 0.78, 0.72, 0.66]) {
     try {
       const compressed = await imageCompression(file, {
         maxSizeMB: TARGET_MAX_MB,
@@ -133,14 +133,14 @@ export async function compressForUpload(
     }
   }
 
-  // ── Phase 3: Final fallback — force around 1MB ────────────────────────
+  // ── Phase 3: Final fallback — force around 2MB ────────────────────────
   console.log('📸 Phase 3: Final force-compress...');
   if (onProgress) onProgress(35);
 
   const compressed = await imageCompression(file, {
     maxSizeMB: TARGET_MAX_MB,
     maxWidthOrHeight: 1600,
-    initialQuality: 0.72,
+    initialQuality: 0.74,
     fileType: 'image/webp' as const,
     useWebWorker: true,
     preserveExif: false,
@@ -153,7 +153,7 @@ export async function compressForUpload(
   const savedPct = Math.round((1 - compressedMB / originalMB) * 100);
   console.log(
     `📸 ✅ Phase 3 final: ${originalMB.toFixed(2)}MB → ${compressedMB.toFixed(2)}MB ` +
-    `(WebP q=72%, ${savedPct}% saved, 1600px max)`
+    `(WebP q=74%, ${savedPct}% saved, 1600px max)`
   );
   if (onProgress) onProgress(40);
 
@@ -166,19 +166,20 @@ export async function compressForUpload(
  * 🖼️ Generate optimized thumbnail for gallery / lazy loading.
  *
  * - 720px max dimension (sharp on high-density mobile screens)
- * - Max 280KB WebP (200-300KB target range)
+ * - Max 500KB WebP (default — can be overridden via maxMB param)
  * - No EXIF data (not needed for thumbnails — saves space)
  */
 export async function generateThumbnail(
   file: File,
-  maxDim: number = 720
+  maxDim: number = 720,
+  maxMB: number = 0.5
 ): Promise<File> {
-  console.log(`🖼️ Generating thumbnail: ${file.name} → ${maxDim}px WebP`);
+  console.log(`🖼️ Generating thumbnail: ${file.name} → ${maxDim}px WebP (max ${maxMB}MB)`);
 
   const thumbnail = await imageCompression(file, {
-    maxSizeMB: 0.28,              // Max ~280KB
+    maxSizeMB: maxMB,
     maxWidthOrHeight: maxDim,
-    initialQuality: 0.82,
+    initialQuality: 0.85,
     fileType: 'image/webp' as const,
     useWebWorker: true,
     preserveExif: false,           // No EXIF needed for thumbnails
