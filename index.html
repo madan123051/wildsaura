@@ -11,28 +11,18 @@
   <link rel="canonical" href="https://www.wildsaura.com" />
   <meta name="theme-color" content="#07110d" />
 
+  <!-- Google AdSense Verification -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8751215990624046" crossorigin="anonymous"></script>
+
   <!-- Favicon & Icons -->
   <link rel="icon" type="image/x-icon" href="/favicon.ico" />
   <link rel="apple-touch-icon" sizes="192x192" href="/lion-192.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="/lion-192.png" />
-  <link
-    rel="preload"
-    as="image"
-    href="/photos/optimized/photo-wildlife-jpeg-640.webp"
-    imagesrcset="/photos/optimized/photo-wildlife-jpeg-320.webp 320w, /photos/optimized/photo-wildlife-jpeg-480.webp 480w, /photos/optimized/photo-wildlife-jpeg-640.webp 640w, /photos/optimized/photo-wildlife-jpeg-960.webp 960w, /photos/optimized/photo-wildlife-jpeg-1167.webp 1167w"
-    imagesizes="(max-width: 768px) 100vw, 55vw"
-    type="image/webp"
-    fetchpriority="high"
-  />
 
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Noto+Serif+Devanagari:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=optional" />
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Noto+Serif+Devanagari:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=optional" rel="stylesheet" media="print" onload="this.media='all'" />
-  <noscript>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Noto+Serif+Devanagari:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=optional" rel="stylesheet" />
-  </noscript>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
 
   <!-- Structured Data / JSON-LD -->
   <script type="application/ld+json">
@@ -88,61 +78,61 @@
   </script>
 </head>
 <body>
-<div id="root">
-  <!-- Splash screen — shown instantly, replaced when React mounts -->
-  <style>
-    .wa-splash {
-      position: fixed;
-      inset: 0;
-      z-index: 9999;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background: #07110d;
-    }
-    .wa-splash img {
-      width: 80px;
-      height: 80px;
-      border-radius: 50%;
-      animation: wa-pulse 1.4s ease-in-out infinite;
-    }
-    .wa-splash p {
-      margin-top: 1.2rem;
-      font-family: 'Cinzel', Georgia, serif;
-      font-size: 1.1rem;
-      letter-spacing: 0.15em;
-      color: #c9a84c;
-      opacity: 0.85;
-    }
-    .wa-splash .wa-dots span {
-      display: inline-block;
-      width: 6px;
-      height: 6px;
-      margin: 0 3px;
-      border-radius: 50%;
-      background: #c9a84c;
-      animation: wa-bounce 1.2s ease-in-out infinite;
-    }
-    .wa-splash .wa-dots span:nth-child(2) { animation-delay: 0.2s; }
-    .wa-splash .wa-dots span:nth-child(3) { animation-delay: 0.4s; }
-    @keyframes wa-pulse {
-      0%, 100% { transform: scale(1); opacity: 0.9; }
-      50% { transform: scale(1.08); opacity: 1; }
-    }
-    @keyframes wa-bounce {
-      0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
-      40% { transform: translateY(-8px); opacity: 1; }
-    }
-  </style>
-  <div class="wa-splash">
-    <img src="/photos/logo-header.webp" alt="WILDS AURA" />
-    <p>WILDS AURA</p>
-    <div class="wa-dots">
-      <span></span><span></span><span></span>
+  <div id="root">
+    <!-- Splash screen — shown instantly before React mounts -->
+    <style>
+      .wa-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: #07110d;
+      }
+      .wa-splash img {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        animation: wa-pulse 1.4s ease-in-out infinite;
+      }
+      .wa-splash p {
+        margin-top: 1.2rem;
+        font-family: 'Playfair Display', Georgia, serif;
+        font-size: 1.1rem;
+        letter-spacing: 0.15em;
+        color: #c9a84c;
+        opacity: 0.85;
+      }
+      .wa-splash .wa-dots span {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        margin: 0 3px;
+        border-radius: 50%;
+        background: #c9a84c;
+        animation: wa-bounce 1.2s ease-in-out infinite;
+      }
+      .wa-splash .wa-dots span:nth-child(2) { animation-delay: 0.2s; }
+      .wa-splash .wa-dots span:nth-child(3) { animation-delay: 0.4s; }
+      @keyframes wa-pulse {
+        0%, 100% { transform: scale(1); opacity: 0.9; }
+        50% { transform: scale(1.08); opacity: 1; }
+      }
+      @keyframes wa-bounce {
+        0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+        40% { transform: translateY(-8px); opacity: 1; }
+      }
+    </style>
+    <div class="wa-splash">
+      <img src="/photos/logo-header.webp" alt="WILDS AURA" />
+      <p>WILDS AURA</p>
+      <div class="wa-dots">
+        <span></span><span></span><span></span>
+      </div>
     </div>
   </div>
-</div>
   <script type="module" src="/src/main.tsx"></script>
 </body>
 </html>
