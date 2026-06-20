@@ -197,14 +197,13 @@ const UploadZone: React.FC<UploadZoneProps> = ({ onFileSelected, previewUrl, upl
 };
 
 // ── Stats Cards ──────────────────────────────────────────────────────────────
-const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: string | number; color: string; hint?: string }> = ({ icon, label, value, color, hint }) => (
+const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: string | number; color: string }> = ({ icon, label, value, color }) => (
   <div style={{
     background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.1)',
-    borderRadius: '12px', padding: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.7rem',
-    minHeight: 88,
+    borderRadius: '12px', padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem',
   }}>
     <div style={{
-      width: 42, height: 42, borderRadius: '11px', flexShrink: 0,
+      width: 48, height: 48, borderRadius: '12px',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       background: color === 'blue' ? 'rgba(59,130,246,0.15)' :
         color === 'red' ? 'rgba(239,68,68,0.15)' :
@@ -215,33 +214,12 @@ const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: string |
     }}>
       {icon}
     </div>
-    <div style={{ minWidth: 0 }}>
-      <p style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--wa-light)', lineHeight: 1 }}>{value}</p>
-      <p style={{ fontSize: '0.68rem', color: 'rgba(235,230,220,0.48)', marginTop: '0.2rem', lineHeight: 1.2 }}>{label}</p>
-      {hint && <p style={{ fontSize: '0.58rem', color: 'rgba(201,168,76,0.55)', marginTop: '0.18rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{hint}</p>}
+    <div>
+      <p style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--wa-light)', lineHeight: 1 }}>{value}</p>
+      <p style={{ fontSize: '0.75rem', color: 'rgba(235,230,220,0.4)', marginTop: '0.25rem' }}>{label}</p>
     </div>
   </div>
 );
-
-const panelStyle: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.03)',
-  border: '1px solid rgba(201,168,76,0.1)',
-  borderRadius: '12px',
-  padding: '1rem',
-};
-
-const MiniBar: React.FC<{ label: string; value: number; max: number; note?: string; color?: string }> = ({ label, value, max, note, color = 'var(--wa-gold)' }) => {
-  const pct = max > 0 ? Math.max(4, Math.round((value / max) * 100)) : 0;
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(82px, 0.8fr) 1.8fr auto', alignItems: 'center', gap: '0.55rem', marginBottom: '0.55rem' }}>
-      <span style={{ fontSize: '0.68rem', color: 'rgba(235,230,220,0.62)', textTransform: 'capitalize', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
-      <div style={{ height: 8, background: 'rgba(255,255,255,0.06)', borderRadius: 10, overflow: 'hidden' }}>
-        <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 10 }} />
-      </div>
-      <span style={{ fontSize: '0.68rem', color: 'rgba(235,230,220,0.72)', textAlign: 'right', minWidth: 42 }}>{value}{note ? ` ${note}` : ''}</span>
-    </div>
-  );
-};
 
 // ── Photo Form with Upload + AI ─────────────────────────────────────────────
 interface PhotoFormProps {
@@ -2480,7 +2458,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [videoDeleteConfirm, setVideoDeleteConfirm] = useState<number | null>(null);
   const [contactMessages, setContactMessages] = React.useState<ContactMessage[]>([]);
   const [msgDeleteConfirm, setMsgDeleteConfirm] = React.useState<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = React.useState(() => typeof window !== 'undefined' ? window.innerWidth >= 768 : true);
+  const [sidebarOpen, setSidebarOpen] = React.useState(true);
   const [isMobile, setIsMobile] = React.useState(() => typeof window !== 'undefined' ? window.innerWidth < 768 : false);
 
   React.useEffect(() => {
@@ -2492,7 +2470,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const onResize = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
-      setSidebarOpen(!mobile);
+      if (!mobile) setSidebarOpen(true);
     };
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
@@ -2507,7 +2485,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [recentVisitors, setRecentVisitors] = useState<VisitorRecord[]>([]);
   const [onlineCount, setOnlineCount] = useState(0);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
-  const [analyticsRange, setAnalyticsRange] = useState<'today' | 'week' | 'month' | 'year' | 'all'>('today');
   
   // AdSense Settings
   const [adsenseSettings, setAdsenseSettings] = useState<AdSenseSettings>({
@@ -2616,20 +2593,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     if (view === 'messages') return 'Contact Messages';
     return '';
   };
-
-  const formatMetric = (value: number | undefined) => (value ?? 0).toLocaleString();
-  const rangeSummary = analytics ? {
-    today: { label: 'Today', visitors: analytics.todayVisitors, pageViews: analytics.todayPageViews, trend: analytics.dailyTrend.slice(-1), categories: analytics.todayTopCategories },
-    week: { label: '7 Days', visitors: analytics.weekVisitors, pageViews: analytics.weekPageViews, trend: analytics.dailyTrend.slice(-7), categories: analytics.weekTopCategories },
-    month: { label: '30 Days', visitors: analytics.monthVisitors, pageViews: analytics.monthPageViews, trend: analytics.dailyTrend.slice(-30), categories: analytics.monthTopCategories },
-    year: { label: 'This Year', visitors: analytics.yearVisitors, pageViews: analytics.yearPageViews, trend: analytics.monthlyTrend, categories: analytics.yearTopCategories },
-    all: { label: 'All Time', visitors: analytics.totalVisitors, pageViews: analytics.totalPageViews, trend: analytics.yearlyTrend.length ? analytics.yearlyTrend : analytics.monthlyTrend, categories: analytics.topCategories },
-  }[analyticsRange] : null;
-  const activeCategories = rangeSummary?.categories?.length ? rangeSummary.categories : (analytics?.topCategories || []);
-  const trendMax = Math.max(1, ...(rangeSummary?.trend || []).map((point) => point.visitors));
-  const categoryMax = Math.max(1, ...activeCategories.map((item) => item.total));
-  const pageMax = Math.max(1, ...(analytics?.topPages || []).map((item) => item.views));
-  const topCategory = activeCategories[0] || analytics?.topCategories?.[0];
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--wa-dark)' }}>
@@ -2811,163 +2774,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </header>
 
         <div style={{ padding: isMobile ? '1rem' : '2rem', flex: 1, overflowY: 'auto' }}>
-          {/* Dashboard View */}
           {view === 'dashboard' && (
-            <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(145px, 1fr))', gap: '0.7rem', marginBottom: '1rem' }}>
-                <StatCard icon={<Users size={21} />} label="All Visitors" value={analyticsLoading ? '...' : formatMetric(analytics?.totalVisitors)} color="blue" hint={`${formatMetric(analytics?.anonymousVisitors)} anonymous`} />
-                <StatCard icon={<Wifi size={21} />} label="Online Now" value={onlineCount} color="green" hint="live sessions" />
-                <StatCard icon={<Eye size={21} />} label="Page Views" value={analyticsLoading ? '...' : formatMetric(analytics?.totalPageViews)} color="gold" hint={`${formatMetric(analytics?.totalEvents)} actions`} />
-                <StatCard icon={<BarChart3 size={21} />} label="Top Category" value={topCategory?.category || '-'} color="green" hint={topCategory ? `${topCategory.total} actions` : 'waiting for data'} />
-                <StatCard icon={<Heart size={21} />} label="Likes" value={formatMetric(analytics?.totalLikes || totalLikes)} color="red" />
-                <StatCard icon={<Download size={21} />} label="Downloads" value={formatMetric(analytics?.totalDownloads)} color="red" />
-                <StatCard icon={<Share2 size={21} />} label="Shares" value={formatMetric(analytics?.totalShares)} color="gold" />
-                <StatCard icon={<MessageSquare size={21} />} label="Comments" value={formatMetric(analytics?.totalComments)} color="blue" />
-              </div>
-
-              <div style={{ ...panelStyle, marginBottom: '1rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '0.85rem' }}>
-                  <div>
-                    <h3 className="font-cinzel" style={{ fontSize: '0.85rem', color: 'var(--wa-gold)', letterSpacing: '0.08em', margin: 0 }}>
-                      <TrendingUp size={16} style={{ marginRight: '0.4rem', verticalAlign: '-3px' }} />
-                      Visitor Tracking
-                    </h3>
-                    <p style={{ fontSize: '0.68rem', color: 'rgba(235,230,220,0.45)', margin: '0.25rem 0 0' }}>
-                      Anonymous and logged-in sessions, grouped day/month/year.
-                    </p>
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.3rem', overflowX: 'auto', maxWidth: '100%' }}>
-                    {[
-                      ['today', 'Today'],
-                      ['week', '7D'],
-                      ['month', '30D'],
-                      ['year', 'Year'],
-                      ['all', 'All'],
-                    ].map(([key, label]) => (
-                      <button
-                        key={key}
-                        onClick={() => setAnalyticsRange(key as typeof analyticsRange)}
-                        style={{
-                          border: '1px solid rgba(201,168,76,0.2)',
-                          background: analyticsRange === key ? 'rgba(201,168,76,0.18)' : 'rgba(0,0,0,0.18)',
-                          color: analyticsRange === key ? 'var(--wa-gold)' : 'rgba(235,230,220,0.58)',
-                          borderRadius: 999,
-                          padding: '0.32rem 0.62rem',
-                          fontSize: '0.66rem',
-                          cursor: 'pointer',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '0.55rem', marginBottom: '0.9rem' }}>
-                  {[
-                    { label: `${rangeSummary?.label || 'Period'} Visitors`, value: rangeSummary?.visitors || 0, color: '#4ade80' },
-                    { label: `${rangeSummary?.label || 'Period'} Views`, value: rangeSummary?.pageViews || 0, color: '#60a5fa' },
-                    { label: 'Logged In', value: analytics?.loggedInVisitors || 0, color: 'var(--wa-gold)' },
-                    { label: 'Anonymous', value: analytics?.anonymousVisitors || 0, color: '#a7f3d0' },
-                  ].map((item) => (
-                    <div key={item.label} style={{ padding: '0.7rem', borderRadius: 10, background: 'rgba(0,0,0,0.18)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                      <p style={{ fontSize: '1.2rem', fontWeight: 800, color: item.color, lineHeight: 1 }}>{analyticsLoading ? '...' : formatMetric(item.value)}</p>
-                      <p style={{ fontSize: '0.64rem', color: 'rgba(235,230,220,0.45)', marginTop: '0.25rem' }}>{item.label}</p>
-                    </div>
-                  ))}
-                </div>
-
-                {(rangeSummary?.trend || []).length > 0 ? (
-                  <div style={{ display: 'grid', gap: '0.25rem' }}>
-                    {(rangeSummary?.trend || []).slice(-10).map((point) => (
-                      <MiniBar key={point.label} label={point.label} value={point.visitors} max={trendMax} note="visitors" color="#4ade80" />
-                    ))}
-                  </div>
-                ) : (
-                  <p style={{ color: 'rgba(235,230,220,0.42)', fontSize: '0.72rem', margin: 0 }}>
-                    Tracking data will appear after visitors browse the site with the updated code.
-                  </p>
-                )}
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
-                <div style={panelStyle}>
-                  <h3 className="font-cinzel" style={{ fontSize: '0.82rem', color: 'var(--wa-gold)', marginBottom: '0.8rem', letterSpacing: '0.08em' }}>
-                    Most Active Categories {rangeSummary ? `- ${rangeSummary.label}` : ''}
-                  </h3>
-                  {activeCategories.length > 0 ? (
-                    activeCategories.map((item) => (
-                      <MiniBar
-                        key={item.category}
-                        label={item.category}
-                        value={item.total}
-                        max={categoryMax}
-                        note="actions"
-                        color="linear-gradient(90deg, var(--wa-gold), #4ade80)"
-                      />
-                    ))
-                  ) : (
-                    <p style={{ color: 'rgba(235,230,220,0.42)', fontSize: '0.72rem' }}>No category activity yet.</p>
-                  )}
-                </div>
-
-                <div style={panelStyle}>
-                  <h3 className="font-cinzel" style={{ fontSize: '0.82rem', color: 'var(--wa-gold)', marginBottom: '0.8rem', letterSpacing: '0.08em' }}>
-                    Top Pages
-                  </h3>
-                  {(analytics?.topPages || []).length > 0 ? (
-                    analytics!.topPages.map((item) => (
-                      <MiniBar key={item.page} label={item.page === '/' ? 'Home' : item.page} value={item.views} max={pageMax} note="views" color="#60a5fa" />
-                    ))
-                  ) : (
-                    <p style={{ color: 'rgba(235,230,220,0.42)', fontSize: '0.72rem' }}>No page views tracked yet.</p>
-                  )}
-                </div>
-              </div>
-
-              <div style={{ ...panelStyle, marginBottom: '1rem' }}>
-                <h3 className="font-cinzel" style={{ fontSize: '0.82rem', color: 'var(--wa-gold)', marginBottom: '0.8rem', letterSpacing: '0.08em' }}>
-                  <Users size={16} style={{ marginRight: '0.4rem', verticalAlign: '-3px' }} />
-                  Latest Visitor Sessions
-                </h3>
-                {recentVisitors.length > 0 ? (
-                  <div style={{ display: 'grid', gap: '0.45rem' }}>
-                    {recentVisitors.map((v, idx) => (
-                      <div key={`${v.sessionId || v.email || idx}`} style={{ display: 'grid', gridTemplateColumns: '32px 1fr auto', alignItems: 'center', gap: '0.65rem', padding: '0.55rem 0.65rem', borderRadius: 10, background: 'rgba(0,0,0,0.16)' }}>
-                        <div style={{ width: 32, height: 32, borderRadius: '50%', overflow: 'hidden', background: v.visitorType === 'logged-in' ? 'rgba(201,168,76,0.18)' : 'rgba(96,165,250,0.14)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          {v.avatarUrl ? <img src={v.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <Users size={15} style={{ color: v.visitorType === 'logged-in' ? 'var(--wa-gold)' : '#60a5fa' }} />}
-                        </div>
-                        <div style={{ minWidth: 0 }}>
-                          <p style={{ fontSize: '0.76rem', color: 'var(--wa-light)', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {v.visitorType === 'anonymous' ? 'Anonymous visitor' : (v.displayName || 'Logged-in visitor')}
-                          </p>
-                          <p style={{ fontSize: '0.61rem', color: 'rgba(235,230,220,0.4)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {v.lastPage || '/'}{v.topCategory ? ` · ${v.topCategory}` : ''}{v.date ? ` · ${v.date}` : ''}
-                          </p>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <p style={{ fontSize: '0.72rem', color: '#4ade80', fontWeight: 700 }}>{v.pageViews || 0} views</p>
-                          <p style={{ fontSize: '0.58rem', color: 'rgba(235,230,220,0.38)' }}>{v.events || 0} actions</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p style={{ color: 'rgba(235,230,220,0.42)', fontSize: '0.72rem' }}>No visitor sessions yet.</p>
-                )}
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(145px, 1fr))', gap: '0.7rem' }}>
-                <StatCard icon={<Image size={21} />} label="Photos" value={photos.length} color="blue" />
-                <StatCard icon={<BookOpen size={21} />} label="Stories" value={stories.length} color="green" />
-                <StatCard icon={<Film size={21} />} label="Videos" value={videos.length} color="gold" />
-                <StatCard icon={<Activity size={21} />} label="Community Posts" value={formatMetric(analytics?.totalCommunityPosts)} color="green" />
-              </div>
-            </>
+            <DashboardHome
+              photos={photos}
+              stories={stories}
+              videos={videos}
+              analytics={analytics}
+              onlineCount={onlineCount}
+              totalLikes={totalLikes}
+              recentVisitors={recentVisitors}
+              analyticsLoading={analyticsLoading}
+            />
           )}
 
-          {/* Monetization / AdSense Settings View */}
+                    {/* Monetization / AdSense Settings View */}
           {view === 'monetization' && (
             <div style={{ maxWidth: 700 }}>
               <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.1)', borderRadius: '12px', padding: '1.5rem', marginBottom: '1.5rem' }}>
