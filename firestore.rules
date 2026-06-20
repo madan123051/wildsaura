@@ -45,35 +45,5 @@ service cloud.firestore {
       allow create: if true;
       allow read, update, delete: if request.auth != null;
     }
-    // ─── Site Tracking (new visitor tracking system) ───────────────────────────
-    // Site visit records — anyone can write (anonymous visitors), only authed can read
-    match /site_visits/{docId} {
-      allow read: if request.auth != null;
-      allow write: if true;
-    }
-
-    // Daily analytics aggregates
-    match /analytics_daily/{docId} {
-      allow read: if request.auth != null;
-      allow write: if true;
-    }
-
-    // Daily unique visitor tracking subcollection
-    match /analytics_daily/{docId}/visitors/{visitorId} {
-      allow read: if request.auth != null;
-      allow write: if true;
-    }
-
-    // Monthly analytics aggregates
-    match /analytics_monthly/{docId} {
-      allow read: if request.auth != null;
-      allow write: if true;
-    }
-
-    // Yearly analytics aggregates
-    match /analytics_yearly/{docId} {
-      allow read: if request.auth != null;
-      allow write: if true;
-    }
   }
 }
