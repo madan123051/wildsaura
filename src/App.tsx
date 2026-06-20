@@ -449,8 +449,18 @@ const App: React.FC = () => {
       ]);
       if (disposed) return;
 
+      const initialPath = window.location.pathname;
+      const priority: 'photos' | 'stories' | 'videos' | 'home' =
+        pendingStorySlug || initialPath === '/story-grid' || initialPath.startsWith('/story/')
+          ? 'stories'
+          : pendingVideoId || initialPath === '/video-grid' || initialPath.startsWith('/video/')
+            ? 'videos'
+            : pendingPhotoSlug || initialPath === '/photo-grid' || initialPath === '/photos' || initialPath.startsWith('/photo/') || initialPath.startsWith('/category/')
+              ? 'photos'
+              : 'home';
+
     // ── Real-time PHOTOS subscription ──────────────────────────────────
-    const unsubPhotos = photoService.subscribeToPhotos((firestorePhotos) => {
+    const startPhotos = () => photoService.subscribeToPhotos((firestorePhotos) => {
       setPhotosLoading(false);
       const mapped = firestorePhotos.map((fp, idx) => ({
         id: Date.now() + idx,
@@ -515,7 +525,7 @@ const App: React.FC = () => {
     });
 
     // ── Real-time STORIES subscription ─────────────────────────────────
-    const unsubStories = storyService.subscribeToStories((firestoreStories) => {
+    const startStories = () => storyService.subscribeToStories((firestoreStories) => {
       setStoriesLoading(false);
       const mapped: Story[] = firestoreStories.map((fs, idx) => ({
         id: Date.now() + idx + 5000,
@@ -570,14 +580,14 @@ const App: React.FC = () => {
     });
 
     // ── Real-time GALLERY subscription ─────────────────────────────────
-    const unsubGallery = galleryService.subscribeToGalleryPhotos((photos) => {
+    const startGallery = () => galleryService.subscribeToGalleryPhotos((photos) => {
       setGalleryPhotos(photos);
     }, (err) => {
       console.warn('Gallery subscription error:', err);
     });
 
     // ── Real-time VIDEOS subscription ──────────────────────────────────
-    const unsubVideos = videoService.subscribeToVideos((firestoreVideos) => {
+    const startVideos = () => videoService.subscribeToVideos((firestoreVideos) => {
       setVideosLoading(false);
       const mapped: Video[] = firestoreVideos.map((fv, idx) => ({
         id: Date.now() + idx + 9000,
@@ -630,7 +640,7 @@ const App: React.FC = () => {
     });
 
     // ── Real-time COMMENTS subscription (already live!) ────────────────
-    const unsubComments = commentService.subscribeToAllComments((allComments) => {
+    const startComments = () => commentService.subscribeToAllComments((allComments) => {
       const photoMap: Record<string, Comment[]> = {};
       const storyMap: Record<string, Comment[]> = {};
       const videoMap: Record<string, Comment[]> = {};
@@ -674,37 +684,84 @@ const App: React.FC = () => {
       })));
     });
 
-    // ── Online Visitor Tracking (real-time presence) ───────────────────
-    let sessionId = sessionStorage.getItem('wa_session_id');
-    if (!sessionId) {
-      sessionId = 'anon_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-      sessionStorage.setItem('wa_session_id', sessionId);
-    }
-    const displayName = visitorRef.current?.displayName || 'Guest';
-    const avatarUrl = visitorRef.current?.avatarUrl || '';
-    const cleanupOnline = visitorService.trackOnlineVisitor(sessionId, displayName, avatarUrl);
-    onlineCleanupRef.current = cleanupOnline;
+    const startOnline = () => {
+      // ── Online Visitor Tracking (real-time presence) ─────────────────
+      let sessionId = sessionStorage.getItem('wa_session_id');
+      if (!sessionId) {
+        sessionId = 'anon_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        sessionStorage.setItem('wa_session_id', sessionId);
+      }
+      const displayName = visitorRef.current?.displayName || 'Guest';
+      const avatarUrl = visitorRef.current?.avatarUrl || '';
+      const cleanupOnline = visitorService.trackOnlineVisitor(sessionId, displayName, avatarUrl);
+      onlineCleanupRef.current = cleanupOnline;
 
-    // Subscribe to live online visitor count
-    const unsubOnline = visitorService.subscribeToOnlineVisitors((count) => {
-      setOnlineVisitorCount(count);
-    });
+      const unsubOnline = visitorService.subscribeToOnlineVisitors((count) => {
+        setOnlineVisitorCount(count);
+      });
 
-    // Subscribe to site settings (hero images etc.)
-    const unsubSettings = siteSettingsService.onSiteSettingsChange((settings) => {
+      return () => {
+        unsubOnline();
+        cleanupOnline();
+        if (onlineCleanupRef.current === cleanupOnline) onlineCleanupRef.current = null;
+      };
+    };
+
+    const startSettings = () => siteSettingsService.onSiteSettingsChange((settings) => {
       setSiteSettings(settings);
     });
 
-      cleanups.push(
-        unsubPhotos,
-        unsubStories,
-        unsubGallery,
-        unsubVideos,
-        unsubComments,
-        unsubOnline,
-        unsubSettings,
-        cleanupOnline,
-      );
+      type SubscriptionKey = 'photos' | 'stories' | 'gallery' | 'videos' | 'comments' | 'online' | 'settings';
+      const starters: Record<SubscriptionKey, () => () => void> = {
+        photos: startPhotos,
+        stories: startStories,
+        gallery: startGallery,
+        videos: startVideos,
+        comments: startComments,
+        online: startOnline,
+        settings: startSettings,
+      };
+      const started = new Set<SubscriptionKey>();
+      const start = (key: SubscriptionKey) => {
+        if (disposed || started.has(key)) return;
+        started.add(key);
+        cleanups.push(starters[key]());
+      };
+      const delay = (key: SubscriptionKey, ms: number) => {
+        const timer = window.setTimeout(() => start(key), ms);
+        cleanups.push(() => window.clearTimeout(timer));
+      };
+
+      if (priority === 'stories') {
+        start('stories');
+        delay('comments', 500);
+        delay('photos', 1200);
+        delay('videos', 1400);
+        delay('gallery', 1600);
+        delay('settings', 900);
+      } else if (priority === 'videos') {
+        start('videos');
+        delay('comments', 500);
+        delay('photos', 1200);
+        delay('stories', 1400);
+        delay('gallery', 1600);
+        delay('settings', 900);
+      } else if (priority === 'photos') {
+        start('photos');
+        delay('comments', 700);
+        delay('gallery', 900);
+        delay('stories', 1300);
+        delay('videos', 1500);
+        delay('settings', 900);
+      } else {
+        start('settings');
+        start('photos');
+        delay('stories', 250);
+        delay('videos', 450);
+        delay('gallery', 650);
+        delay('comments', 1000);
+      }
+      delay('online', 1200);
     };
 
     startSubscriptions().catch((err) => {
@@ -1648,6 +1705,7 @@ const App: React.FC = () => {
           <PhotoGridPage
             photos={photos}
             filterTabs={FILTER_TABS}
+            isLoading={photosLoading}
             initialCategory={selectedCategory}
             onCategoryChange={handleGalleryCategoryChange}
             onBack={() => { setView('home'); setSelectedCategory('all'); window.history.pushState({}, '', '/'); window.scrollTo(0, 0); }}
@@ -1691,6 +1749,7 @@ const App: React.FC = () => {
         <Suspense fallback={<RouteFallback />}>
           <StoryGridPage
             stories={stories}
+            isLoading={storiesLoading}
             onBack={() => { setView('home'); window.history.pushState({}, '', '/'); window.scrollTo(0, 0); }}
             onStoryClick={handleStoryClick}
           />
@@ -1706,6 +1765,7 @@ const App: React.FC = () => {
         <Suspense fallback={<RouteFallback />}>
           <VideoGridPage
             videos={videos}
+            isLoading={videosLoading}
             onVideoClick={handleVideoClick}
             onBack={() => { setView('home'); window.history.pushState({}, '', '/'); window.scrollTo(0, 0); }}
             visitor={visitor}

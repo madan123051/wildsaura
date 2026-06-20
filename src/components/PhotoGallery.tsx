@@ -27,13 +27,22 @@ const PHOTO_PLACEHOLDER = '/images/placeholder-card.svg';
 
 const SmartImage: React.FC<{ src?: string | null; alt: string; height: number }> = ({ src, alt, height }) => {
   const [loaded, setLoaded] = useState(false);
-  const [error, setError] = useState(false);
-  const resolvedSrc = error ? PHOTO_PLACEHOLDER : (src || PHOTO_PLACEHOLDER);
+  const resolvedSrc = src || PHOTO_PLACEHOLDER;
   const optimizedSrc = getOptimizedImageUrl(resolvedSrc, {
     width: 520,
     height: Math.max(260, Math.round(height * 2)),
     quality: 72,
-  });
+  }) || resolvedSrc;
+  const imageCandidates = useMemo(
+    () => Array.from(new Set([optimizedSrc, resolvedSrc, PHOTO_PLACEHOLDER].filter(Boolean))),
+    [optimizedSrc, resolvedSrc],
+  );
+  const [imageCandidateIndex, setImageCandidateIndex] = useState(0);
+
+  React.useEffect(() => {
+    setLoaded(false);
+    setImageCandidateIndex(0);
+  }, [optimizedSrc, resolvedSrc]);
 
   return (
     <div style={{ position: 'relative', height, overflow: 'hidden' }}>
@@ -41,15 +50,19 @@ const SmartImage: React.FC<{ src?: string | null; alt: string; height: number }>
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(110deg, #1a2e1a 8%, #2a4a2a 18%, #1a2e1a 33%)', backgroundSize: '200% 100%', animation: 'shimmer 1.5s linear infinite' }} />
       )}
       <img
-        src={optimizedSrc || resolvedSrc}
+        src={imageCandidates[imageCandidateIndex] || PHOTO_PLACEHOLDER}
         alt={alt}
         style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', opacity: loaded ? 1 : 0, transition: 'opacity 0.25s ease' }}
         loading='lazy'
         decoding='async'
         onLoad={() => setLoaded(true)}
         onError={() => {
-          if (!error) setError(true);
-          else setLoaded(true);
+          if (imageCandidateIndex < imageCandidates.length - 1) {
+            setLoaded(false);
+            setImageCandidateIndex((index) => index + 1);
+          } else {
+            setLoaded(true);
+          }
         }}
       />
     </div>
@@ -321,13 +334,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
                 {/* Cover photo */}
                 <div style={{ position: 'relative', height: 160, background: 'rgba(201,168,76,0.05)', overflow: 'hidden' }}>
                   {cat.cover ? (
-                    <img
-                      src={getOptimizedImageUrl(cat.cover, { width: 520, height: 360, quality: 72 }) || cat.cover || PHOTO_PLACEHOLDER}
-                      alt={cat.label}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                      loading="lazy"
-                      decoding="async"
-                    />
+                    <SmartImage src={cat.cover} alt={cat.label} height={160} />
                   ) : (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: '2.8rem' }}>
                       {cat.emoji}

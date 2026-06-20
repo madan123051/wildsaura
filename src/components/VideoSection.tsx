@@ -3,6 +3,62 @@ import { Play, Eye, Heart, ArrowRight, MapPin, MessageCircle, Share2, Send, Tras
 import { Video, Comment, Visitor } from '../types';
 import { getOptimizedImageUrl } from '../utils/imageUrl';
 
+const VIDEO_PLACEHOLDER = '/images/placeholder-card.svg';
+
+const VideoThumb: React.FC<{ video: Video }> = ({ video }) => {
+  const [loaded, setLoaded] = React.useState(false);
+  const source = video.thumbnailUrl || VIDEO_PLACEHOLDER;
+  const optimized = getOptimizedImageUrl(source, { width: 720, height: 405, quality: 72 }) || source;
+  const candidates = React.useMemo(
+    () => Array.from(new Set([optimized, source, VIDEO_PLACEHOLDER].filter(Boolean))),
+    [optimized, source],
+  );
+  const [candidateIndex, setCandidateIndex] = React.useState(0);
+
+  React.useEffect(() => {
+    setLoaded(false);
+    setCandidateIndex(0);
+  }, [optimized, source]);
+
+  return (
+    <>
+      {!loaded && <div className="skeleton-image" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />}
+      <img
+        src={candidates[candidateIndex] || VIDEO_PLACEHOLDER}
+        alt={video.title}
+        style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s, opacity 0.25s', opacity: loaded ? 1 : 0 }}
+        loading="lazy"
+        decoding="async"
+        onLoad={() => setLoaded(true)}
+        onError={() => {
+          if (candidateIndex < candidates.length - 1) {
+            setLoaded(false);
+            setCandidateIndex((index) => index + 1);
+          } else {
+            setLoaded(true);
+          }
+        }}
+      />
+    </>
+  );
+};
+
+const VideoTagChips: React.FC<{ tags: string[] }> = ({ tags }) => (
+  tags.length ? (
+    <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+      {tags.slice(0, 3).map((tag) => (
+        <span key={tag} style={{
+          padding: '0.15rem 0.5rem', borderRadius: '9999px', fontSize: '0.6rem',
+          background: 'rgba(201,168,76,0.12)', color: 'var(--wa-gold-light)',
+          border: '1px solid rgba(201,168,76,0.24)',
+        }}>
+          #{tag.replace(/^#/, '')}
+        </span>
+      ))}
+    </div>
+  ) : null
+);
+
 interface VideoSectionProps {
   videos: Video[];
   onVideoClick: (video: Video) => void;
@@ -219,23 +275,7 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
                       style={{ cursor: 'pointer', position: 'relative', width: '100%', height: '100%' }}
                       onClick={() => setPlayingId(video.id)}
                     >
-                      {video.thumbnailUrl ? (
-                        <img
-                          src={getOptimizedImageUrl(video.thumbnailUrl, { width: 720, height: 405, quality: 72 }) || video.thumbnailUrl}
-                          alt={video.title}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s' }}
-                          loading="lazy"
-                          decoding="async"
-                        />
-                      ) : (
-                        <div style={{
-                          width: '100%', height: '100%',
-                          background: 'linear-gradient(135deg, rgba(201,168,76,0.1), rgba(0,0,0,0.8))',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}>
-                          <Play size={48} style={{ color: 'var(--wa-gold)', opacity: 0.5 }} />
-                        </div>
-                      )}
+                      <VideoThumb video={video} />
                       {/* Play Button Overlay */}
                       <div style={{
                         position: 'absolute', inset: 0,
@@ -264,21 +304,6 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
                           {video.duration}
                         </div>
                       )}
-                      {/* Tags */}
-                      <div style={{
-                        position: 'absolute', top: 8, left: 8,
-                        display: 'flex', gap: '0.3rem', flexWrap: 'wrap',
-                      }}>
-                        {video.tags.slice(0, 3).map((tag) => (
-                          <span key={tag} style={{
-                            padding: '0.15rem 0.5rem', borderRadius: '9999px', fontSize: '0.6rem',
-                            background: 'rgba(201,168,76,0.2)', color: 'var(--wa-gold-light)',
-                            border: '1px solid rgba(201,168,76,0.3)',
-                          }}>
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
                     </div>
                   )}
 
@@ -338,6 +363,7 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
                       {video.description}
                     </p>
                   )}
+                  <VideoTagChips tags={video.tags} />
 
                   {/* Date row */}
                   {video.createdAt && (

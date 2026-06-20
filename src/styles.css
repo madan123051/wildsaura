@@ -451,18 +451,38 @@ html[data-theme="light"] .text-gold-gradient {
 html[data-theme="light"] ::-webkit-scrollbar-track { background: #ece8df; }
 html[data-theme="light"] ::-webkit-scrollbar-thumb { background: rgba(42,96,53,0.3); }
 
-/* ── Dashboard / Admin panel light fix ────────────────────────────────── */
-html[data-theme="light"] [style*="background: linear-gradient(135deg, #0a1f14"],
-html[data-theme="light"] [style*="background: linear-gradient(135deg, #091b14"],
-html[data-theme="light"] [style*="background:#0a1f14"],
-html[data-theme="light"] [style*="background: #0a1f14"] {
+/* ── Dashboard / Admin panel light fix ──────────────────────────────────
+   Keep these overrides away from the real admin dashboard. The dashboard is
+   intentionally dark even when the public site theme is set to light.
+*/
+html[data-theme="light"] [style*="background: linear-gradient(135deg, #0a1f14"]:not(.admin-dashboard, .admin-dashboard *),
+html[data-theme="light"] [style*="background: linear-gradient(135deg, #091b14"]:not(.admin-dashboard, .admin-dashboard *),
+html[data-theme="light"] [style*="background:#0a1f14"]:not(.admin-dashboard, .admin-dashboard *),
+html[data-theme="light"] [style*="background: #0a1f14"]:not(.admin-dashboard, .admin-dashboard *) {
   background: #f4f0e8 !important;
   color: #1a1a18 !important;
 }
-html[data-theme="light"] [style*="background: rgba(9,27,20"],
-html[data-theme="light"] [style*="background: rgba(6,18,13"],
-html[data-theme="light"] [style*="background: rgba(14,38,28"] {
+html[data-theme="light"] [style*="background: rgba(9,27,20"]:not(.admin-dashboard, .admin-dashboard *),
+html[data-theme="light"] [style*="background: rgba(6,18,13"]:not(.admin-dashboard, .admin-dashboard *),
+html[data-theme="light"] [style*="background: rgba(14,38,28"]:not(.admin-dashboard, .admin-dashboard *) {
   background: rgba(255,255,255,0.92) !important;
+}
+
+.admin-dashboard,
+.admin-dashboard input,
+.admin-dashboard textarea,
+.admin-dashboard select {
+  color-scheme: dark;
+}
+
+.admin-dashboard select option {
+  background: #07110d;
+  color: #f7f4e8;
+}
+
+.admin-dashboard select option:checked {
+  background: #d4b96e;
+  color: #062013;
 }
 
 /* ===== SKELETON LOADING ===== */

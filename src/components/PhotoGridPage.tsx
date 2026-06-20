@@ -16,6 +16,7 @@ const useWindowSize = () => {
 interface PhotoGridPageProps {
   photos: Photo[];
   filterTabs: FilterTab[];
+  isLoading?: boolean;
   onBack: () => void;
   onPhotoClick: (photo: Photo) => void;
   onLike: (id: number) => void;
@@ -50,6 +51,7 @@ const getYear = (dateStr: string | any): string => {
 export const PhotoGridPage: React.FC<PhotoGridPageProps> = ({
   photos,
   filterTabs,
+  isLoading = false,
   onBack,
   onPhotoClick,
   onLike,
@@ -255,7 +257,23 @@ export const PhotoGridPage: React.FC<PhotoGridPageProps> = ({
       </div>
 
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: '1.5rem 1rem' }}>
-        {filtered.length === 0 ? (
+        {isLoading && published.length === 0 ? (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: `repeat(${getGridCols()}, 1fr)`,
+            gap: '0.75rem',
+          }}>
+            {Array.from({ length: 8 }).map((_, index) => (
+              <div key={index} className="skeleton-card" style={{ overflow: 'hidden', borderRadius: '0.75rem' }}>
+                <div className="skeleton-image" style={{ width: '100%', aspectRatio: '1/1' }} />
+                <div style={{ padding: '0.75rem' }}>
+                  <div className="skeleton-text medium" />
+                  <div className="skeleton-text short" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '6rem 0' }}>
             <Camera size={48} style={{ margin: '0 auto 1rem', opacity: 0.2, display: 'block' }} />
             <p className="font-cinzel" style={{ color: 'var(--wa-text-muted)', fontSize: '0.875rem' }}>

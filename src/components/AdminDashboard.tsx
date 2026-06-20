@@ -2632,7 +2632,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const topCategory = activeCategories[0] || analytics?.topCategories?.[0];
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--wa-dark)' }}>
+    <div className="admin-dashboard" style={{ display: 'flex', minHeight: '100vh', background: 'var(--wa-dark)' }}>
       {/* Mobile sidebar backdrop */}
       {isMobile && sidebarOpen && (
         <div

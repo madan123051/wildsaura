@@ -32,7 +32,6 @@ interface PhotoCardProps {
 export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, onShare, onDownload, isLoggedIn: _isLoggedIn, onLoginRequired: _onLoginRequired }) => {
   const stopAndRun = (action: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); action(); };
   const [imgLoaded, setImgLoaded] = React.useState(false);
-  const [imgError, setImgError] = React.useState(false);
 
   // Use slug or firestoreId or id for the URL
   const photoSlug = photo.slug || photo.firestoreId || photo.id;
@@ -42,6 +41,16 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, on
     height: 520,
     quality: 72,
   }) || PHOTO_PLACEHOLDER;
+  const imageCandidates = React.useMemo(
+    () => Array.from(new Set([cardImageUrl, sourceImage, PHOTO_PLACEHOLDER].filter(Boolean))),
+    [cardImageUrl, sourceImage],
+  );
+  const [imageCandidateIndex, setImageCandidateIndex] = React.useState(0);
+
+  React.useEffect(() => {
+    setImgLoaded(false);
+    setImageCandidateIndex(0);
+  }, [cardImageUrl, sourceImage]);
 
   return (
     <div
@@ -94,7 +103,7 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, on
           />
         )}
         <img
-          src={imgError ? PHOTO_PLACEHOLDER : cardImageUrl}
+          src={imageCandidates[imageCandidateIndex] || PHOTO_PLACEHOLDER}
           alt={photo.title}
           style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.7s, opacity 0.25s', opacity: imgLoaded ? 1 : 0, userSelect: 'none', WebkitUserDrag: 'none' } as React.CSSProperties}
           loading="lazy"
@@ -103,8 +112,12 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, on
           onDragStart={(e) => e.preventDefault()}
           onLoad={() => setImgLoaded(true)}
           onError={() => {
-            if (!imgError) setImgError(true);
-            else setImgLoaded(true);
+            if (imageCandidateIndex < imageCandidates.length - 1) {
+              setImgLoaded(false);
+              setImageCandidateIndex((index) => index + 1);
+            } else {
+              setImgLoaded(true);
+            }
           }}
         />
         {/* Watermark badge */}

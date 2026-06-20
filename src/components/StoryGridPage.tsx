@@ -15,6 +15,7 @@ const useWindowSize = () => {
 
 interface StoryGridPageProps {
   stories: Story[];
+  isLoading?: boolean;
   onBack: () => void;
   onStoryClick: (story: Story) => void;
 }
@@ -42,7 +43,28 @@ const formatDate = (dateStr: string): string => {
 const estimateReadTime = (content: string): number =>
   Math.max(1, Math.ceil((content || '').split(/\s+/).length / 200));
 
-export const StoryGridPage: React.FC<StoryGridPageProps> = ({ stories, onBack, onStoryClick }) => {
+const STORY_PLACEHOLDER = '/images/placeholder-card.svg';
+
+const SkeletonStoryGrid = () => (
+  <div style={{
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+    gap: '1.25rem',
+  }}>
+    {Array.from({ length: 6 }).map((_, index) => (
+      <div key={index} className="skeleton-card" style={{ overflow: 'hidden', borderRadius: 14 }}>
+        <div className="skeleton-image" style={{ width: '100%', height: 180 }} />
+        <div style={{ padding: '0.875rem' }}>
+          <div className="skeleton-text medium" />
+          <div className="skeleton-text full" />
+          <div className="skeleton-text short" />
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+export const StoryGridPage: React.FC<StoryGridPageProps> = ({ stories, isLoading = false, onBack, onStoryClick }) => {
   const [selectedYear, setSelectedYear] = useState('all');
   const [selectedTag, setSelectedTag] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
@@ -188,7 +210,9 @@ export const StoryGridPage: React.FC<StoryGridPageProps> = ({ stories, onBack, o
       </div>
 
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: '1.5rem 1rem' }}>
-        {filtered.length === 0 ? (
+        {isLoading && stories.length === 0 ? (
+          <SkeletonStoryGrid />
+        ) : filtered.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '6rem 0' }}>
             <BookOpen size={48} style={{ margin: '0 auto 1rem', opacity: 0.2, display: 'block' }} />
             <p className="font-cinzel" style={{ color: 'var(--wa-text-muted)', fontSize: '0.875rem' }}>
@@ -208,7 +232,7 @@ export const StoryGridPage: React.FC<StoryGridPageProps> = ({ stories, onBack, o
             gridTemplateColumns: `repeat(${getGridCols()}, 1fr)`,
             gap: '1.25rem',
           }}>
-            {filtered.map(story => (
+            {filtered.map((story, index) => (
               <div
                 key={story.id}
                 onClick={() => onStoryClick(story)}
@@ -229,10 +253,10 @@ export const StoryGridPage: React.FC<StoryGridPageProps> = ({ stories, onBack, o
               >
                 <div style={{ position: 'relative', overflow: 'hidden' }}>
                   <img
-                    src={getOptimizedImageUrl(story.coverImageUrl, { width: 560, height: 360, quality: 72 }) || story.coverImageUrl}
+                    src={getOptimizedImageUrl(story.coverImageUrl, { width: 560, height: 360, quality: 72 }) || story.coverImageUrl || STORY_PLACEHOLDER}
                     alt={story.title}
                     style={{ width: '100%', height: 180, objectFit: 'cover', display: 'block', transition: 'transform 0.5s' }}
-                    loading="lazy"
+                    loading={index < 6 ? 'eager' : 'lazy'}
                     decoding="async"
                   />
                   <div style={{

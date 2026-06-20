@@ -19,6 +19,7 @@ interface StoriesSectionProps {
 }
 
 const INITIAL_COUNT = 3;
+const STORY_PLACEHOLDER = '/images/placeholder-card.svg';
 const estimateReadTime = (content: string): number => Math.max(1, Math.ceil(content.split(/\s+/).length / 200));
 
 const SkeletonStoryCard = () => (
@@ -131,7 +132,7 @@ export const StoriesSection: React.FC<StoriesSectionProps> = ({ stories, isLoadi
             >
               <div style={{ position: 'relative', overflow: 'hidden' }}>
                 <img
-                  src={getOptimizedImageUrl(story.coverImageUrl, { width: 560, height: 360, quality: 72 }) || story.coverImageUrl}
+                  src={getOptimizedImageUrl(story.coverImageUrl, { width: 560, height: 360, quality: 72 }) || story.coverImageUrl || STORY_PLACEHOLDER}
                   alt={story.title}
                   style={{ width: '100%', height: 200, objectFit: 'cover', transition: 'transform 0.5s' }}
                   loading="lazy"
