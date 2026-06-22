@@ -102,7 +102,7 @@ export const StoryDetail: React.FC<StoryDetailProps> = ({
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--wa-dark)', paddingTop: '80px' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--wa-dark)', paddingTop: '80px', overflowX: 'hidden' as const }}>
       {/* Cover Image */}
       <div style={{ position: 'relative', maxHeight: '50vh', overflow: 'hidden' }}>
         <img
@@ -172,7 +172,8 @@ export const StoryDetail: React.FC<StoryDetailProps> = ({
 
           {/* Like Button */}
           <div style={{
-            display: 'flex', alignItems: 'center', gap: '1rem',
+            display: 'flex', alignItems: 'center', gap: '0.75rem',
+            flexWrap: 'wrap' as const,
             padding: '1.25rem 0', borderTop: '1px solid var(--wa-border)',
             borderBottom: '1px solid var(--wa-border)',
             marginBottom: '2rem',
