@@ -194,31 +194,130 @@ export const StoryDetail: React.FC<StoryDetailProps> = ({
             <button
               onClick={handleShare}
               style={{
-                display: 'flex', alignItems: 'center', gap: '0.5rem',
-                padding: '0.5rem 1.25rem', borderRadius: '8px',
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid var(--wa-border)',
-                color: 'var(--wa-text-muted)',
-                cursor: 'pointer', fontSize: '0.85rem', transition: 'all 0.3s',
-              }}
-            >
-              <Share2 size={18} /> Share
-            </button>
-            <a href={shareLinks.whatsapp} target="_blank" rel="noopener noreferrer" className="btn-gold-outline" style={{ textDecoration: 'none', padding: '0.5rem 0.9rem' }}>WhatsApp</a>
-            <a href={shareLinks.facebook} target="_blank" rel="noopener noreferrer" className="btn-gold-outline" style={{ textDecoration: 'none', padding: '0.5rem 0.9rem' }}>Facebook</a>
-            <a href={shareLinks.x} target="_blank" rel="noopener noreferrer" className="btn-gold-outline" style={{ textDecoration: 'none', padding: '0.5rem 0.9rem' }}>X</a>
-            {/* Share Toast */}
-            {shareToast && (
-              <div style={{
-                position: 'fixed', bottom: 30, left: '50%', transform: 'translateX(-50%)',
-                background: 'linear-gradient(135deg, #3f7b4a 0%, #9fcb8f 55%, #72aa81 100%)', color: '#062013', padding: '0.75rem 1.5rem',
-                borderRadius: '10px', fontWeight: 600, fontSize: '0.85rem', zIndex: 9999,
-                boxShadow: '0 4px 20px rgba(201,168,76,0.4)',
-              }}>
-                📋 Story link copied to clipboard!
-              </div>
-            )}
-          </div>
+                <div
+  style={{
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem',
+    flexWrap: 'wrap',
+    width: '100%',
+    maxWidth: '100%',
+    padding: '1.25rem 0',
+    borderTop: '1px solid var(--wa-border)',
+    borderBottom: '1px solid var(--wa-border)',
+    marginBottom: '2rem',
+  }}
+>
+  <button
+    onClick={onLike}
+    style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.5rem',
+      padding: '0.5rem 1.25rem',
+      borderRadius: '8px',
+      background: story.liked
+        ? 'rgba(201,168,76,0.2)'
+        : 'rgba(255,255,255,0.05)',
+      border: story.liked
+        ? '1px solid rgba(201,168,76,0.4)'
+        : '1px solid var(--wa-border)',
+      color: story.liked
+        ? 'var(--wa-gold)'
+        : 'var(--wa-text-muted)',
+      cursor: 'pointer',
+      fontSize: '0.85rem',
+      transition: 'all 0.3s',
+    }}
+  >
+    <Heart size={18} fill={story.liked ? 'currentColor' : 'none'} />
+    {story.likeCount} {story.likeCount === 1 ? 'Like' : 'Likes'}
+  </button>
+
+  <button
+    onClick={handleShare}
+    style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.5rem',
+      padding: '0.5rem 1.25rem',
+      borderRadius: '8px',
+      background: 'rgba(255,255,255,0.05)',
+      border: '1px solid var(--wa-border)',
+      color: 'var(--wa-text-muted)',
+      cursor: 'pointer',
+      fontSize: '0.85rem',
+      transition: 'all 0.3s',
+    }}
+  >
+    <Share2 size={18} />
+    Share
+  </button>
+
+  <a
+    href={shareLinks.whatsapp}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="btn-gold-outline"
+    style={{
+      textDecoration: 'none',
+      padding: '0.5rem 0.9rem',
+      whiteSpace: 'nowrap',
+    }}
+  >
+    WhatsApp
+  </a>
+
+  <a
+    href={shareLinks.facebook}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="btn-gold-outline"
+    style={{
+      textDecoration: 'none',
+      padding: '0.5rem 0.9rem',
+      whiteSpace: 'nowrap',
+    }}
+  >
+    Facebook
+  </a>
+
+  <a
+    href={shareLinks.x}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="btn-gold-outline"
+    style={{
+      textDecoration: 'none',
+      padding: '0.5rem 0.9rem',
+      whiteSpace: 'nowrap',
+    }}
+  >
+    X
+  </a>
+
+  {shareToast && (
+    <div
+      style={{
+        position: 'fixed',
+        bottom: 30,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        background:
+          'linear-gradient(135deg, #3f7b4a 0%, #9fcb8f 55%, #72aa81 100%)',
+        color: '#062013',
+        padding: '0.75rem 1.5rem',
+        borderRadius: '10px',
+        fontWeight: 600,
+        fontSize: '0.85rem',
+        zIndex: 9999,
+        boxShadow: '0 4px 20px rgba(201,168,76,0.4)',
+      }}
+    >
+      📋 Story link copied to clipboard!
+    </div>
+  )}
+</div>
 
           {/* Comments Section */}
           <div style={{ marginBottom: '3rem' }}>
