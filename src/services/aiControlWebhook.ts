@@ -11,31 +11,25 @@ type AiControlWebhookPayload = {
 let warnedMissingConfig = false;
 
 export async function sendToAiControlCenter(payload: AiControlWebhookPayload): Promise<void> {
-  const baseUrl = import.meta.env.VITE_AI_CONTROL_CENTER_URL;
-  const connectorSecret = import.meta.env.VITE_WEBSITE_CONNECTOR_SECRET;
-
-  if (!baseUrl || !connectorSecret) {
-    if (!warnedMissingConfig) {
-      console.warn('AI Control Center webhook skipped: missing connector configuration.');
-      warnedMissingConfig = true;
-    }
-    return;
-  }
-
   try {
-    const response = await fetch(`${baseUrl.replace(/\/$/, '')}/api/connectors/website`, {
+    const response = await fetch('/api/ai-control-webhook', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-connector-secret': connectorSecret,
       },
       body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
-      console.warn(`AI Control Center webhook failed: ${response.status} ${response.statusText}`);
+      if (!warnedMissingConfig) {
+        console.warn(`AI Control Center webhook failed: ${response.status} ${response.statusText}`);
+        warnedMissingConfig = true;
+      }
     }
   } catch (error) {
-    console.warn('AI Control Center webhook failed:', error);
+    if (!warnedMissingConfig) {
+      console.warn('AI Control Center webhook failed:', error);
+      warnedMissingConfig = true;
+    }
   }
 }
