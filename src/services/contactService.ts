@@ -1,5 +1,6 @@
 import { db } from '../firebase';
 import { collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, serverTimestamp, onSnapshot, Unsubscribe } from 'firebase/firestore';
+import { sendToAiControlCenter } from './aiControlWebhook';
 
 export interface ContactMessage {
   id?: string;
@@ -17,6 +18,15 @@ export async function saveContactMessage(msg: Omit<ContactMessage, 'id'>): Promi
     ...msg,
     read: false,
     createdAt: serverTimestamp(),
+  });
+  void sendToAiControlCenter({
+    source: 'website',
+    type: 'contact_message',
+    sender_name: msg.name,
+    sender_handle: msg.email,
+    subject: 'Website contact message',
+    body: msg.message,
+    metadata: { collection: COLLECTION, docId: docRef.id },
   });
   return docRef.id;
 }

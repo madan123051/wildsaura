@@ -1,5 +1,6 @@
 import { collection, addDoc, getDocs, query, orderBy, onSnapshot, Unsubscribe, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { sendToAiControlCenter } from './aiControlWebhook';
 
 export interface FirestoreComment {
   id?: string;
@@ -18,6 +19,18 @@ export async function addCommentToFirestore(comment: Omit<FirestoreComment, 'id'
       ...comment,
       avatarUrl: comment.avatarUrl || '',
       createdAt: new Date(),
+    });
+    void sendToAiControlCenter({
+      source: 'website',
+      type: 'comment',
+      sender_name: comment.displayName,
+      body: comment.content,
+      metadata: {
+        targetType: comment.targetType,
+        targetId: comment.targetId,
+        collection: 'comments',
+        docId: docRef.id,
+      },
     });
     return docRef.id;
   } catch (error) {

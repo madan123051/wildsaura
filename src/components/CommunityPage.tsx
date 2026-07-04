@@ -6,6 +6,7 @@ import {
 import { onAuthStateChanged } from 'firebase/auth';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, auth, storage } from '../firebase';
+import { sendToAiControlCenter } from '../services/aiControlWebhook';
 import { Footer } from './Footer';
 import { AvatarDisplay } from './AvatarDisplay';
 import { Visitor } from '../types';
@@ -503,12 +504,13 @@ export function CommunityPage({
     const snap = await getDoc(postRef);
     if (!snap.exists()) return;
     const existing: CommentItem[] = snap.data().comments || [];
+    const username = visitor.displayName;
     await updateDoc(postRef, {
       comments: [
         ...existing,
         {
           userId: authUid,
-          username: visitor.displayName,
+          username,
           text,
           timestamp: new Date().toISOString(),
           avatarUrl: visitor.avatarUrl || '',
@@ -516,6 +518,13 @@ export function CommunityPage({
           spiritAnimal: visitor.avatarAnimal || '',
         },
       ],
+    });
+    void sendToAiControlCenter({
+      source: 'website',
+      type: 'community_comment',
+      sender_name: username,
+      body: text,
+      metadata: { collection: 'community_posts', postId },
     });
     setCommentInputs((prev) => ({ ...prev, [postId]: '' }));
   };
