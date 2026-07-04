@@ -1,4 +1,5 @@
-import { db } from '../firebase';
+import { auth, db } from '../firebase';
+import { signInAnonymously } from 'firebase/auth';
 import { collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, serverTimestamp, onSnapshot, Unsubscribe } from 'firebase/firestore';
 import { sendToAiControlCenter } from './aiControlWebhook';
 
@@ -13,7 +14,19 @@ export interface ContactMessage {
 
 const COLLECTION = 'contactMessages';
 
+async function ensureContactWriteAuth(): Promise<void> {
+  if (auth.currentUser) return;
+
+  try {
+    await signInAnonymously(auth);
+  } catch (error) {
+    console.warn('Anonymous contact auth unavailable; trying public contact write.', error);
+  }
+}
+
 export async function saveContactMessage(msg: Omit<ContactMessage, 'id'>): Promise<string> {
+  await ensureContactWriteAuth();
+
   const docRef = await addDoc(collection(db, COLLECTION), {
     ...msg,
     read: false,
