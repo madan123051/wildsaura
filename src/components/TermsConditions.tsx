@@ -60,7 +60,7 @@ const sections = [
     icon: Mail,
     title: '9. Contact Us',
     content: 'For permission requests or any questions regarding these Terms, please contact us at:',
-    contact: 'info@wildsaura.com',
+    contact: 'help@wildsaura.com',
   },
 ];
 
