@@ -62,6 +62,8 @@ interface CommunityPageProps {
   isAdmin: boolean;
   onAdminClick: () => void;
   onTermsClick: () => void;
+  onPrivacyPolicyClick: () => void;
+  onDataDeletionClick: () => void;
   onProfileClick?: () => void;
 }
 
@@ -179,6 +181,8 @@ export function CommunityPage({
   isAdmin,
   onAdminClick,
   onTermsClick,
+  onPrivacyPolicyClick,
+  onDataDeletionClick,
   onProfileClick,
 }: CommunityPageProps) {
   const [posts, setPosts] = useState<Post[]>([]);
@@ -1186,7 +1190,12 @@ export function CommunityPage({
         )}
       </div>
 
-      <Footer logoUrl={logoUrl} onTermsClick={onTermsClick} />
+      <Footer
+        logoUrl={logoUrl}
+        onTermsClick={onTermsClick}
+        onPrivacyPolicyClick={onPrivacyPolicyClick}
+        onDataDeletionClick={onDataDeletionClick}
+      />
 
       {/* New/Edit Post Modal */}
       {showModal && (

@@ -3,6 +3,8 @@ import React from 'react';
 interface FooterProps {
   logoUrl?: string;
   onTermsClick?: () => void;
+  onPrivacyPolicyClick?: () => void;
+  onDataDeletionClick?: () => void;
 }
 
 const FacebookIcon = () => (
@@ -29,7 +31,13 @@ const SOCIAL_LINKS = [
   { name: 'YouTube', href: 'https://www.youtube.com/@NatureFrame_com', Icon: YouTubeIcon },
 ];
 
-export const Footer: React.FC<FooterProps> = ({ logoUrl, onTermsClick }) => {
+export const Footer: React.FC<FooterProps> = ({ logoUrl, onTermsClick, onPrivacyPolicyClick, onDataDeletionClick }) => {
+  const legalLinks = [
+    onTermsClick ? { label: 'Terms & Conditions', href: '/terms', onClick: onTermsClick } : null,
+    onPrivacyPolicyClick ? { label: 'Privacy Policy', href: '/privacy-policy', onClick: onPrivacyPolicyClick } : null,
+    onDataDeletionClick ? { label: 'Data Deletion', href: '/data-deletion', onClick: onDataDeletionClick } : null,
+  ].filter(Boolean) as Array<{ label: string; href: string; onClick: () => void }>;
+
   return (
     <footer
       style={{
@@ -50,22 +58,22 @@ export const Footer: React.FC<FooterProps> = ({ logoUrl, onTermsClick }) => {
           <p className="font-cinzel text-wa-muted" style={{ fontSize: '0.7rem', margin: 0 }}>
             © {new Date().getFullYear()} Wilds Aura Photography. All Rights Reserved.
           </p>
-          {onTermsClick && (
-            <>
+          {legalLinks.map((link) => (
+            <React.Fragment key={link.href}>
               <span className="text-wa-muted" style={{ fontSize: '0.7rem' }}>|</span>
               <a
-                href="/terms"
+                href={link.href}
                 onClick={(e) => {
                   e.preventDefault();
-                  onTermsClick();
+                  link.onClick();
                 }}
                 className="nav-link"
                 style={{ fontSize: '0.65rem', letterSpacing: '0.12em', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'none' }}
               >
-                Terms & Conditions
+                {link.label}
               </a>
-            </>
-          )}
+            </React.Fragment>
+          ))}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           {SOCIAL_LINKS.map(({ name, href, Icon }) => (

@@ -82,6 +82,8 @@ export default async function handler(req, res) {
     { loc: `${SITE_URL}/about`, changefreq: 'monthly', priority: '0.6', lastmod: today },
     { loc: `${SITE_URL}/contact`, changefreq: 'monthly', priority: '0.6', lastmod: today },
     { loc: `${SITE_URL}/terms`, changefreq: 'monthly', priority: '0.4', lastmod: today },
+    { loc: `${SITE_URL}/privacy-policy`, changefreq: 'monthly', priority: '0.4', lastmod: today },
+    { loc: `${SITE_URL}/data-deletion`, changefreq: 'monthly', priority: '0.4', lastmod: today },
     { loc: `${SITE_URL}/marketplace`, changefreq: 'monthly', priority: '0.5', lastmod: today },
     { loc: `${SITE_URL}/ngo`, changefreq: 'monthly', priority: '0.5', lastmod: today },
     { loc: `${SITE_URL}/video-grid`, changefreq: 'weekly', priority: '0.6', lastmod: today },

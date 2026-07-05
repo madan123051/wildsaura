@@ -92,6 +92,26 @@ const PAGE_DEFINITIONS = [
     keywords: ['WILDS AURA terms', 'photography usage terms'],
   },
   {
+    path: '/privacy-policy',
+    type: 'website',
+    schemaType: 'WebPage',
+    title: 'Privacy Policy - WILDS AURA',
+    description: 'Read the WILDS AURA privacy policy covering contact form data, comments, community data, and future Instagram or Facebook connector data.',
+    heading: 'Privacy Policy',
+    body: 'Wildsaura privacy practices for contact messages, comments, community posts, and future Instagram or Facebook connector data.',
+    keywords: ['WILDS AURA privacy policy', 'Wildsaura privacy', 'Meta app privacy policy'],
+  },
+  {
+    path: '/data-deletion',
+    type: 'website',
+    schemaType: 'WebPage',
+    title: 'Data Deletion - WILDS AURA',
+    description: 'Request deletion of your WILDS AURA contact form, comment, community, profile, or connected social account data.',
+    heading: 'Data Deletion',
+    body: 'Instructions for requesting deletion of WILDS AURA website, profile, community, comment, or connector data.',
+    keywords: ['WILDS AURA data deletion', 'Wildsaura delete data', 'Meta app data deletion'],
+  },
+  {
     path: '/marketplace',
     type: 'website',
     schemaType: 'CollectionPage',
@@ -124,7 +144,7 @@ const PAGE_DEFINITIONS = [
 ];
 
 function buildVisibleContent(page) {
-  return `<main><article><h1>${esc(page.heading)}</h1><p>${esc(page.body)}</p><nav aria-label="Important WILDS AURA pages"><a href="/photos">Photos</a> <a href="/story-grid">Stories</a> <a href="/video-grid">Videos</a> <a href="/about">About</a> <a href="/contact">Contact</a></nav></article></main>`;
+  return `<main><article><h1>${esc(page.heading)}</h1><p>${esc(page.body)}</p><nav aria-label="Important WILDS AURA pages"><a href="/photos">Photos</a> <a href="/story-grid">Stories</a> <a href="/video-grid">Videos</a> <a href="/about">About</a> <a href="/contact">Contact</a> <a href="/privacy-policy">Privacy Policy</a> <a href="/data-deletion">Data Deletion</a></nav></article></main>`;
 }
 
 function renderPage(page) {

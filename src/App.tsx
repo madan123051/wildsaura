@@ -35,6 +35,12 @@ const VideoSection = lazy(() =>
 const TermsConditions = lazy(() =>
   import('./components/TermsConditions').then((module) => ({ default: module.TermsConditions })),
 );
+const PrivacyPolicyPage = lazy(() =>
+  import('./components/MetaEligibilityPages').then((module) => ({ default: module.PrivacyPolicyPage })),
+);
+const DataDeletionPage = lazy(() =>
+  import('./components/MetaEligibilityPages').then((module) => ({ default: module.DataDeletionPage })),
+);
 const StoryDetail = lazy(() =>
   import('./components/StoryDetail').then((module) => ({ default: module.StoryDetail })),
 );
@@ -168,7 +174,7 @@ const FILTER_TABS: FilterTab[] = [
 ];
 
 // ── App ─────────────────────────────────────────────────────────────────────
-type AppView = 'home' | 'admin-login' | 'admin-dashboard' | 'story-detail' | 'video-detail' | 'terms' | 'marketplace' | 'community' | 'ngo' | 'about' | 'contact' | 'photos' | 'photo-grid' | 'story-grid' | 'video-grid';
+type AppView = 'home' | 'admin-login' | 'admin-dashboard' | 'story-detail' | 'video-detail' | 'terms' | 'privacy-policy' | 'data-deletion' | 'marketplace' | 'community' | 'ngo' | 'about' | 'contact' | 'photos' | 'photo-grid' | 'story-grid' | 'video-grid';
 
 const App: React.FC = () => {
   const [view, setView] = useState<AppView>(() => {
@@ -177,6 +183,8 @@ const App: React.FC = () => {
       if (path.startsWith('/story/')) return 'story-detail';
       if (path.startsWith('/video/')) return 'video-detail';
       if (path === '/terms') return 'terms';
+      if (path === '/privacy-policy') return 'privacy-policy';
+      if (path === '/data-deletion') return 'data-deletion';
       if (path === '/marketplace') return 'marketplace';
       if (path === '/community') return 'community';
       if (path === '/ngo') return 'ngo';
@@ -829,6 +837,10 @@ const App: React.FC = () => {
         }
       } else if (path === '/terms') {
         setView('terms');
+      } else if (path === '/privacy-policy') {
+        setView('privacy-policy');
+      } else if (path === '/data-deletion') {
+        setView('data-deletion');
       } else if (path.startsWith('/video/')) {
         const videoId = decodeURIComponent(path.replace('/video/', ''));
         const matchedVideo = videos.find((video) => matchesVideoRoute(video, videoId));
@@ -1628,6 +1640,25 @@ const App: React.FC = () => {
     window.scrollTo(0, 0);
   }, []);
 
+  const handlePrivacyPolicyClick = useCallback(() => {
+    setView('privacy-policy');
+    window.history.pushState({}, '', '/privacy-policy');
+    window.scrollTo(0, 0);
+  }, []);
+
+  const handleDataDeletionClick = useCallback(() => {
+    setView('data-deletion');
+    window.history.pushState({}, '', '/data-deletion');
+    window.scrollTo(0, 0);
+  }, []);
+
+  const footerNavProps = {
+    logoUrl,
+    onTermsClick: handleTermsClick,
+    onPrivacyPolicyClick: handlePrivacyPolicyClick,
+    onDataDeletionClick: handleDataDeletionClick,
+  };
+
   const handleStoriesNavClick = useCallback(() => {
     setView('story-grid');
     window.history.pushState({}, '', '/story-grid');
@@ -1832,7 +1863,53 @@ const App: React.FC = () => {
             <TermsConditions onBack={() => { setView('home'); window.history.pushState({}, '', '/'); window.scrollTo(0, 0); }} />
           </Suspense>
         </div>
-        <Footer logoUrl={logoUrl} onTermsClick={handleTermsClick} />
+        <Footer {...footerNavProps} />
+        <Suspense fallback={<InlineFallback />}>
+          {deferNonCritical && <AIChatbot photos={photos} onPhotoClick={openPhoto} />}
+          {showSearch && <SearchBar
+            isOpen={showSearch}
+            onClose={() => { setShowSearch(false); setSearchQuery(''); }}
+            query={searchQuery}
+            onQueryChange={setSearchQuery}
+            photos={photos}
+            onPhotoClick={openPhoto}
+          />}
+          {showVisitorLogin && <VisitorLogin
+            isOpen={showVisitorLogin}
+            onClose={() => setShowVisitorLogin(false)}
+            onLogin={handleVisitorLogin}
+          />}
+        </Suspense>
+      </div>
+    );
+  }
+
+  // ── Meta Eligibility Legal Pages ──
+  if (view === 'privacy-policy' || view === 'data-deletion') {
+    const LegalPage = view === 'privacy-policy' ? PrivacyPolicyPage : DataDeletionPage;
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--wa-bg)', display: 'flex', flexDirection: 'column' }}>
+        <Header
+          onScrollToGallery={scrollToGallery}
+          logoUrl={logoUrl}
+          onLogoClick={handleLogoClick}
+          onSearchClick={() => setShowSearch(true)}
+          visitor={visitor}
+          onVisitorLoginClick={() => setShowVisitorLogin(true)}
+          onVisitorLogout={handleVisitorLogout}
+          onVisitorUpdate={handleVisitorUpdate}
+          onStoriesClick={handleStoriesNavClick}
+          notificationCount={unreadNotifCount}
+          onNotificationClick={() => setShowNotifPanel(p => !p)}
+          isAdmin={isAdmin}
+          onAdminClick={() => { setView('admin-dashboard'); window.history.pushState({}, '', '/admin'); }}
+        />
+        <div style={{ flex: 1 }}>
+          <Suspense fallback={<RouteFallback />}>
+            <LegalPage onBack={() => { setView('home'); window.history.pushState({}, '', '/'); window.scrollTo(0, 0); }} />
+          </Suspense>
+        </div>
+        <Footer {...footerNavProps} />
         <Suspense fallback={<InlineFallback />}>
           {deferNonCritical && <AIChatbot photos={photos} onPhotoClick={openPhoto} />}
           {showSearch && <SearchBar
@@ -1887,7 +1964,7 @@ const App: React.FC = () => {
             />
           </Suspense>
         </div>
-        <Footer logoUrl={logoUrl} onTermsClick={handleTermsClick} />
+        <Footer {...footerNavProps} />
         <Suspense fallback={<InlineFallback />}>
           {deferNonCritical && <AIChatbot photos={photos} onPhotoClick={openPhoto} />}
           {showSearch && <SearchBar
@@ -1942,7 +2019,7 @@ const App: React.FC = () => {
             />
           </Suspense>
         </div>
-        <Footer logoUrl={logoUrl} onTermsClick={handleTermsClick} />
+        <Footer {...footerNavProps} />
       </div>
     );
   }
@@ -1986,7 +2063,7 @@ const App: React.FC = () => {
         {cta && <p style={{ marginTop: '1.5rem', fontWeight: 700, color: 'var(--wa-accent)' }}>{cta}</p>}
       </div>
       </div>
-      <Footer logoUrl={logoUrl} onTermsClick={handleTermsClick} />
+      <Footer {...footerNavProps} />
     </div>
   );
   if (view === 'marketplace') return <StaticPage title="Buy & Sell Authentic Nepal Photography" text="Support local photographers by purchasing high-quality images. Use them for personal or commercial projects. Option A: Buy Now via Google Form/DM and payment by eSewa or bank. Option B: Stripe or Gumroad links." cta="20% of every purchase supports animal rescue in Nepal." />;
@@ -2007,6 +2084,8 @@ const App: React.FC = () => {
           isAdmin={isAdmin}
           onAdminClick={() => { setView('admin-dashboard'); window.history.pushState({}, '', '/admin'); }}
           onTermsClick={handleTermsClick}
+          onPrivacyPolicyClick={handlePrivacyPolicyClick}
+          onDataDeletionClick={handleDataDeletionClick}
           onProfileClick={handleProfileClick}
         />
         {showVisitorLogin && <VisitorLogin
@@ -2178,7 +2257,7 @@ const App: React.FC = () => {
       </Suspense>
       <AboutSection onMapClick={() => setShowMap(true)} />
       <OurAppsSection />
-      <Footer logoUrl={logoUrl} onTermsClick={handleTermsClick} />
+      <Footer {...footerNavProps} />
 
       {/* Live Stats Floating Widget - Admin Only */}
       {isAdmin && (
