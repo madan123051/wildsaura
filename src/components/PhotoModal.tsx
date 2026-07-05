@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Heart, Share2, Download, MapPin, User, Tag, Camera, Maximize2, Timer, Zap, Eye, ImageOff, BookOpen, Trash2, ChevronLeft, ChevronRight, Copy, ExternalLink, CalendarDays } from 'lucide-react';
+import { X, Heart, Share2, Download, MapPin, User, Tag, Camera, Maximize2, Timer, Zap, Eye, BookOpen, Trash2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, CalendarDays } from 'lucide-react';
 import { Photo, Comment, Visitor } from '../types';
+import { getOptimizedImageUrl } from '../utils/imageUrl';
 
 const formatPhotoDate = (createdAt: any): string => {
   if (!createdAt) return '';
@@ -48,6 +49,14 @@ const LinkIconSvg = () => (
 /** Stable key to identify a photo across id/firestoreId/slug differences */
 const getPhotoKey = (p: Photo) => p.firestoreId || p.slug || String(p.id);
 
+const getModalImageUrl = (url?: string) =>
+  getOptimizedImageUrl(url, {
+    width: 1800,
+    quality: 84,
+    fit: 'contain',
+    maxAge: '30d',
+  }) || url || '';
+
 export const PhotoModal: React.FC<PhotoModalProps> = ({
   photo, onClose, onLike, onShare, onDownload, onGenerateStory, isGeneratingStory, isAdmin, visitor, comments, onAddComment, onVisitorLoginClick, onDeleteComment, freeDownloadsLeft, isDownloading, photos, onNavigate,
 }) => {
@@ -55,24 +64,67 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
   const [commentText, setCommentText] = useState('');
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [imageCandidateIndex, setImageCandidateIndex] = useState(0);
+  const [isImageLoaded, setIsImageLoaded] = useState(false);
   const shareMenuRef = useRef<HTMLDivElement>(null);
   const shareButtonRef = useRef<HTMLButtonElement>(null);
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
 
   const hasExif = photo.cameraModel || photo.lens || photo.aperture || photo.shutterSpeed || photo.iso || photo.focalLength;
+  const photoKey = getPhotoKey(photo);
+  const modalImageUrl = getModalImageUrl(photo.imageUrl);
+  const imageCandidates = Array.from(new Set([modalImageUrl, photo.imageUrl].filter(Boolean)));
+  const currentImageSrc = imageCandidates[imageCandidateIndex] || photo.imageUrl;
 
   const currentIndex = photos ? photos.findIndex(p => getPhotoKey(p) === getPhotoKey(photo)) : -1;
-  const hasPrev = photos && currentIndex > 0;
-  const hasNext = photos && currentIndex >= 0 && currentIndex < photos.length - 1;
+  const canNavigate = Boolean(photos && photos.length > 1 && currentIndex >= 0 && onNavigate);
+  const hasPrev = canNavigate;
+  const hasNext = canNavigate;
+  const nextPhoto = canNavigate && photos ? photos[(currentIndex + 1) % photos.length] : null;
+  const previousPhoto = canNavigate && photos ? photos[(currentIndex - 1 + photos.length) % photos.length] : null;
+  const shouldAutoAdvance = canNavigate && !isDetailsOpen && !showShareMenu;
 
   const goToPrev = useCallback(() => {
-    if (hasPrev && onNavigate && photos) onNavigate(photos[currentIndex - 1]);
-  }, [hasPrev, onNavigate, photos, currentIndex]);
+    if (!canNavigate || !onNavigate || !photos) return;
+    const targetIndex = currentIndex > 0 ? currentIndex - 1 : photos.length - 1;
+    onNavigate(photos[targetIndex]);
+  }, [canNavigate, onNavigate, photos, currentIndex]);
 
   const goToNext = useCallback(() => {
-    if (hasNext && onNavigate && photos) onNavigate(photos[currentIndex + 1]);
-  }, [hasNext, onNavigate, photos, currentIndex]);
+    if (!canNavigate || !onNavigate || !photos) return;
+    onNavigate(photos[(currentIndex + 1) % photos.length]);
+  }, [canNavigate, onNavigate, photos, currentIndex]);
+
+  useEffect(() => {
+    setImageCandidateIndex(0);
+    setIsImageLoaded(false);
+    setShowShareMenu(false);
+  }, [photoKey, modalImageUrl]);
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!shouldAutoAdvance) return;
+    const timer = window.setTimeout(goToNext, 5000);
+    return () => window.clearTimeout(timer);
+  }, [shouldAutoAdvance, goToNext, photoKey]);
+
+  useEffect(() => {
+    [nextPhoto, previousPhoto].forEach((candidate) => {
+      if (!candidate?.imageUrl) return;
+      const preload = new Image();
+      preload.decoding = 'async';
+      preload.src = getModalImageUrl(candidate.imageUrl);
+    });
+  }, [nextPhoto?.imageUrl, previousPhoto?.imageUrl]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -165,34 +217,66 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
   return (
     <div 
       className="modal-backdrop photo-modal-backdrop" 
-      style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.5rem' }}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '0.75rem', background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(12px)',
+      }}
       onClick={onClose}
     >
       <div 
         className="photo-modal-shell"
         onClick={(e) => e.stopPropagation()}
         style={{
-          borderRadius: '1rem', maxWidth: '48rem', width: '100%', maxHeight: '96vh', overflowY: 'auto',
-          background: 'var(--wa-dark-card)', border: '1px solid rgba(201,168,76,0.2)',
+          position: 'relative', borderRadius: '1rem', width: 'min(100%, 96vw)', maxWidth: '1400px',
+          height: 'min(92dvh, 920px)', overflow: 'hidden',
+          background: '#020504', border: '1px solid rgba(201,168,76,0.2)',
           boxShadow: '0 0 80px rgba(0,0,0,0.8)',
         }}
       >
         {/* — Image — */}
         <div 
           className="photo-modal-image-wrap"
-          style={{ position: 'relative', touchAction: 'pan-y' }}
+          style={{ position: 'relative', width: '100%', height: '100%', touchAction: 'pan-y', background: '#020504', overflow: 'hidden' }}
           onContextMenu={(e) => e.preventDefault()}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
         >
-          <img 
+          {!isImageLoaded && (
+            <div className="photo-modal-image-loader" aria-hidden="true">
+              <div />
+            </div>
+          )}
+          <img
+            key={`${photoKey}-${imageCandidateIndex}`}
             className="photo-modal-image"
-            src={photo.imageUrl} 
+            src={currentImageSrc}
             alt={`${photo.title} - ${(photo.tags || []).join(', ')}`}
-            style={{ width: '100%', objectFit: 'cover', borderRadius: '1rem 1rem 0 0', maxHeight: '50vh', userSelect: 'none', WebkitUserDrag: 'none' } as React.CSSProperties}
+            style={{
+              width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center',
+              borderRadius: '1rem', userSelect: 'none', WebkitUserDrag: 'none',
+              opacity: isImageLoaded ? 1 : 0, transform: isImageLoaded ? 'scale(1)' : 'scale(0.985)',
+              transition: 'opacity 260ms ease, transform 360ms ease',
+            } as React.CSSProperties}
+            decoding="async"
+            fetchPriority="high"
+            sizes="100vw"
             draggable={false}
             onDragStart={(e) => e.preventDefault()}
+            onLoad={() => setIsImageLoaded(true)}
+            onError={() => {
+              if (imageCandidateIndex < imageCandidates.length - 1) {
+                setIsImageLoaded(false);
+                setImageCandidateIndex((index) => index + 1);
+              } else {
+                setIsImageLoaded(true);
+              }
+            }}
           />
+          {shouldAutoAdvance && (
+            <div className="photo-modal-progress" aria-hidden="true">
+              <span key={photoKey} />
+            </div>
+          )}
           {/* Click blocker - pointerEvents:none so swipe/tap events reach the container */}
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: 'none' }} />
 
@@ -224,7 +308,7 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
           {/* Photo counter - bottom left ON image */}
           {photos && photos.length > 1 && currentIndex >= 0 && (
             <div style={{
-              position: 'absolute', bottom: '0.6rem', left: '0.6rem', zIndex: 2,
+              position: 'absolute', top: '2.65rem', left: '0.6rem', zIndex: 2,
               background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
               borderRadius: '9999px', padding: '0.15rem 0.6rem',
               fontSize: '0.65rem', color: 'rgba(255,255,255,0.75)', letterSpacing: '0.05em',
@@ -235,7 +319,7 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
 
           {/* Watermark - bottom right ON image */}
           <span className="font-cinzel" style={{
-            position: 'absolute', bottom: 6, right: 6, zIndex: 2,
+            position: 'absolute', top: 9, right: 48, zIndex: 2,
             padding: '2px 6px', background: 'rgba(0,0,0,0.5)',
             border: '1px solid rgba(201,168,76,0.4)', borderRadius: '4px',
             color: 'rgba(201,168,76,0.8)', fontSize: '0.5rem', fontWeight: 700,
@@ -257,8 +341,43 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
             </button>
           )}
         </div>
+        {!isDetailsOpen && (
+          <div className="photo-modal-collapsed-details">
+            <div className="photo-modal-collapsed-copy">
+              <h2 className="font-playfair">{photo.title}</h2>
+              <p>
+                {photo.photographer || 'WildSaura'}
+                {photo.location ? ` · ${photo.location}` : ''}
+                {formatPhotoDate(photo.createdAt) ? ` · ${formatPhotoDate(photo.createdAt)}` : ''}
+              </p>
+            </div>
+            <button className="photo-modal-details-toggle" onClick={() => setIsDetailsOpen(true)}>
+              <span>Get details</span>
+              <ChevronUp size={16} />
+            </button>
+          </div>
+        )}
         {/* ── Compact Info Section ── */}
-        <div className="photo-modal-info" style={{ padding: '0.75rem 1rem' }}>
+        <div
+          className={`photo-modal-info ${isDetailsOpen ? 'is-open' : ''}`}
+          style={{
+            position: 'absolute', left: '0.75rem', right: '0.75rem', bottom: '0.75rem', zIndex: 8,
+            maxHeight: 'min(68dvh, 34rem)', overflowY: 'auto', padding: '0.75rem 1rem',
+            borderRadius: '0.9rem', background: 'rgba(5, 12, 9, 0.92)',
+            border: '1px solid rgba(201,168,76,0.22)', boxShadow: '0 -16px 60px rgba(0,0,0,0.45)',
+            backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)',
+            transform: isDetailsOpen ? 'translateY(0)' : 'translateY(calc(100% + 1rem))',
+            opacity: isDetailsOpen ? 1 : 0, pointerEvents: isDetailsOpen ? 'auto' : 'none',
+            transition: 'transform 260ms ease, opacity 220ms ease',
+          }}
+        >
+          <div className="photo-modal-panel-header">
+            <span className="photo-modal-panel-grip" />
+            <button onClick={() => setIsDetailsOpen(false)} className="photo-modal-details-toggle photo-modal-hide-details">
+              <span>Hide details</span>
+              <ChevronDown size={16} />
+            </button>
+          </div>
 
           {/* Title + meta — single compact row */}
           <div className="photo-modal-heading" style={{ marginBottom: '0.6rem' }}>
@@ -469,6 +588,138 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
           )}
         </div>
         <style>{`
+          .photo-modal-image-loader {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at center, rgba(31,68,43,0.42), rgba(0,0,0,0.65) 58%, rgba(0,0,0,0.95));
+          }
+
+          .photo-modal-image-loader > div {
+            width: min(46vw, 520px);
+            aspect-ratio: 4 / 3;
+            border-radius: 0.9rem;
+            background: linear-gradient(110deg, #0c2018 8%, #294635 18%, #0c2018 33%);
+            background-size: 200% 100%;
+            animation: photoModalShimmer 1.2s linear infinite;
+            border: 1px solid rgba(201,168,76,0.12);
+          }
+
+          .photo-modal-progress {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 3px;
+            z-index: 6;
+            background: rgba(255,255,255,0.08);
+          }
+
+          .photo-modal-progress span {
+            display: block;
+            width: 100%;
+            height: 100%;
+            transform-origin: left;
+            background: linear-gradient(90deg, #9fcb8f, var(--wa-gold));
+            animation: photoModalProgress 5s linear forwards;
+          }
+
+          .photo-modal-collapsed-details {
+            position: absolute;
+            left: 0.75rem;
+            right: 0.75rem;
+            bottom: 0.75rem;
+            z-index: 7;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            padding: 0.72rem 0.82rem;
+            border-radius: 0.9rem;
+            background: rgba(5,12,9,0.88);
+            border: 1px solid rgba(201,168,76,0.22);
+            box-shadow: 0 -14px 48px rgba(0,0,0,0.42);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+          }
+
+          .photo-modal-collapsed-copy {
+            min-width: 0;
+          }
+
+          .photo-modal-collapsed-copy h2 {
+            margin: 0;
+            color: var(--wa-light);
+            font-size: 1rem;
+            line-height: 1.15;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+
+          .photo-modal-collapsed-copy p {
+            margin: 0.22rem 0 0;
+            color: var(--wa-text-muted);
+            font-size: 0.66rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+
+          .photo-modal-details-toggle {
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            border: 1px solid rgba(201,168,76,0.38);
+            border-radius: 999px;
+            background: rgba(201,168,76,0.16);
+            color: var(--wa-gold);
+            cursor: pointer;
+            padding: 0.48rem 0.78rem;
+            font-size: 0.72rem;
+            font-weight: 700;
+          }
+
+          .photo-modal-panel-header {
+            position: sticky;
+            top: 0;
+            z-index: 3;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin: -0.1rem 0 0.55rem;
+            padding-bottom: 0.35rem;
+            background: linear-gradient(to bottom, rgba(5,12,9,0.98), rgba(5,12,9,0));
+          }
+
+          .photo-modal-panel-grip {
+            width: 2.4rem;
+            height: 3px;
+            border-radius: 999px;
+            background: rgba(201,168,76,0.35);
+          }
+
+          .photo-modal-hide-details {
+            padding: 0.34rem 0.65rem;
+            background: rgba(255,255,255,0.04);
+          }
+
+          @keyframes photoModalProgress {
+            from { transform: scaleX(0); }
+            to { transform: scaleX(1); }
+          }
+
+          @keyframes photoModalShimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+          }
+
           @media (max-width: 640px) {
             .photo-modal-backdrop {
               padding: 0.35rem !important;
@@ -476,33 +727,56 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
             }
 
             .photo-modal-shell {
-              max-height: calc(100dvh - 0.7rem) !important;
+              width: 100% !important;
+              height: calc(100dvh - 0.7rem) !important;
               border-radius: 0.8rem !important;
-              display: flex !important;
-              flex-direction: column !important;
               overflow: hidden !important;
             }
 
             .photo-modal-image-wrap {
-              flex: 0 0 auto !important;
               background: #030604;
             }
 
             .photo-modal-image {
               display: block !important;
               width: 100% !important;
-              max-height: 62dvh !important;
+              height: 100% !important;
               object-fit: contain !important;
-              border-radius: 0.8rem 0.8rem 0 0 !important;
+              border-radius: 0.8rem !important;
               background: #030604;
             }
 
+            .photo-modal-collapsed-details {
+              left: 0.45rem !important;
+              right: 0.45rem !important;
+              bottom: 0.45rem !important;
+              padding: 0.55rem 0.6rem !important;
+              border-radius: 0.72rem !important;
+              gap: 0.45rem !important;
+            }
+
+            .photo-modal-collapsed-copy h2 {
+              font-size: 0.86rem !important;
+            }
+
+            .photo-modal-collapsed-copy p {
+              font-size: 0.56rem !important;
+            }
+
+            .photo-modal-details-toggle {
+              padding: 0.42rem 0.58rem !important;
+              font-size: 0.6rem !important;
+            }
+
             .photo-modal-info {
-              flex: 1 1 auto !important;
-              max-height: 38dvh !important;
+              left: 0.45rem !important;
+              right: 0.45rem !important;
+              bottom: 0.45rem !important;
+              max-height: min(74dvh, calc(100dvh - 3rem)) !important;
               overflow-y: auto !important;
               padding: 0.55rem 0.7rem 0.7rem !important;
               -webkit-overflow-scrolling: touch;
+              border-radius: 0.72rem !important;
             }
 
             .photo-modal-heading {

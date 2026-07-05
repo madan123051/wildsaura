@@ -2237,6 +2237,7 @@ const App: React.FC = () => {
         isLoggedIn={!!visitor}
         onLoginRequired={() => setShowVisitorLogin(true)}
         onViewAll={() => { setView('photo-grid'); window.scrollTo(0, 0); }}
+        isLoading={photosLoading}
       />
       <PhotoGallery photos={galleryPhotos} searchQuery={searchQuery} />
       <StoriesSection stories={stories} isLoading={storiesLoading} onStoryClick={handleStoryClick} onViewAll={() => { setView('story-grid'); window.scrollTo(0, 0); }} />

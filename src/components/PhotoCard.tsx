@@ -27,9 +27,10 @@ interface PhotoCardProps {
   onDownload: () => void;
   isLoggedIn: boolean;
   onLoginRequired: () => void;
+  priority?: boolean;
 }
 
-export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, onShare, onDownload, isLoggedIn: _isLoggedIn, onLoginRequired: _onLoginRequired }) => {
+export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, onShare, onDownload, isLoggedIn: _isLoggedIn, onLoginRequired: _onLoginRequired, priority = false }) => {
   const stopAndRun = (action: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); action(); };
   const [imgLoaded, setImgLoaded] = React.useState(false);
 
@@ -106,7 +107,8 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onClick, onLike, on
           src={imageCandidates[imageCandidateIndex] || PHOTO_PLACEHOLDER}
           alt={photo.title}
           style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.7s, opacity 0.25s', opacity: imgLoaded ? 1 : 0, userSelect: 'none', WebkitUserDrag: 'none' } as React.CSSProperties}
-          loading="lazy"
+          loading={priority ? 'eager' : 'lazy'}
+          fetchPriority={priority ? 'high' : 'auto'}
           decoding="async"
           draggable={false}
           onDragStart={(e) => e.preventDefault()}

@@ -16,6 +16,7 @@ interface GalleryProps {
   isLoggedIn: boolean;
   onLoginRequired: () => void;
   onViewAll?: () => void;
+  isLoading?: boolean;
 }
 
 const INITIAL_COUNT = 6;
@@ -33,6 +34,7 @@ export const Gallery: React.FC<GalleryProps> = ({
   isLoggedIn,
   onLoginRequired,
   onViewAll,
+  isLoading = false,
 }) => {
   const published = photos.filter(p => p.published !== false);
   const filtered = selectedCategory === 'all'
@@ -90,7 +92,25 @@ export const Gallery: React.FC<GalleryProps> = ({
         {/* Category pills REMOVED — categories already shown as thumbnail cards above */}
 
         {/* Gallery Grid */}
-        {filtered.length === 0 ? (
+        {isLoading && published.length === 0 ? (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+              gap: '0.75rem',
+            }}
+          >
+            {Array.from({ length: 6 }).map((_, index) => (
+              <div key={index} className="skeleton-card" style={{ overflow: 'hidden', borderRadius: '0.75rem' }}>
+                <div className="skeleton-image" style={{ width: '100%', aspectRatio: '1/1' }} />
+                <div style={{ padding: '0.75rem' }}>
+                  <div className="skeleton-text medium" />
+                  <div className="skeleton-text short" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '6rem 0' }}>
             <Camera size={48} style={{ margin: '0 auto 1rem', opacity: 0.2 }} />
             <p className="font-cinzel text-wa-muted" style={{ fontSize: '0.875rem' }}>
@@ -106,7 +126,7 @@ export const Gallery: React.FC<GalleryProps> = ({
                 gap: '0.75rem',
               }}
             >
-              {displayPhotos.map((photo) => (
+              {displayPhotos.map((photo, index) => (
                 <PhotoCard
                   key={photo.id}
                   photo={photo}
@@ -116,6 +136,7 @@ export const Gallery: React.FC<GalleryProps> = ({
                   onDownload={() => onDownload(photo)}
                   isLoggedIn={isLoggedIn}
                   onLoginRequired={onLoginRequired}
+                  priority={index < 4}
                 />
               ))}
             </div>

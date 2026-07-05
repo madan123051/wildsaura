@@ -296,7 +296,7 @@ export const PhotoGridPage: React.FC<PhotoGridPageProps> = ({
             gridTemplateColumns: `repeat(${getGridCols()}, 1fr)`,
             gap: '0.75rem',
           }}>
-            {filtered.map(photo => (
+            {filtered.map((photo, index) => (
               <PhotoCard
                 key={photo.id}
                 photo={photo}
@@ -306,6 +306,7 @@ export const PhotoGridPage: React.FC<PhotoGridPageProps> = ({
                 onDownload={() => onDownload(photo)}
                 isLoggedIn={isLoggedIn}
                 onLoginRequired={onLoginRequired}
+                priority={index < 8}
               />
             ))}
           </div>
