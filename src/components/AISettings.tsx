@@ -469,33 +469,33 @@ export const AISettingsPanel: React.FC = () => {
               AI Provider Configuration
             </h2>
             <p style={{ fontSize: '0.75rem', color: 'rgba(235,230,220,0.4)' }}>
-              Manage API keys and select providers for each AI feature
+              Select providers here. API keys are stored only in Vercel environment variables.
             </p>
           </div>
         </div>
       </div>
 
-      {/* API Keys Section */}
+      {/* API Keys Notice */}
       <div style={cardStyle}>
         <h3 style={sectionTitleStyle}>
           <Key size={18} /> API Keys
         </h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {PROVIDERS.map((p) => (
-            <APIKeyCard
-              key={p.id}
-              provider={p}
-              value={
-                p.id === 'gemini' ? settings.geminiKey :
-                p.id === 'deepseek' ? settings.deepseekKey :
-                settings.chatgptKey
-              }
-              onChange={(val) => updateKey(p.id, val)}
-              onTest={() => handleTestKey(p.id)}
-              testStatus={(testStatuses[p.id]?.status || 'idle') as any}
-              testMessage={testStatuses[p.id]?.message}
-            />
-          ))}
+        <div style={{
+          display: 'flex', alignItems: 'flex-start', gap: '0.75rem',
+          padding: '1rem', borderRadius: '10px',
+          background: 'rgba(141,195,216,0.08)', border: '1px solid rgba(141,195,216,0.18)',
+          color: 'rgba(235,230,220,0.72)',
+        }}>
+          <AlertTriangle size={18} style={{ color: '#8dc3d8', flexShrink: 0, marginTop: 2 }} />
+          <div>
+            <p style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--wa-light)', marginBottom: '0.35rem' }}>
+              Keys are managed outside the website bundle.
+            </p>
+            <p style={{ fontSize: '0.72rem', lineHeight: 1.6 }}>
+              Configure <code>GEMINI_API_KEY</code>, <code>OPENAI_API_KEY</code>, and <code>DEEPSEEK_API_KEY</code> in Vercel.
+              The website no longer stores or sends provider API keys from the browser.
+            </p>
+          </div>
         </div>
       </div>
 

@@ -5,3 +5,4 @@ dist/
 .env.local
 package-lock.json
 *.log
+.vercel

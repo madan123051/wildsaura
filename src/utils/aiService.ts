@@ -49,15 +49,6 @@ async function getSettings(): Promise<AISettings> {
   return cachedSettings;
 }
 
-function getKeyForProvider(settings: AISettings, provider: string): string {
-  switch (provider) {
-    case 'gemini': return settings.geminiKey;
-    case 'deepseek': return settings.deepseekKey;
-    case 'chatgpt': return settings.chatgptKey;
-    default: return settings.geminiKey;
-  }
-}
-
 // Clear cache (useful when settings are updated in admin panel)
 export function clearAISettingsCache(): void {
   cachedSettings = null;
@@ -70,12 +61,11 @@ export async function analyzePhoto(imageData: string): Promise<AnalysisResult> {
   try {
     const settings = await getSettings();
     const provider = settings.photoAnalysisProvider;
-    const apiKey = getKeyForProvider(settings, provider);
 
     const response = await fetch('/api/analyze', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ imageData, provider, apiKey }),
+      body: JSON.stringify({ imageData, provider }),
     });
     const data = await response.json();
     if (data.success && data.data) {
@@ -135,7 +125,6 @@ export async function getChatResponse(
   try {
     const settings = await getSettings();
     const provider = settings.chatProvider;
-    const apiKey = getKeyForProvider(settings, provider);
 
     const response = await fetch('/api/chat', {
       method: 'POST',
@@ -144,7 +133,6 @@ export async function getChatResponse(
         message: userMessage,
         photos: galleryPhotos,
         provider,
-        apiKey,
       }),
     });
     const data = await response.json();
@@ -176,7 +164,6 @@ export async function generateStory(
   try {
     const settings = await getSettings();
     const provider = settings.storyProvider;
-    const apiKey = getKeyForProvider(settings, provider);
 
     const response = await fetch('/api/generate-story', {
       method: 'POST',
@@ -188,7 +175,6 @@ export async function generateStory(
         caption,
         wikiInfo,
         provider,
-        apiKey,
       }),
     });
     const data = await response.json();

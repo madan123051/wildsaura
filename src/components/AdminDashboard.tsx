@@ -831,24 +831,19 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
     try {
       const settings = await getAISettings();
       const photoProvider = settings.photoAnalysisProvider;
-      const photoKey = photoProvider === 'gemini' ? settings.geminiKey : 
-                       photoProvider === 'chatgpt' ? settings.chatgptKey : settings.geminiKey;
       const storyProvider = settings.storyProvider;
-      const storyKey = storyProvider === 'gemini' ? settings.geminiKey :
-                       storyProvider === 'deepseek' ? settings.deepseekKey :
-                       storyProvider === 'chatgpt' ? settings.chatgptKey : settings.geminiKey;
 
       // Step 1: Analyze cover image with AI Vision (use previewUrl data URL, not firebase URL)
       let animalName = '';
       let imageAnalysis = '';
       let detectedLocation = '';
       const imageForAI = previewUrl || coverImageUrl;
-      if (imageForAI && photoKey) {
+      if (imageForAI) {
         setAiStatus('📸 Analyzing photo with AI Vision...');
         try {
           const analyzeRes = await fetch('/api/analyze', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ imageData: imageForAI, provider: photoProvider, apiKey: photoKey }),
+            body: JSON.stringify({ imageData: imageForAI, provider: photoProvider }),
           });
           if (analyzeRes.ok) {
             const analysis = await analyzeRes.json();
@@ -890,13 +885,6 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
       }
 
       // Step 3: Generate story with AI + Wikipedia
-      if (!storyKey) {
-        alert('No API key configured for story generation. Please set up API keys in AI Settings.');
-        setAiGenerating(false);
-        setAiStatus('');
-        return;
-      }
-
       setAiStatus('✍️ AI is writing the story...');
       const storyRes = await fetch('/api/generate-story', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -907,7 +895,6 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
           caption: wikiInfo ? `Wikipedia: ${wikiInfo.substring(0, 500)}` : '',
           wikiInfo: wikiInfo,
           provider: storyProvider,
-          apiKey: storyKey,
         }),
       });
 

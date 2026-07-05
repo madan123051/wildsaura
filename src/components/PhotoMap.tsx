@@ -18,7 +18,7 @@ declare global {
   }
 }
 
-const GOOGLE_MAPS_API_KEY = 'AIzaSyCDGB4dH4T0aSvzP8d7PcHVsqMzMY35tVs';
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
 
 const darkMapStyles = [
   { elementType: 'geometry', stylers: [{ color: '#1a1a2e' }] },
@@ -50,6 +50,11 @@ function loadGoogleMaps(): Promise<void> {
           resolve();
         }
       }, 100);
+      return;
+    }
+
+    if (!GOOGLE_MAPS_API_KEY) {
+      reject(new Error('Google Maps API key is not configured'));
       return;
     }
 

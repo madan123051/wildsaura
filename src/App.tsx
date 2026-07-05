@@ -72,7 +72,7 @@ const AdSenseHead = lazy(() => import('./components/AdSenseHead'));
 const SelfAdPopup = lazy(() => import('./components/SelfAdPopup'));
 
 const logoUrl = '/photos/logo-header.webp';
-const ADMIN_EMAIL = 'madan123050@gmail.com';
+const ADMIN_EMAIL = (import.meta.env.VITE_ADMIN_EMAIL || '').toLowerCase();
 type CounterField = 'viewCount' | 'likeCount';
 const addUserLike = async (email: string, targetType: 'photo' | 'story' | 'video', targetId: string) =>
   (await import('./services/userLikesService')).addUserLike(email, targetType, targetId);
@@ -174,7 +174,7 @@ const FILTER_TABS: FilterTab[] = [
 ];
 
 // ── App ─────────────────────────────────────────────────────────────────────
-type AppView = 'home' | 'admin-login' | 'admin-dashboard' | 'story-detail' | 'video-detail' | 'terms' | 'privacy-policy' | 'data-deletion' | 'marketplace' | 'community' | 'ngo' | 'about' | 'contact' | 'photos' | 'photo-grid' | 'story-grid' | 'video-grid';
+type AppView = 'home' | 'admin-dashboard' | 'story-detail' | 'video-detail' | 'terms' | 'privacy-policy' | 'data-deletion' | 'marketplace' | 'community' | 'ngo' | 'about' | 'contact' | 'photos' | 'photo-grid' | 'story-grid' | 'video-grid';
 
 const App: React.FC = () => {
   const [view, setView] = useState<AppView>(() => {

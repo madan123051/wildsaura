@@ -7,10 +7,15 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { message, photos, provider = 'gemini', apiKey } = req.body;
+    const { message, photos, provider = 'gemini' } = req.body;
 
-    const resolvedKey = apiKey || process.env.DEEPSEEK_API_KEY;
-    if (!resolvedKey) return res.status(500).json({ error: 'API key not configured' });
+    const resolvedKey =
+      provider === 'deepseek'
+        ? process.env.DEEPSEEK_API_KEY
+        : provider === 'chatgpt'
+          ? process.env.OPENAI_API_KEY
+          : process.env.GEMINI_API_KEY;
+    if (!resolvedKey) return res.status(500).json({ error: `${provider} API key is not configured in Vercel environment variables.` });
 
     // Hindi animal name mapping (expanded)
     const hindiMap = {

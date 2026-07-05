@@ -7,9 +7,10 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { imageData, provider = 'gemini', apiKey } = req.body;
+    const { imageData, provider = 'gemini' } = req.body;
+    const apiKey = provider === 'chatgpt' ? process.env.OPENAI_API_KEY : process.env.GEMINI_API_KEY;
     if (!imageData) return res.status(400).json({ success: false, error: 'No image data provided' });
-    if (!apiKey) return res.status(400).json({ success: false, error: 'No API key provided. Please configure your API key in AI Settings.' });
+    if (!apiKey) return res.status(500).json({ success: false, error: `${provider} API key is not configured in Vercel environment variables.` });
 
     const prompt = `You are a professional wildlife photographer writing for your own portfolio website. Analyze this photo and write like a real photographer would — not like AI.
 

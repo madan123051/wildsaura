@@ -13,12 +13,22 @@ const DEFAULT_SETTINGS: AISettings = {
   chatProvider: 'gemini',
 };
 
+function sanitizeSettings(settings: Partial<AISettings>): AISettings {
+  return {
+    ...DEFAULT_SETTINGS,
+    ...settings,
+    geminiKey: '',
+    deepseekKey: '',
+    chatgptKey: '',
+  } as AISettings;
+}
+
 export async function getAISettings(): Promise<AISettings> {
   try {
     const snap = await getDoc(SETTINGS_REF);
-    if (snap.exists()) return { ...DEFAULT_SETTINGS, ...snap.data() } as AISettings;
+    if (snap.exists()) return sanitizeSettings(snap.data() as Partial<AISettings>);
     // First time: save defaults
-    await setDoc(SETTINGS_REF, DEFAULT_SETTINGS);
+    await setDoc(SETTINGS_REF, sanitizeSettings(DEFAULT_SETTINGS));
     return DEFAULT_SETTINGS;
   } catch {
     return DEFAULT_SETTINGS;
@@ -26,5 +36,5 @@ export async function getAISettings(): Promise<AISettings> {
 }
 
 export async function saveAISettings(settings: AISettings): Promise<void> {
-  await setDoc(SETTINGS_REF, settings);
+  await setDoc(SETTINGS_REF, sanitizeSettings(settings));
 }

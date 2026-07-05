@@ -4,14 +4,22 @@ import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCXDJrFmn-pzbqys91tj4Fruqn4tl58p9Y",
-  authDomain: "wildsaura-1ef8a.firebaseapp.com",
-  projectId: "wildsaura-1ef8a",
-  storageBucket: "wildsaura-1ef8a.firebasestorage.app",
-  messagingSenderId: "690017200836",
-  appId: "1:690017200836:web:40498b6a5874fb176ff791",
-  measurementId: "G-WND911C3FJ"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
+
+const missingFirebaseKeys = Object.entries(firebaseConfig)
+  .filter(([key, value]) => key !== 'measurementId' && !value)
+  .map(([key]) => `VITE_FIREBASE_${key.replace(/[A-Z]/g, (letter) => `_${letter}`).toUpperCase()}`);
+
+if (missingFirebaseKeys.length) {
+  throw new Error(`Missing Firebase environment variables: ${missingFirebaseKeys.join(', ')}`);
+}
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);

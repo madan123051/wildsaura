@@ -7,9 +7,15 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { photoTitle, animalName, location, caption, wikiInfo, provider = 'gemini', apiKey } = req.body;
+    const { photoTitle, animalName, location, caption, wikiInfo, provider = 'gemini' } = req.body;
+    const apiKey =
+      provider === 'deepseek'
+        ? process.env.DEEPSEEK_API_KEY
+        : provider === 'chatgpt'
+          ? process.env.OPENAI_API_KEY
+          : process.env.GEMINI_API_KEY;
 
-    if (!apiKey) return res.status(400).json({ error: 'No API key provided. Please configure your API key in AI Settings.' });
+    if (!apiKey) return res.status(500).json({ error: `${provider} API key is not configured in Vercel environment variables.` });
 
     const wikiUrl = animalName
       ? `https://en.wikipedia.org/wiki/${encodeURIComponent(animalName.replace(/\s+/g, '_'))}`
