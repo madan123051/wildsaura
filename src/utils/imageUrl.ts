@@ -45,7 +45,7 @@ function getLocalOptimizedPath(url: string, width: number): string {
 
 export function getOptimizedImageUrl(url: string | undefined | null, options: OptimizedImageOptions): string {
   if (!url) return '';
-  if (url.startsWith('data:')) return PLACEHOLDER_CARD;
+  if (url.startsWith('data:')) return url;
   if (url.startsWith(LOCAL_PHOTO_PREFIX)) {
     return getLocalOptimizedPath(url, options.width) || url;
   }
