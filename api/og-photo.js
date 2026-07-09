@@ -1,6 +1,14 @@
 import { esc, injectSeoHtml, readBaseHtml, SITE_URL } from '../server/seo-render.js';
 import { arrayField, boolField, getDocumentByIdOrSlug, strField } from '../server/firestore-seo.js';
-import { buildJsonLdScript, buildMetaTags, buildNoindexMetaTags, buildOgImageUrl, publicMediaUrl, sanitizeSlug } from '../server/og-shared.js';
+import {
+  buildImageLicenseMetadata,
+  buildJsonLdScript,
+  buildMetaTags,
+  buildNoindexMetaTags,
+  buildOgImageUrl,
+  publicMediaUrl,
+  sanitizeSlug,
+} from '../server/og-shared.js';
 
 async function getPhotoById(photoId) {
   try {
@@ -65,6 +73,7 @@ export default async function handler(req, res) {
     thumbnailUrl: photo.thumbnailUrl || photo.imageUrl || ogImageUrl,
     url: canonicalUrl,
     creator: { '@type': 'Person', name: photo.photographer },
+    ...buildImageLicenseMetadata(photo.photographer),
     keywords: photo.tags?.join(', '),
     locationCreated: photo.location ? { '@type': 'Place', name: photo.location } : undefined,
   });

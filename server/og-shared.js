@@ -1,6 +1,18 @@
 import { SITE_URL, esc } from './seo-render.js';
 
 export const DEFAULT_OG_IMAGE = `${SITE_URL}/photos/photo-wildlife.jpeg`;
+export const IMAGE_LICENSE_URL = `${SITE_URL}/terms`;
+export const IMAGE_ACQUIRE_LICENSE_URL = `${SITE_URL}/contact`;
+
+export function buildImageLicenseMetadata(creatorName = 'Madan Shrestha') {
+  const creditName = String(creatorName || '').trim() || 'Madan Shrestha';
+  return {
+    license: IMAGE_LICENSE_URL,
+    acquireLicensePage: IMAGE_ACQUIRE_LICENSE_URL,
+    creditText: `${creditName} / WILDS AURA Photography`,
+    copyrightNotice: `Copyright ${creditName} / WILDS AURA Photography`,
+  };
+}
 
 export function isPublicHttpUrl(value) {
   try {
