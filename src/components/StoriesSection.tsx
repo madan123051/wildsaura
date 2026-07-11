@@ -18,7 +18,7 @@ interface StoriesSectionProps {
   onViewAll?: () => void;
 }
 
-const INITIAL_COUNT = 3;
+const INITIAL_COUNT = 6;
 const STORY_PLACEHOLDER = '/images/placeholder-card.svg';
 const estimateReadTime = (content: string): number => Math.max(1, Math.ceil(content.split(/\s+/).length / 200));
 
@@ -66,7 +66,7 @@ export const StoriesSection: React.FC<StoriesSectionProps> = ({ stories, isLoadi
             gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
             gap: '1.5rem',
           }}>
-            {[1, 2, 3].map((i) => <SkeletonStoryCard key={i} />)}
+            {Array.from({ length: INITIAL_COUNT }).map((_, i) => <SkeletonStoryCard key={i} />)}
           </div>
         </div>
       </section>

@@ -147,7 +147,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
         <p className="font-cinzel text-wa-muted" style={{ fontSize: '0.875rem' }}>No photos found.</p>
       </div>
     ) : (
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.85rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
         {items.map((photo, index) => (
           <button
             key={photo.id || photo.imageUrl}
@@ -245,7 +245,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
               <span style={{ color: 'rgba(201,168,76,0.45)' }}>›</span>
               <span style={{ color: 'var(--wa-light)', fontWeight: 700 }}>{openYear}</span>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1.1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.1rem' }}>
               {Array.from(monthMap.entries()).sort((a, b) => b[0].localeCompare(a[0])).map(([month, mPhotos]) => (
                 <button key={month} onClick={() => setOpenMonth(month)}
                   style={{ border: '1px solid rgba(201,168,76,0.18)', borderRadius: '18px', overflow: 'hidden', padding: 0, background: 'rgba(255,255,255,0.03)', cursor: 'pointer', boxShadow: '0 18px 45px rgba(0,0,0,0.2)', textAlign: 'left', transition: 'transform 0.2s' }}
@@ -281,7 +281,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
                 </span>
               </span>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1.1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.1rem' }}>
               {Array.from(yearMap.entries()).sort((a, b) => b[0].localeCompare(a[0])).map(([year, yPhotos]) => (
                 <button key={year} onClick={() => setOpenYear(year)}
                   style={{ border: '1px solid rgba(201,168,76,0.18)', borderRadius: '18px', overflow: 'hidden', padding: 0, background: 'rgba(255,255,255,0.03)', cursor: 'pointer', boxShadow: '0 18px 45px rgba(0,0,0,0.2)', textAlign: 'left', transition: 'transform 0.2s' }}
@@ -303,7 +303,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
           </>
         ) : (
           /* ── Folder view: category cards ── */
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1.1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.1rem' }}>
             {categorySummary.map((cat) => (
               <button
                 key={cat.key}

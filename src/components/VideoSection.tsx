@@ -73,7 +73,7 @@ interface VideoSectionProps {
   isLoading?: boolean;
 }
 
-const INITIAL_COUNT = 3;
+const INITIAL_COUNT = 4;
 
 /* ── tiny toast helper ────────────────────────────────────── */
 const showToast = (msg: string) => {
@@ -156,11 +156,11 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
           </div>
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
             gap: '1.5rem',
             alignItems: 'start',
           }}>
-            {[1, 2, 3].map((i) => <SkeletonVideoCard key={i} />)}
+            {Array.from({ length: INITIAL_COUNT }).map((_, i) => <SkeletonVideoCard key={i} />)}
           </div>
         </div>
       </section>
@@ -223,7 +223,7 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
         {/* Video Cards */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
           gap: '1.5rem',
           alignItems: 'start',
         }}>

@@ -29,6 +29,7 @@ interface VideoGridPageProps {
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const VIDEO_PLACEHOLDER = '/images/placeholder-card.svg';
+const WIDE_PAGE_MAX = 'calc(100vw - 4rem)';
 
 const VideoThumbnail: React.FC<{ video: Video }> = ({ video }) => {
   const [loaded, setLoaded] = useState(false);
@@ -122,7 +123,9 @@ export const VideoGridPage: React.FC<VideoGridPageProps> = ({
   const getGridCols = () => {
     if (width < 640) return 2;
     if (width < 1024) return 2;
-    return 3;
+    if (width < 1440) return 3;
+    if (width < 2200) return 4;
+    return 5;
   };
 
   const years = useMemo(() => {
@@ -162,7 +165,7 @@ export const VideoGridPage: React.FC<VideoGridPageProps> = ({
         borderBottom: '1px solid rgba(201,168,76,0.15)',
         padding: '0.875rem 1rem',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', maxWidth: 1200, margin: '0 auto' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', maxWidth: WIDE_PAGE_MAX, margin: '0 auto' }}>
           <button
             onClick={onBack}
             style={{
@@ -209,7 +212,7 @@ export const VideoGridPage: React.FC<VideoGridPageProps> = ({
 
         {showFilters && (
           <div style={{
-            maxWidth: 1200, margin: '0.75rem auto 0',
+            maxWidth: WIDE_PAGE_MAX, margin: '0.75rem auto 0',
             display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end',
           }}>
             <div>
@@ -262,7 +265,7 @@ export const VideoGridPage: React.FC<VideoGridPageProps> = ({
         )}
       </div>
 
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '1.5rem 1rem' }}>
+      <div style={{ maxWidth: WIDE_PAGE_MAX, margin: '0 auto', padding: '1.5rem 1rem' }}>
         {isLoading && videos.length === 0 ? (
           <div style={{
             display: 'grid',

@@ -19,7 +19,7 @@ interface GalleryProps {
   isLoading?: boolean;
 }
 
-const INITIAL_COUNT = 6;
+const INITIAL_COUNT = 12;
 
 export const Gallery: React.FC<GalleryProps> = ({
   photos,
@@ -96,11 +96,11 @@ export const Gallery: React.FC<GalleryProps> = ({
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-              gap: '0.75rem',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+              gap: '1rem',
             }}
           >
-            {Array.from({ length: 6 }).map((_, index) => (
+            {Array.from({ length: INITIAL_COUNT }).map((_, index) => (
               <div key={index} className="skeleton-card" style={{ overflow: 'hidden', borderRadius: '0.75rem' }}>
                 <div className="skeleton-image" style={{ width: '100%', aspectRatio: '1/1' }} />
                 <div style={{ padding: '0.75rem' }}>
@@ -122,8 +122,8 @@ export const Gallery: React.FC<GalleryProps> = ({
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-                gap: '0.75rem',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gap: '1rem',
               }}
             >
               {displayPhotos.map((photo, index) => (

@@ -29,6 +29,7 @@ interface PhotoGridPageProps {
 }
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const WIDE_PAGE_MAX = 'calc(100vw - 4rem)';
 
 const getMonthYear = (dateStr: string | any): string => {
   if (!dateStr) return '';
@@ -83,7 +84,10 @@ export const PhotoGridPage: React.FC<PhotoGridPageProps> = ({
   const getGridCols = () => {
     if (width < 640) return 2;
     if (width < 1024) return 3;
-    return 4;
+    if (width < 1440) return 4;
+    if (width < 1920) return 5;
+    if (width < 2400) return 6;
+    return 7;
   };
 
   const published = useMemo(() => photos.filter(p => p.published !== false), [photos]);
@@ -131,7 +135,7 @@ export const PhotoGridPage: React.FC<PhotoGridPageProps> = ({
         borderBottom: '1px solid rgba(201,168,76,0.15)',
         padding: '0.875rem 1rem',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', maxWidth: 1200, margin: '0 auto' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', maxWidth: WIDE_PAGE_MAX, margin: '0 auto' }}>
           <button
             onClick={onBack}
             style={{
@@ -179,7 +183,7 @@ export const PhotoGridPage: React.FC<PhotoGridPageProps> = ({
 
         {showFilters && (
           <div style={{
-            maxWidth: 1200, margin: '0.75rem auto 0',
+            maxWidth: WIDE_PAGE_MAX, margin: '0.75rem auto 0',
             display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end',
           }}>
             <div>
@@ -256,7 +260,7 @@ export const PhotoGridPage: React.FC<PhotoGridPageProps> = ({
         )}
       </div>
 
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '1.5rem 1rem' }}>
+      <div style={{ maxWidth: WIDE_PAGE_MAX, margin: '0 auto', padding: '1.5rem 1rem' }}>
         {isLoading && published.length === 0 ? (
           <div style={{
             display: 'grid',

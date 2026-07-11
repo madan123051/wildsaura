@@ -18,8 +18,8 @@ const SkeletonCard: React.FC = () => (
   <div
     style={{
       flexShrink: 0,
-      width: 115,
-      height: 145,
+      width: 'clamp(115px, 8vw, 190px)',
+      height: 'clamp(145px, 10vw, 238px)',
       borderRadius: '6px',
       overflow: 'hidden',
       scrollSnapAlign: 'start',
@@ -56,11 +56,11 @@ export const CategorySection: React.FC<CategorySectionProps> = ({ categories, on
         <div
           style={{
             display: 'flex',
-            gap: '0.55rem',
+            gap: 'clamp(0.55rem, 1vw, 1rem)',
             overflowX: 'auto',
             scrollSnapType: 'x mandatory',
             WebkitOverflowScrolling: 'touch',
-            padding: '0.25rem 1.25rem 0.75rem',
+            padding: '0.25rem clamp(1.25rem, 4vw, 4rem) 0.75rem',
             scrollbarWidth: 'none',
           }}
         >
@@ -112,8 +112,8 @@ const CategoryCard: React.FC<{ cat: Category; onClick: () => void }> = ({ cat, o
       style={{
         position: 'relative',
         flexShrink: 0,
-        width: 115,
-        height: 145,
+        width: 'clamp(115px, 8vw, 190px)',
+        height: 'clamp(145px, 10vw, 238px)',
         borderRadius: '6px',
         overflow: 'hidden',
         cursor: 'pointer',
@@ -175,9 +175,9 @@ const CategoryCard: React.FC<{ cat: Category; onClick: () => void }> = ({ cat, o
       {/* NatGeo yellow accent bar */}
       <div style={{
         position: 'absolute',
-        bottom: 34,
-        left: 10,
-        width: 20,
+        bottom: 'clamp(34px, 2.8vw, 58px)',
+        left: 'clamp(10px, 1vw, 18px)',
+        width: 'clamp(20px, 1.8vw, 34px)',
         height: 2,
         background: NG_YELLOW,
       }} />
@@ -188,11 +188,11 @@ const CategoryCard: React.FC<{ cat: Category; onClick: () => void }> = ({ cat, o
         bottom: 0,
         left: 0,
         right: 0,
-        padding: '0 10px 10px',
+        padding: '0 clamp(10px, 1vw, 18px) clamp(10px, 1vw, 18px)',
       }}>
         <div style={{
           fontFamily: 'Cinzel, serif',
-          fontSize: '0.67rem',
+          fontSize: 'clamp(0.67rem, 0.58vw, 0.92rem)',
           fontWeight: 700,
           letterSpacing: '0.08em',
           color: PARCHMENT,
