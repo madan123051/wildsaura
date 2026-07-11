@@ -96,9 +96,9 @@ const PAGE_DEFINITIONS = [
     type: 'website',
     schemaType: 'WebPage',
     title: 'Privacy Policy - WILDS AURA',
-    description: 'Read the WILDS AURA privacy policy covering contact form data, comments, community data, and future Instagram or Facebook connector data.',
+    description: 'Read the WILDS AURA privacy policy covering contact form data, comments, community data, advertising cookies, and future Instagram or Facebook connector data.',
     heading: 'Privacy Policy',
-    body: 'Wildsaura privacy practices for contact messages, comments, community posts, and future Instagram or Facebook connector data.',
+    body: 'Wildsaura privacy practices for contact messages, comments, community posts, advertising cookies, Google AdSense, and future Instagram or Facebook connector data.',
     keywords: ['WILDS AURA privacy policy', 'Wildsaura privacy', 'Meta app privacy policy'],
   },
   {

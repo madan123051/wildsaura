@@ -42,6 +42,7 @@ const privacySections: PolicySection[] = [
       'Wildsaura collects only the information needed to operate the website, community features, contact forms, moderation, and future social media connector features.',
     bullets: [
       'Basic technical information such as browser, device, page activity, and similar analytics used to keep the website reliable.',
+      'Advertising and cookie-related signals used by advertising partners such as Google AdSense when ads are enabled on the website.',
       'Information you choose to submit, including names, email addresses, profile details, messages, comments, community posts, and uploaded media.',
       'Account or profile information connected through supported sign-in or social features, when you choose to use them.',
     ],
@@ -75,6 +76,7 @@ const privacySections: PolicySection[] = [
     bullets: [
       'To respond to contact requests and support messages.',
       'To display and manage comments, community posts, and profile activity.',
+      'To support advertising, measurement, and ad quality checks when Google AdSense or similar advertising services are active.',
       'To protect the website from spam, abuse, fraud, and unauthorized access.',
       'To improve website performance, reliability, and visitor experience.',
       'To operate future Instagram or Facebook connector features when a user chooses to connect them.',
