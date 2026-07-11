@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { ArrowLeft, Camera, SlidersHorizontal, X } from 'lucide-react';
 import { Photo, FilterTab } from '../types';
 import { PhotoCard } from './PhotoCard';
+import { sortByCreatedAtDesc } from '../utils/dateSort';
 
 const useWindowSize = () => {
   const [width, setWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
@@ -90,7 +91,7 @@ export const PhotoGridPage: React.FC<PhotoGridPageProps> = ({
     return 7;
   };
 
-  const published = useMemo(() => photos.filter(p => p.published !== false), [photos]);
+  const published = useMemo(() => sortByCreatedAtDesc(photos.filter(p => p.published !== false)), [photos]);
 
   const years = useMemo(() => {
     const ys = new Set<string>();

@@ -1,6 +1,7 @@
 import { db, storage } from '../firebase';
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, serverTimestamp, onSnapshot, Unsubscribe, increment } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { sortByCreatedAtDesc } from '../utils/dateSort';
 
 export interface FirestorePhoto {
   id?: string;
@@ -171,16 +172,18 @@ export async function getPhotosFromFirestore(): Promise<FirestorePhoto[]> {
     const q = query(collection(db, PHOTOS_COLLECTION), orderBy('createdAt', 'desc'));
     const snapshot = await getDocs(q);
     // Only return WildSaura photos (source === "wildsaura" or legacy photos without marketplace fields)
-    return snapshot.docs
+    const photos = snapshot.docs
       .map(d => ({ id: d.id, ...d.data() } as FirestorePhoto & Record<string, any>))
       .filter(p => p.source === 'wildsaura' || (!p.source && !p.status && !p.ownerId));
+    return sortByCreatedAtDesc(photos);
   } catch (err) {
     // If orderBy fails (no index), try without ordering
     try {
       const snapshot = await getDocs(collection(db, PHOTOS_COLLECTION));
-      return snapshot.docs
+      const photos = snapshot.docs
         .map(d => ({ id: d.id, ...d.data() } as FirestorePhoto & Record<string, any>))
         .filter(p => p.source === 'wildsaura' || (!p.source && !p.status && !p.ownerId));
+      return sortByCreatedAtDesc(photos);
     } catch {
       console.warn('Firestore fetch failed:', err);
       return [];
@@ -215,10 +218,10 @@ export function subscribeToPhotos(
     (snapshot) => {
       const allPhotos = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as FirestorePhoto & Record<string, any>));
       // Only show WildSaura photos: source === "wildsaura" OR legacy photos (no source AND no marketplace fields)
-      const wildsauraPhotos = allPhotos.filter(p => 
+      const wildsauraPhotos = allPhotos.filter(p =>
         p.source === 'wildsaura' || (!p.source && !p.status && !p.ownerId)
       );
-      onUpdate(wildsauraPhotos);
+      onUpdate(sortByCreatedAtDesc(wildsauraPhotos));
     },
     (error) => {
       console.error('Photo subscription error:', error);

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Camera, ArrowRight } from 'lucide-react';
 import { Photo, FilterTab } from '../types';
 import { PhotoCard } from './PhotoCard';
+import { sortByCreatedAtDesc } from '../utils/dateSort';
 
 interface GalleryProps {
   photos: Photo[];
@@ -36,7 +37,7 @@ export const Gallery: React.FC<GalleryProps> = ({
   onViewAll,
   isLoading = false,
 }) => {
-  const published = photos.filter(p => p.published !== false);
+  const published = sortByCreatedAtDesc(photos.filter(p => p.published !== false));
   const filtered = selectedCategory === 'all'
     ? published
     : published.filter(p => p.category === selectedCategory);
