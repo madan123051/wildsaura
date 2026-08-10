@@ -44,7 +44,10 @@ export async function uploadStoryCoverToStorage(dataUrl: string, filename: strin
       reject(new Error('Story cover upload timed out after 45 seconds.'));
     }, 45000);
 
-    const uploadTask = uploadBytesResumable(storageRef, blob, { contentType });
+    const uploadTask = uploadBytesResumable(storageRef, blob, {
+      contentType,
+      cacheControl: 'public,max-age=31536000,immutable',
+    });
     uploadTask.on(
       'state_changed',
       () => {},

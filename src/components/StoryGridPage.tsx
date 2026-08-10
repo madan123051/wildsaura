@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { ArrowLeft, BookOpen, SlidersHorizontal, X, Clock, Eye, Heart } from 'lucide-react';
 import { Story } from '../types';
-import { getOptimizedImageUrl } from '../utils/imageUrl';
+import { getOptimizedImageUrl, getOptimizedSrcSet } from '../utils/imageUrl';
 
 interface StoryGridPageProps {
   stories: Story[];
@@ -44,7 +44,7 @@ const SkeletonStoryGrid = () => (
   }}>
     {Array.from({ length: 6 }).map((_, index) => (
       <div key={index} className="skeleton-card" style={{ overflow: 'hidden', borderRadius: 14 }}>
-        <div className="skeleton-image" style={{ width: '100%', height: 180 }} />
+        <div className="skeleton-image" style={{ width: '100%', aspectRatio: '16 / 10' }} />
         <div style={{ padding: '0.875rem' }}>
           <div className="skeleton-text medium" />
           <div className="skeleton-text full" />
@@ -54,6 +54,51 @@ const SkeletonStoryGrid = () => (
     ))}
   </div>
 );
+
+const StoryArchiveCover: React.FC<{ story: Story; priority: boolean }> = ({ story, priority }) => {
+  const originalImage = story.coverImageUrl || STORY_PLACEHOLDER;
+  const image = getOptimizedImageUrl(story.coverImageUrl, {
+    width: 960,
+    quality: 84,
+    fit: 'cover',
+  }) || originalImage;
+  const srcSet = getOptimizedSrcSet(story.coverImageUrl, [480, 640, 800, 960, 1200, 1600], {
+    quality: 84,
+    fit: 'cover',
+  });
+
+  return (
+    <img
+      src={image}
+      srcSet={srcSet}
+      sizes="(max-width: 580px) calc(100vw - 2rem), (max-width: 900px) 50vw, 33vw"
+      alt={story.title}
+      width={960}
+      height={600}
+      style={{
+        width: '100%',
+        aspectRatio: '16 / 10',
+        objectFit: 'cover',
+        display: 'block',
+        transition: 'transform 0.5s',
+      }}
+      loading={priority ? 'eager' : 'lazy'}
+      fetchPriority={priority ? 'high' : 'auto'}
+      decoding="async"
+      onError={(event) => {
+        const target = event.currentTarget;
+        target.srcset = '';
+        if (target.dataset.originalFallback !== 'true' && image !== originalImage) {
+          target.dataset.originalFallback = 'true';
+          target.src = originalImage;
+          return;
+        }
+        target.onerror = null;
+        target.src = STORY_PLACEHOLDER;
+      }}
+    />
+  );
+};
 
 export const StoryGridPage: React.FC<StoryGridPageProps> = ({ stories, isLoading = false, onBack, onStoryClick }) => {
   const [selectedYear, setSelectedYear] = useState('all');
@@ -234,13 +279,7 @@ export const StoryGridPage: React.FC<StoryGridPageProps> = ({ stories, isLoading
                 }}
               >
                 <div style={{ position: 'relative', overflow: 'hidden' }}>
-                  <img
-                    src={getOptimizedImageUrl(story.coverImageUrl, { width: 560, height: 360, quality: 72 }) || story.coverImageUrl || STORY_PLACEHOLDER}
-                    alt={story.title}
-                    style={{ width: '100%', height: 180, objectFit: 'cover', display: 'block', transition: 'transform 0.5s' }}
-                    loading={index < 6 ? 'eager' : 'lazy'}
-                    decoding="async"
-                  />
+                  <StoryArchiveCover story={story} priority={index < 3} />
                   <div style={{
                     position: 'absolute', bottom: 0, left: 0, right: 0,
                     background: 'linear-gradient(transparent, rgba(0,0,0,0.7))',

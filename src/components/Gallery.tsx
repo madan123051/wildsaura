@@ -114,7 +114,7 @@ export const Gallery: React.FC<GalleryProps> = ({
                 key={photo.firestoreId || photo.id}
                 photo={photo}
                 variant={CARD_VARIANTS[index % CARD_VARIANTS.length]}
-                priority={index < 2}
+                priority={index < 4}
                 onClick={() => onPhotoClick(photo)}
                 onLike={() => onLike(photo.id)}
                 onShare={() => onShare(photo)}

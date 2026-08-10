@@ -12,9 +12,29 @@ const LOCAL_PREFIXES = ['/photos/', '/images/', 'data:', 'blob:'];
 const LOCAL_PHOTO_PREFIX = '/photos/';
 const PLACEHOLDER_CARD = '/images/placeholder-card.svg';
 
+function decodeUrlForPathCheck(url: string): string {
+  try {
+    return decodeURIComponent(url).toLowerCase();
+  } catch {
+    return url.toLowerCase();
+  }
+}
+
+/**
+ * Photo thumbnails are already generated as 720px WebP files before upload.
+ * Sending them through wsrv adds another DNS/TLS/cache hop and cannot create
+ * real detail beyond the source resolution, so serve these assets directly.
+ */
+function isPreOptimizedFirebaseImage(url: string): boolean {
+  if (!url.includes('firebasestorage.googleapis.com')) return false;
+  const decodedUrl = decodeUrlForPathCheck(url);
+  return decodedUrl.includes('/photos-thumbs/') || decodedUrl.includes('/video-thumbnails/');
+}
+
 function shouldProxy(url: string): boolean {
   if (!url) return false;
   if (url.includes('wsrv.nl')) return false;
+  if (isPreOptimizedFirebaseImage(url)) return false;
   return !LOCAL_PREFIXES.some((prefix) => url.startsWith(prefix));
 }
 
@@ -49,7 +69,7 @@ export function getOptimizedImageUrl(url: string | undefined | null, options: Op
   if (url.startsWith(LOCAL_PHOTO_PREFIX)) {
     return getLocalOptimizedPath(url, options.width) || url;
   }
-  if (!shouldProxy(url)) return url;
+  if (!shouldProxy(url)) return withFirebaseMediaParam(url);
 
   const sourceUrl = withFirebaseMediaParam(url);
   const params = new URLSearchParams({

@@ -13,10 +13,6 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>
 );
 
-// Remove splash screen once React has mounted
+// React has mounted and its CSS is ready; reveal the page without an extra delay.
 const splash = document.getElementById('wa-splash');
-if (splash) {
-  splash.style.transition = 'opacity 0.3s ease';
-  splash.style.opacity = '0';
-  setTimeout(() => splash.remove(), 300);
-}
+splash?.remove();

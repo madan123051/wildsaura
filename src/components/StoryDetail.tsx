@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Heart, Clock, Eye, Share2, Trash2 } from 'lucide-react';
 import { Story, Visitor, Comment } from '../types';
+import { getOptimizedImageUrl, getOptimizedSrcSet } from '../utils/imageUrl';
 
 interface StoryDetailProps {
   story: Story;
@@ -15,31 +16,60 @@ interface StoryDetailProps {
 }
 
 const estimateReadTime = (content: string): number => Math.max(1, Math.ceil(content.split(/\s+/).length / 200));
+const STORY_PLACEHOLDER = '/images/placeholder-card.svg';
+
+const StoryInlineImage: React.FC<{ url: string; index: number }> = ({ url, index }) => {
+  const originalImage = url || STORY_PLACEHOLDER;
+  const image = getOptimizedImageUrl(url, { width: 1280, quality: 86, fit: 'inside' }) || originalImage;
+  const srcSet = getOptimizedSrcSet(url, [480, 720, 960, 1280, 1600], {
+    quality: 86,
+    fit: 'inside',
+  });
+
+  return (
+    <div style={{ margin: '2rem 0', textAlign: 'center' }}>
+      <img
+        src={image}
+        srcSet={srcSet}
+        sizes="(max-width: 767px) calc(100vw - 3rem), 720px"
+        alt={`Story image ${index + 1}`}
+        style={{
+          maxWidth: '100%',
+          width: '100%',
+          height: 'auto',
+          borderRadius: '12px',
+          boxShadow: '0 6px 30px rgba(0,0,0,0.5)',
+          display: 'block',
+        }}
+        loading="lazy"
+        decoding="async"
+        onError={(event) => {
+          const target = event.currentTarget;
+          target.srcset = '';
+          if (target.dataset.originalFallback !== 'true' && image !== originalImage) {
+            target.dataset.originalFallback = 'true';
+            target.src = originalImage;
+            return;
+          }
+          target.onerror = null;
+          target.src = STORY_PLACEHOLDER;
+        }}
+      />
+    </div>
+  );
+};
 
 // Parse story content: splits by [IMAGE:url] markers and renders paragraphs + images
 const renderStoryContent = (content: string) => {
   const parts = content.split(/(\[IMAGE:[^\]]+\])/g);
   const elements: React.ReactNode[] = [];
+  let imageIndex = 0;
 
   parts.forEach((part, i) => {
     const imgMatch = part.match(/^\[IMAGE:(.+)\]$/);
     if (imgMatch) {
-      elements.push(
-        <div key={`img-${i}`} style={{ margin: '2rem 0', textAlign: 'center' }}>
-          <img
-            src={imgMatch[1]}
-            alt={`Story image ${Math.floor(i / 2) + 1}`}
-            style={{
-              maxWidth: '100%',
-              width: '100%',
-              borderRadius: '12px',
-              boxShadow: '0 6px 30px rgba(0,0,0,0.5)',
-              display: 'block',
-            }}
-            loading="lazy"
-          />
-        </div>
-      );
+      elements.push(<StoryInlineImage key={`img-${i}`} url={imgMatch[1]} index={imageIndex} />);
+      imageIndex += 1;
     } else {
       // Regular text — split into paragraphs by double newline
       const paras = part.split('\n\n').filter(p => p.trim() !== '');
@@ -100,15 +130,43 @@ export const StoryDetail: React.FC<StoryDetailProps> = ({
     facebook: `https://www.facebook.com/sharer.php?u=${encodeURIComponent(shareUrl)}`,
     x: `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`,
   };
+  const originalCover = story.coverImageUrl || STORY_PLACEHOLDER;
+  const coverImage = getOptimizedImageUrl(story.coverImageUrl, {
+    width: 1920,
+    quality: 88,
+    fit: 'cover',
+  }) || originalCover;
+  const coverSrcSet = getOptimizedSrcSet(story.coverImageUrl, [640, 960, 1280, 1600, 1920], {
+    quality: 88,
+    fit: 'cover',
+  });
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--wa-dark)', paddingTop: '80px', overflowX: 'hidden' as const }}>
       {/* Cover Image */}
       <div style={{ position: 'relative', maxHeight: '50vh', overflow: 'hidden' }}>
         <img
-          src={story.coverImageUrl}
+          src={coverImage}
+          srcSet={coverSrcSet}
+          sizes="100vw"
           alt={story.title}
+          width={1920}
+          height={1200}
           style={{ width: '100%', height: '50vh', objectFit: 'cover' }}
+          loading="eager"
+          fetchPriority="high"
+          decoding="async"
+          onError={(event) => {
+            const target = event.currentTarget;
+            target.srcset = '';
+            if (target.dataset.originalFallback !== 'true' && coverImage !== originalCover) {
+              target.dataset.originalFallback = 'true';
+              target.src = originalCover;
+              return;
+            }
+            target.onerror = null;
+            target.src = STORY_PLACEHOLDER;
+          }}
         />
         <div style={{
           position: 'absolute', inset: 0,
