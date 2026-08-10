@@ -218,7 +218,7 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
     <div 
       className="modal-backdrop photo-modal-backdrop" 
       style={{
-        position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        position: 'fixed', inset: 0, zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: '0.75rem', background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(12px)',
       }}
       onClick={onClose}
@@ -295,18 +295,26 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
 
           {/* Close button - top right ON image */}
           <button 
+            type="button"
+            className="photo-modal-close"
             onClick={onClose}
+            onTouchStart={(event) => event.stopPropagation()}
+            onTouchEnd={(event) => event.stopPropagation()}
             aria-label="Close photo"
             title="Close photo"
             style={{
-              position: 'absolute', top: '0.6rem', right: '0.6rem', zIndex: 4,
-              background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.15)',
-              borderRadius: '50%', width: 30, height: 30, cursor: 'pointer',
-              color: 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              backdropFilter: 'blur(4px)',
+              position: 'absolute',
+              top: 'max(0.6rem, calc(env(safe-area-inset-top, 0px) + 0.35rem))',
+              right: 'max(0.6rem, calc(env(safe-area-inset-right, 0px) + 0.35rem))',
+              zIndex: 10,
+              background: 'rgba(2,5,4,0.88)', border: '1px solid rgba(255,255,255,0.28)',
+              borderRadius: '50%', width: 44, height: 44, cursor: 'pointer',
+              color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              backdropFilter: 'blur(8px)', boxShadow: '0 4px 18px rgba(0,0,0,0.48)',
+              touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent',
             }}
           >
-            <X size={15} />
+            <X size={20} aria-hidden="true" />
           </button>
 
           {/* Photo counter - bottom left ON image */}
@@ -323,7 +331,7 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
 
           {/* Watermark - bottom right ON image */}
           <span className="font-cinzel" style={{
-            position: 'absolute', top: 9, right: 48, zIndex: 2,
+            position: 'absolute', top: 9, right: 66, zIndex: 2,
             padding: '2px 6px', background: 'rgba(0,0,0,0.5)',
             border: '1px solid rgba(201,168,76,0.4)', borderRadius: '4px',
             color: 'rgba(201,168,76,0.8)', fontSize: '0.5rem', fontWeight: 700,
@@ -629,6 +637,15 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
             transform-origin: left;
             background: linear-gradient(90deg, #9fcb8f, var(--wa-gold));
             animation: photoModalProgress 5s linear forwards;
+          }
+
+          .photo-modal-close:focus-visible {
+            outline: 2px solid var(--wa-gold);
+            outline-offset: 3px;
+          }
+
+          .photo-modal-close:active {
+            transform: scale(0.94);
           }
 
           .photo-modal-collapsed-details {
