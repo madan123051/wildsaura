@@ -77,6 +77,7 @@ const StoryArchiveCover: React.FC<{ story: Story; priority: boolean }> = ({ stor
       height={600}
       style={{
         width: '100%',
+        height: 'auto',
         aspectRatio: '16 / 10',
         objectFit: 'cover',
         display: 'block',
