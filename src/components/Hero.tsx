@@ -59,6 +59,8 @@ export const Hero: React.FC<HeroProps> = ({
             width={1920}
             height={1280}
             loading="eager"
+            fetchPriority="high"
+            decoding="async"
           />
         )}
       </div>

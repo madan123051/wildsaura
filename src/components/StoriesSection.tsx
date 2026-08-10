@@ -24,22 +24,22 @@ interface StoriesSectionProps {
 
 const StoryCard: React.FC<{
   story: Story;
-  featured?: boolean;
   onOpen: () => void;
-}> = ({ story, featured = false, onOpen }) => {
+}> = ({ story, onOpen }) => {
+  const originalImage = story.coverImageUrl || STORY_PLACEHOLDER;
   const image = getOptimizedImageUrl(story.coverImageUrl, {
-    width: featured ? 1200 : 800,
-    quality: 78,
+    width: 960,
+    quality: 84,
     fit: 'cover',
-  }) || story.coverImageUrl || STORY_PLACEHOLDER;
-  const srcSet = getOptimizedSrcSet(story.coverImageUrl, [480, 640, 800, 1000, 1200], {
-    quality: 78,
+  }) || originalImage;
+  const srcSet = getOptimizedSrcSet(story.coverImageUrl, [480, 640, 800, 960, 1200, 1600], {
+    quality: 84,
     fit: 'cover',
   });
   const href = `/story/${encodeURIComponent(story.slug || story.firestoreId || String(story.id))}`;
 
   return (
-    <article className={`journal-story-card ${featured ? 'journal-story-card--featured' : ''}`}>
+    <article className="journal-story-card">
       <a
         href={href}
         onClick={(event) => {
@@ -51,16 +51,22 @@ const StoryCard: React.FC<{
           <img
             src={image}
             srcSet={srcSet}
-            sizes={featured ? '(max-width: 900px) 100vw, 62vw' : '(max-width: 900px) 100vw, 32vw'}
+            sizes="(max-width: 620px) 100vw, (max-width: 980px) 50vw, 33vw"
             alt={story.title}
-            width={featured ? 1200 : 800}
-            height={featured ? 760 : 620}
+            width={960}
+            height={600}
             loading="lazy"
             decoding="async"
             onError={(event) => {
-              event.currentTarget.srcset = '';
-              event.currentTarget.onerror = null;
-              event.currentTarget.src = STORY_PLACEHOLDER;
+              const target = event.currentTarget;
+              target.srcset = '';
+              if (target.dataset.originalFallback !== 'true' && image !== originalImage) {
+                target.dataset.originalFallback = 'true';
+                target.src = originalImage;
+                return;
+              }
+              target.onerror = null;
+              target.src = STORY_PLACEHOLDER;
             }}
           />
           <span className="journal-story-card__wash" />
@@ -113,7 +119,7 @@ export const StoriesSection: React.FC<StoriesSectionProps> = ({
         {isLoading && stories.length === 0 ? (
           <div className="journal-stories__grid" aria-label="Loading stories">
             {Array.from({ length: 3 }).map((_, index) => (
-              <div className={`journal-story-skeleton ${index === 0 ? 'journal-story-skeleton--featured' : ''}`} key={index}>
+              <div className="journal-story-skeleton" key={index}>
                 <div className="skeleton-image" />
                 <div className="skeleton-text medium" />
                 <div className="skeleton-text full" />
@@ -122,11 +128,10 @@ export const StoriesSection: React.FC<StoriesSectionProps> = ({
           </div>
         ) : visibleStories.length > 0 ? (
           <div className="journal-stories__grid">
-            {visibleStories.map((story, index) => (
+            {visibleStories.map((story) => (
               <StoryCard
                 key={story.firestoreId || story.id}
                 story={story}
-                featured={index === 0}
                 onOpen={() => onStoryClick(story)}
               />
             ))}

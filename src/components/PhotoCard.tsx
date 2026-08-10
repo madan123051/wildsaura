@@ -81,15 +81,23 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({
           onClick();
         }}
       >
-        <div className="editorial-photo-card__media" onContextMenu={(event) => event.preventDefault()}>
-          {!loaded && <div className="editorial-photo-card__skeleton skeleton-image" />}
+        <div
+          className={`editorial-photo-card__media${loaded ? ' is-loaded' : ''}`}
+          onContextMenu={(event) => event.preventDefault()}
+          aria-busy={!loaded}
+        >
           <img
             src={imageCandidates[candidateIndex] || PHOTO_PLACEHOLDER}
             srcSet={candidateIndex === 0 ? optimizedSrcSet : undefined}
-            sizes={variant === 'wide' ? '(max-width: 760px) 100vw, 58vw' : '(max-width: 760px) 100vw, 34vw'}
+            sizes={variant === 'wide'
+              ? '(max-width: 620px) calc(100vw - 2rem), (max-width: 900px) calc(100vw - 3rem), 58vw'
+              : '(max-width: 620px) calc(100vw - 2rem), (max-width: 900px) 50vw, 34vw'}
             alt={photo.title}
             loading={priority ? 'eager' : 'lazy'}
+            fetchPriority={priority ? 'high' : 'auto'}
             decoding="async"
+            width={variant === 'wide' ? 1200 : 800}
+            height={variant === 'tall' ? 1000 : variant === 'wide' ? 750 : 600}
             draggable={false}
             onLoad={() => setLoaded(true)}
             onError={() => {

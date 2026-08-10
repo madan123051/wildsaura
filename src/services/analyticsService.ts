@@ -113,8 +113,6 @@ export interface AdSenseSettings {
 }
 
 // ── Tracking Collections ─────────────────────────────────────────────────
-const PAGE_VIEWS_COLLECTION = 'page_views';
-const SHARES_COLLECTION = 'shares';
 const VISITOR_EVENTS_COLLECTION = 'visitor_events';
 const VISITOR_DAILY_STATS_COLLECTION = 'visitor_daily_stats';
 
@@ -325,32 +323,11 @@ export async function trackVisitorEvent(input: VisitorEventInput): Promise<void>
 }
 
 // ── Backward-compatible Page View / Share Tracking ───────────────────────
-export async function trackPageView(page: string, sessionId?: string): Promise<void> {
-  try {
-    const docId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    await setDoc(doc(db, PAGE_VIEWS_COLLECTION, docId), {
-      page,
-      sessionId: sessionId || getAnalyticsSessionId(),
-      timestamp: serverTimestamp(),
-      date: getLocalDateParts().day,
-    });
-  } catch (err) {
-    console.warn('Page view tracking failed:', err);
-  }
+export async function trackPageView(page: string, _sessionId?: string): Promise<void> {
   await trackVisitorEvent({ type: 'page_view', page });
 }
 
-export async function trackShare(photoId: string, platform: string): Promise<void> {
-  try {
-    const docId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    await setDoc(doc(db, SHARES_COLLECTION, docId), {
-      photoId,
-      platform,
-      timestamp: serverTimestamp(),
-    });
-  } catch (err) {
-    console.warn('Share tracking failed:', err);
-  }
+export async function trackShare(photoId: string, _platform: string): Promise<void> {
   await trackVisitorEvent({ type: 'share', targetId: photoId });
 }
 
@@ -524,19 +501,6 @@ export async function fetchSiteAnalytics(): Promise<SiteAnalytics> {
   analytics.monthTopCategories = toCategoryMetrics(monthCategoryMap);
   analytics.yearTopCategories = toCategoryMetrics(yearCategoryMap);
   analytics.topPages = Array.from(pageMap.values()).sort((a, b) => b.views - a.views).slice(0, 8);
-
-  if (!analytics.totalPageViews) {
-    try {
-      const pvSnap = await getDocs(collection(db, PAGE_VIEWS_COLLECTION));
-      analytics.totalPageViews = pvSnap.size;
-    } catch {}
-  }
-  if (!analytics.totalShares) {
-    try {
-      const sharesSnap = await getDocs(collection(db, SHARES_COLLECTION));
-      analytics.totalShares = sharesSnap.size;
-    } catch {}
-  }
 
   return analytics;
 }

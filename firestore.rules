@@ -1,69 +1,486 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
 
-    // Photos collection (existing — keeps working uploads functional)
-    match /photos/{docId} {
+    function accountEmail() {
+      return request.auth.token.get('email', '');
+    }
+
+    function isAccountUser() {
+      return signedIn() && accountEmail() is string && accountEmail().size() > 0;
+    }
+
+    // The current app promotes this Firebase account to admin by the same email.
+    // A custom `admin: true` claim is also supported for a future server-managed setup.
+    function isAdmin() {
+      return signedIn()
+        && (request.auth.token.get('admin', false) == true
+          || accountEmail() == 'madan123050@gmail.com');
+    }
+
+    function changedOnly(fields) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields);
+    }
+
+    function validOptionalString(data, field, maxSize) {
+      return !(field in data)
+        || (data[field] is string && data[field].size() <= maxSize);
+    }
+
+    function validNullableString(data, field, maxSize) {
+      return !(field in data)
+        || data[field] == null
+        || (data[field] is string && data[field].size() <= maxSize);
+    }
+
+    function isViewIncrement() {
+      return changedOnly(['viewCount'])
+        && request.resource.data.get('viewCount', 0) is int
+        && request.resource.data.get('viewCount', 0)
+          == resource.data.get('viewCount', 0) + 1;
+    }
+
+    function isLikeDelta() {
+      return changedOnly(['likeCount'])
+        && request.resource.data.get('likeCount', 0) is int
+        && request.resource.data.get('likeCount', 0) >= 0
+        && (request.resource.data.get('likeCount', 0)
+              == resource.data.get('likeCount', 0) + 1
+          || request.resource.data.get('likeCount', 0)
+              == resource.data.get('likeCount', 0) - 1);
+    }
+
+    // Published portfolio content is public. Only the admin can manage it;
+    // visitors may increment views or change the free public like count by one.
+    match /photos/{photoId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || isViewIncrement() || isLikeDelta();
     }
 
-    // NEW: Gallery photos collection
-    match /galleryPhotos/{docId} {
+    match /stories/{storyId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || isViewIncrement() || isLikeDelta();
     }
 
-    // Other collections used in the app
-    match /stories/{docId}        { allow read: if true; allow write: if request.auth != null; }
-    match /videos/{docId}         { allow read: if true; allow write: if request.auth != null; }
-    match /comments/{docId}       { allow read: if true; allow create: if true; allow update, delete: if request.auth != null; }
-
-    // Public contact form writes to contactMessages; admins can read/delete them.
-    match /contactMessages/{docId} { allow create: if true; allow read, update, delete: if request.auth != null; }
-    match /contacts/{docId}        { allow create: if true; allow read, update, delete: if request.auth != null; }
-
-    // Client settings documents live in the shared settings collection.
-    match /settings/{docId}       {
-      allow read: if docId != 'ai_config' || request.auth != null;
-      allow write: if request.auth != null;
+    match /videos/{videoId} {
+      allow read: if true;
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || isViewIncrement() || isLikeDelta();
     }
-    match /siteSettings/{docId}   { allow read: if true; allow write: if request.auth != null; }
-    match /aiSettings/{docId}     { allow read, write: if request.auth != null; }
 
-    match /user_likes/{docId}     { allow read: if true; allow write: if request.auth != null; }
-    match /userLikes/{docId}      { allow read: if true; allow write: if request.auth != null; }
-    match /visitors/{docId}       { allow read: if true; allow create, update: if true; allow delete: if request.auth != null; }
+    match /galleryPhotos/{photoId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /self_ads/{adId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Only the two browser-safe settings documents are public.
+    // AI provider configuration and every mutation remain admin-only.
+    match /settings/{settingId} {
+      allow read: if settingId in ['siteSettings', 'adsense'] || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    function validComment(data) {
+      return data.keys().hasAll([
+          'targetType', 'targetId', 'displayName', 'avatarColor', 'content', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'targetType', 'targetId', 'displayName', 'avatarColor', 'avatarUrl',
+          'content', 'createdAt'
+        ])
+        && data.targetType in ['photo', 'story', 'video']
+        && data.targetId is string && data.targetId.size() > 0 && data.targetId.size() <= 200
+        && data.displayName is string && data.displayName.size() > 0 && data.displayName.size() <= 80
+        && data.avatarColor is string && data.avatarColor.size() <= 32
+        && validOptionalString(data, 'avatarUrl', 4096)
+        && data.content is string && data.content.size() > 0 && data.content.size() <= 2000
+        && data.createdAt is timestamp;
+    }
+
+    match /comments/{commentId} {
+      allow read: if true;
+      allow create: if validComment(request.resource.data);
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
+    function validContactMessage(data) {
+      return data.keys().hasAll(['name', 'email', 'message', 'read', 'createdAt'])
+        && data.keys().hasOnly(['name', 'email', 'message', 'read', 'createdAt'])
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 100
+        && data.email is string && data.email.size() > 3 && data.email.size() <= 254
+        && data.message is string && data.message.size() > 0 && data.message.size() <= 5000
+        && data.read == false
+        && data.createdAt == request.time;
+    }
+
+    match /contactMessages/{messageId} {
+      allow create: if validContactMessage(request.resource.data);
+      allow read, update, delete: if isAdmin();
+    }
+
+    function validUserCreate(userId, data) {
+      return data.keys().hasAll([
+          'uid', 'email', 'displayName', 'loginMethod', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'uid', 'email', 'displayName', 'loginMethod', 'avatarUrl', 'profilePhotoUrl',
+          'avatarColor', 'spiritAnimal', 'bio', 'location', 'website', 'createdAt',
+          'updatedAt', 'totalPhotosLiked', 'totalStoriesLiked', 'followerCount',
+          'followingCount'
+        ])
+        && data.uid == userId
+        && data.email == accountEmail()
+        && data.displayName is string && data.displayName.size() > 0 && data.displayName.size() <= 100
+        && data.loginMethod in ['email', 'google', 'facebook', 'apple'];
+    }
+
+    function validUserUpdate() {
+      return changedOnly([
+          'displayName', 'avatarUrl', 'profilePhotoUrl', 'avatarColor', 'spiritAnimal',
+          'bio', 'location', 'website', 'updatedAt', 'deleted', 'deletedAt'
+        ])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == accountEmail()
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() > 0
+        && request.resource.data.displayName.size() <= 100
+        && validOptionalString(request.resource.data, 'avatarUrl', 900000)
+        && validOptionalString(request.resource.data, 'profilePhotoUrl', 900000)
+        && validOptionalString(request.resource.data, 'avatarColor', 32)
+        && validOptionalString(request.resource.data, 'spiritAnimal', 100)
+        && validOptionalString(request.resource.data, 'bio', 2000)
+        && validOptionalString(request.resource.data, 'location', 200)
+        && validOptionalString(request.resource.data, 'website', 2048);
+    }
+
     match /users/{userId} {
+      allow read: if isAdmin() || (signedIn() && request.auth.uid == userId);
+      allow create: if isAccountUser()
+        && request.auth.uid == userId
+        && validUserCreate(userId, request.resource.data);
+      allow update: if isAdmin()
+        || (isAccountUser() && request.auth.uid == userId && validUserUpdate());
+      allow delete: if isAdmin();
+    }
+
+    function validVisitor(data) {
+      return data.keys().hasAll([
+          'email', 'displayName', 'avatarColor', 'avatarUrl', 'avatarAnimal',
+          'loginMethod', 'downloadCount'
+        ])
+        && data.keys().hasOnly([
+          'email', 'displayName', 'avatarColor', 'avatarUrl', 'avatarAnimal',
+          'loginMethod', 'downloadCount', 'createdAt'
+        ])
+        && data.email == accountEmail()
+        && data.displayName is string && data.displayName.size() > 0 && data.displayName.size() <= 100
+        && data.avatarColor is string && data.avatarColor.size() <= 32
+        && data.avatarUrl is string && data.avatarUrl.size() <= 900000
+        && data.avatarAnimal is string && data.avatarAnimal.size() <= 100
+        && data.loginMethod in ['email', 'google', 'facebook', 'apple']
+        && data.downloadCount is int && data.downloadCount >= 0;
+    }
+
+    match /visitors/{visitorId} {
+      allow get: if isAdmin()
+        || (isAccountUser() && resource.data.email == accountEmail());
+      allow list: if isAdmin();
+      allow create: if isAccountUser() && validVisitor(request.resource.data);
+      allow update: if isAdmin()
+        || (isAccountUser()
+          && resource.data.email == accountEmail()
+          && validVisitor(request.resource.data));
+      allow delete: if isAdmin();
+    }
+
+    function validLike(data) {
+      return data.keys().hasAll(['email', 'targetType', 'targetId', 'createdAt'])
+        && data.keys().hasOnly(['email', 'targetType', 'targetId', 'createdAt'])
+        && data.email == accountEmail()
+        && data.targetType in ['photo', 'story', 'video']
+        && data.targetId is string && data.targetId.size() > 0 && data.targetId.size() <= 200
+        && data.createdAt == request.time;
+    }
+
+    match /user_likes/{likeId} {
+      allow read: if isAdmin()
+        || (isAccountUser() && resource.data.email == accountEmail());
+      allow create: if isAccountUser() && validLike(request.resource.data);
+      allow update: if false;
+      allow delete: if isAdmin()
+        || (isAccountUser() && resource.data.email == accountEmail());
+    }
+
+    function validMember(userId, data) {
+      return data.keys().hasAll(['userId', 'displayName', 'email', 'joinedAt'])
+        && data.keys().hasOnly([
+          'userId', 'displayName', 'email', 'avatarUrl', 'avatarColor',
+          'spiritAnimal', 'joinedAt'
+        ])
+        && data.userId == userId
+        && data.email == accountEmail()
+        && data.displayName is string && data.displayName.size() > 0 && data.displayName.size() <= 100
+        && validOptionalString(data, 'avatarUrl', 900000)
+        && validOptionalString(data, 'avatarColor', 32)
+        && validOptionalString(data, 'spiritAnimal', 100);
+    }
+
+    match /community_members/{userId} {
+      allow read: if isAccountUser() || isAdmin();
+      allow create, update: if isAccountUser()
+        && request.auth.uid == userId
+        && validMember(userId, request.resource.data);
+      allow delete: if isAdmin() || (isAccountUser() && request.auth.uid == userId);
+    }
+
+    function validPostCreate(data) {
+      return data.keys().hasAll([
+          'userId', 'username', 'text', 'imageUrl', 'category', 'story',
+          'timestamp', 'likes', 'comments'
+        ])
+        && data.keys().hasOnly([
+          'userId', 'username', 'text', 'imageUrl', 'category', 'story',
+          'timestamp', 'likes', 'comments', 'avatarUrl', 'avatarColor', 'spiritAnimal'
+        ])
+        && data.userId == request.auth.uid
+        && data.username is string && data.username.size() > 0 && data.username.size() <= 100
+        && data.text is string && data.text.size() <= 5000
+        && validNullableString(data, 'imageUrl', 4096)
+        && data.category is string && data.category.size() <= 80
+        && data.story is string && data.story.size() <= 10000
+        && data.timestamp == request.time
+        && data.likes == []
+        && data.comments == []
+        && validOptionalString(data, 'avatarUrl', 900000)
+        && validOptionalString(data, 'avatarColor', 32)
+        && validOptionalString(data, 'spiritAnimal', 100);
+    }
+
+    function isPostOwnerEdit() {
+      return resource.data.userId == request.auth.uid
+        && changedOnly(['text', 'imageUrl', 'category', 'story'])
+        && request.resource.data.text is string && request.resource.data.text.size() <= 5000
+        && validNullableString(request.resource.data, 'imageUrl', 4096)
+        && request.resource.data.category is string && request.resource.data.category.size() <= 80
+        && request.resource.data.story is string && request.resource.data.story.size() <= 10000;
+    }
+
+    function isOwnLikeToggle() {
+      let before = resource.data.get('likes', []);
+      let after = request.resource.data.likes;
+      return changedOnly(['likes'])
+        && before is list && after is list && after.size() <= 5000
+        && before.toSet().size() == before.size()
+        && after.toSet().size() == after.size()
+        && ((after.size() == before.size() + 1
+              && after.toSet().difference(before.toSet()).hasOnly([request.auth.uid])
+              && before.toSet().difference(after.toSet()).size() == 0)
+          || (after.size() == before.size() - 1
+              && before.toSet().difference(after.toSet()).hasOnly([request.auth.uid])
+              && after.toSet().difference(before.toSet()).size() == 0));
+    }
+
+    function isOwnCommentAppend() {
+      let before = resource.data.get('comments', []);
+      let after = request.resource.data.comments;
+      let added = after[after.size() - 1];
+      return changedOnly(['comments'])
+        && before is list && after is list && after.size() == before.size() + 1
+        && after.size() <= 500
+        && before.toSet().difference(after.toSet()).size() == 0
+        && after.toSet().difference(before.toSet()).size() == 1
+        && added is map
+        && added.keys().hasAll(['userId', 'username', 'text', 'timestamp'])
+        && added.keys().hasOnly([
+          'userId', 'username', 'text', 'timestamp', 'avatarUrl',
+          'avatarColor', 'spiritAnimal'
+        ])
+        && added.userId == request.auth.uid
+        && added.username is string && added.username.size() > 0 && added.username.size() <= 100
+        && added.text is string && added.text.size() > 0 && added.text.size() <= 2000
+        && added.timestamp is string && added.timestamp.size() <= 64
+        && validOptionalString(added, 'avatarUrl', 900000)
+        && validOptionalString(added, 'avatarColor', 32)
+        && validOptionalString(added, 'spiritAnimal', 100);
+    }
+
+    match /community_posts/{postId} {
       allow read: if true;
-      allow create, update: if request.auth != null && request.auth.uid == userId;
-      allow delete: if request.auth != null;
+      allow create: if isAccountUser() && validPostCreate(request.resource.data);
+      allow update: if isAdmin()
+        || (isAccountUser()
+          && (isPostOwnerEdit() || isOwnLikeToggle() || isOwnCommentAppend()));
+      allow delete: if isAdmin()
+        || (isAccountUser() && resource.data.userId == request.auth.uid);
     }
 
-    match /community_posts/{docId}   { allow read: if true; allow write: if request.auth != null; }
-    match /community_members/{docId} { allow read: if true; allow write: if request.auth != null; }
-    match /self_ads/{docId}          { allow read: if true; allow write: if request.auth != null; }
+    function validPresence(data) {
+      return data.keys().hasAll(['displayName', 'avatarUrl', 'lastSeen', 'online'])
+        && data.keys().hasOnly(['displayName', 'avatarUrl', 'lastSeen', 'online'])
+        && data.displayName is string && data.displayName.size() <= 100
+        && data.avatarUrl is string && data.avatarUrl.size() <= 4096
+        && data.lastSeen == request.time
+        && data.online == true;
+    }
 
-    // ✅ FIX: online_visitors — everyone can read/write (tracks anonymous + logged-in presence)
-    match /online_visitors/{docId} { allow read, write: if true; }
+    // Presence has no authenticated owner for guest sessions. Document IDs are
+    // random per tab; writes are restricted to the small, ephemeral presence shape.
+    match /online_visitors/{sessionId} {
+      allow read: if true;
+      allow create: if sessionId.matches('^anon_[0-9]+_[A-Za-z0-9]+$')
+        && validPresence(request.resource.data);
+      allow update: if sessionId.matches('^anon_[0-9]+_[A-Za-z0-9]+$')
+        && changedOnly(['lastSeen', 'online'])
+        && validPresence(request.resource.data);
+      allow delete: if sessionId.matches('^anon_[0-9]+_[A-Za-z0-9]+$');
+    }
 
-    // Analytics tracking — anonymous visitors can create/update their session stats,
-    // admin/authenticated users can read dashboards.
-    match /visitor_events/{docId} {
-      allow create: if true;
-      allow read, update, delete: if request.auth != null;
+    function validEventIdentity(data) {
+      return (data.visitorType == 'anonymous' && data.email == '')
+        || (isAccountUser()
+          && data.visitorType == 'logged-in'
+          && data.email == accountEmail());
     }
-    match /visitor_daily_stats/{docId} {
-      allow create, update: if true;
-      allow read, delete: if request.auth != null;
+
+    function validAnalyticsEvent(data) {
+      return data.keys().hasAll([
+          'type', 'page', 'category', 'categoryKey', 'targetId', 'targetTitle',
+          'sessionId', 'visitorType', 'email', 'displayName', 'avatarUrl',
+          'loginMethod', 'timestamp', 'date', 'month', 'year', 'referrer', 'userAgent'
+        ])
+        && data.keys().hasOnly([
+          'type', 'page', 'category', 'categoryKey', 'targetId', 'targetTitle',
+          'sessionId', 'visitorType', 'email', 'displayName', 'avatarUrl',
+          'loginMethod', 'timestamp', 'date', 'month', 'year', 'referrer', 'userAgent'
+        ])
+        && data.type in [
+          'page_view', 'category_view', 'photo_view', 'story_view', 'video_view',
+          'share', 'download', 'like', 'comment'
+        ]
+        && data.page is string && data.page.size() <= 500
+        && data.category is string && data.category.size() <= 100
+        && data.categoryKey is string && data.categoryKey.size() <= 100
+        && data.targetId is string && data.targetId.size() <= 200
+        && data.targetTitle is string && data.targetTitle.size() <= 300
+        && data.sessionId is string && data.sessionId.size() > 0 && data.sessionId.size() <= 160
+        && data.email is string && data.email.size() <= 254
+        && data.displayName is string && data.displayName.size() <= 100
+        && data.avatarUrl is string && data.avatarUrl.size() <= 4096
+        && data.loginMethod is string && data.loginMethod.size() <= 40
+        && data.timestamp == request.time
+        && data.date is string && data.date.size() == 10
+        && data.month is string && data.month.size() == 7
+        && data.year is string && data.year.size() == 4
+        && data.referrer is string && data.referrer.size() <= 2048
+        && data.userAgent is string && data.userAgent.size() <= 1000
+        && validEventIdentity(data);
     }
-    match /page_views/{docId} {
-      allow create: if true;
-      allow read, update, delete: if request.auth != null;
+
+    match /visitor_events/{eventId} {
+      allow create: if validAnalyticsEvent(request.resource.data);
+      allow read, delete: if isAdmin();
+      allow update: if false;
     }
-    match /shares/{docId} {
-      allow create: if true;
-      allow read, update, delete: if request.auth != null;
+
+    function validStatCounters(data) {
+      return data.events is int && data.events >= 1
+        && data.pageViews is int && data.pageViews >= 0
+        && data.photoViews is int && data.photoViews >= 0
+        && data.storyViews is int && data.storyViews >= 0
+        && data.videoViews is int && data.videoViews >= 0
+        && data.categoryViews is int && data.categoryViews >= 0
+        && data.shares is int && data.shares >= 0
+        && data.downloads is int && data.downloads >= 0
+        && data.likes is int && data.likes >= 0
+        && data.comments is int && data.comments >= 0;
+    }
+
+    function validDailyStat(data) {
+      return data.keys().hasAll([
+          'sessionId', 'visitorType', 'email', 'displayName', 'avatarUrl',
+          'lastPage', 'lastCategory', 'date', 'month', 'year', 'lastSeen',
+          'events', 'pageViews', 'photoViews', 'storyViews', 'videoViews',
+          'categoryViews', 'shares', 'downloads', 'likes', 'comments'
+        ])
+        && data.keys().hasOnly([
+          'sessionId', 'visitorType', 'email', 'displayName', 'avatarUrl',
+          'lastPage', 'lastCategory', 'date', 'month', 'year', 'lastSeen',
+          'events', 'pageViews', 'photoViews', 'storyViews', 'videoViews',
+          'categoryViews', 'shares', 'downloads', 'likes', 'comments',
+          'categoryCounts', 'categoryLabels'
+        ])
+        && data.sessionId is string && data.sessionId.size() > 0 && data.sessionId.size() <= 160
+        && data.email is string && data.email.size() <= 254
+        && data.displayName is string && data.displayName.size() <= 100
+        && data.avatarUrl is string && data.avatarUrl.size() <= 4096
+        && data.lastPage is string && data.lastPage.size() <= 500
+        && data.lastCategory is string && data.lastCategory.size() <= 100
+        && data.date is string && data.date.size() == 10
+        && data.month is string && data.month.size() == 7
+        && data.year is string && data.year.size() == 4
+        && data.lastSeen == request.time
+        && (!(data.keys().hasAny(['categoryCounts']))
+          || (data.categoryCounts is map && data.categoryCounts.size() <= 100))
+        && (!(data.keys().hasAny(['categoryLabels']))
+          || (data.categoryLabels is map && data.categoryLabels.size() <= 100))
+        && validStatCounters(data)
+        && validEventIdentity(data);
+    }
+
+    function statCountersAdvanceByOne() {
+      return request.resource.data.events == resource.data.events + 1
+        && request.resource.data.pageViews >= resource.data.pageViews
+        && request.resource.data.pageViews <= resource.data.pageViews + 1
+        && request.resource.data.photoViews >= resource.data.photoViews
+        && request.resource.data.photoViews <= resource.data.photoViews + 1
+        && request.resource.data.storyViews >= resource.data.storyViews
+        && request.resource.data.storyViews <= resource.data.storyViews + 1
+        && request.resource.data.videoViews >= resource.data.videoViews
+        && request.resource.data.videoViews <= resource.data.videoViews + 1
+        && request.resource.data.categoryViews >= resource.data.categoryViews
+        && request.resource.data.categoryViews <= resource.data.categoryViews + 1
+        && request.resource.data.shares >= resource.data.shares
+        && request.resource.data.shares <= resource.data.shares + 1
+        && request.resource.data.downloads >= resource.data.downloads
+        && request.resource.data.downloads <= resource.data.downloads + 1
+        && request.resource.data.likes >= resource.data.likes
+        && request.resource.data.likes <= resource.data.likes + 1
+        && request.resource.data.comments >= resource.data.comments
+        && request.resource.data.comments <= resource.data.comments + 1;
+    }
+
+    match /visitor_daily_stats/{statsId} {
+      allow create: if validDailyStat(request.resource.data)
+        && request.resource.data.events == 1
+        && request.resource.data.pageViews <= 1
+        && request.resource.data.photoViews <= 1
+        && request.resource.data.storyViews <= 1
+        && request.resource.data.videoViews <= 1
+        && request.resource.data.categoryViews <= 1
+        && request.resource.data.shares <= 1
+        && request.resource.data.downloads <= 1
+        && request.resource.data.likes <= 1
+        && request.resource.data.comments <= 1;
+      allow update: if validDailyStat(request.resource.data)
+        && statCountersAdvanceByOne();
+      allow read, delete: if isAdmin();
+    }
+
+    // Everything not used by this Wilds Aura app is denied by default.
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

@@ -1,39 +1,119 @@
 rules_version = '2';
+
 service firebase.storage {
   match /b/{bucket}/o {
-
-    // Photo uploads
-    match /photos/{allPaths=**} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-    match /photos-thumbs/{allPaths=**} {
-      allow read: if true;
-      allow write: if request.auth != null;
+    function isSignedIn() {
+      return request.auth != null;
     }
 
-    // Gallery uploads (wildlife / birds / landscapes / portraits / others)
-    match /gallery/{allPaths=**} {
-      allow read: if true;
-      allow write: if request.auth != null;
+    // Prefer a server-issued custom claim; retain the account email used by
+    // the current single-admin app as a migration-safe fallback.
+    function isAdmin() {
+      return isSignedIn()
+        && (request.auth.token.admin == true
+          || request.auth.token.email == 'madan123050@gmail.com');
     }
 
-    // Story cover image uploads
-    match /story-covers/{allPaths=**} {
-      allow read: if true;
-      allow write: if request.auth != null;
+    function isImage(maxBytes) {
+      return request.resource.contentType != null
+        && request.resource.contentType.matches('image/.*')
+        && request.resource.size <= maxBytes;
     }
 
-    // Inline images inside story content
-    match /stories/{allPaths=**} {
-      allow read: if true;
-      allow write: if request.auth != null;
+    function isVideo(maxBytes) {
+      return request.resource.contentType != null
+        && request.resource.contentType.matches('video/.*')
+        && request.resource.size <= maxBytes;
     }
 
-    // Site Settings: hero slider, category images, default thumbnail
-    match /site-settings/{allPaths=**} {
-      allow read: if true;
-      allow write: if request.auth != null;
+    function isGalleryCategory(category) {
+      return category == 'wildlife'
+        || category == 'birds'
+        || category == 'landscapes'
+        || category == 'portraits'
+        || category == 'others';
+    }
+
+    // Main portfolio photos. Files are public, but only the site admin can
+    // upload, replace, or remove them.
+    match /photos/{fileName} {
+      allow get: if true;
+      allow list: if false;
+      allow create, update: if isAdmin() && isImage(20 * 1024 * 1024);
+      allow delete: if isAdmin();
+    }
+
+    // Small WebP cards used by public gallery grids.
+    match /photos-thumbs/{fileName} {
+      allow get: if true;
+      allow list: if false;
+      allow create, update: if isAdmin() && isImage(3 * 1024 * 1024);
+      allow delete: if isAdmin();
+    }
+
+    // Curated gallery photos use gallery/{category}/{year}/{month}/{file}.
+    match /gallery/{category}/{year}/{month}/{fileName} {
+      allow get: if true;
+      allow list: if false;
+      allow create, update: if isAdmin()
+        && isGalleryCategory(category)
+        && isImage(10 * 1024 * 1024);
+      allow delete: if isAdmin() && isGalleryCategory(category);
+    }
+
+    // Hero, category, and default-thumbnail assets all use this current path.
+    match /gallery/site-settings/{fileName} {
+      allow get: if true;
+      allow list: if false;
+      allow create, update: if isAdmin() && isImage(3 * 1024 * 1024);
+      allow delete: if isAdmin();
+    }
+
+    match /story-covers/{fileName} {
+      allow get: if true;
+      allow list: if false;
+      allow create, update: if isAdmin() && isImage(5 * 1024 * 1024);
+      allow delete: if isAdmin();
+    }
+
+    match /story-inline/{fileName} {
+      allow get: if true;
+      allow list: if false;
+      allow create, update: if isAdmin() && isImage(8 * 1024 * 1024);
+      allow delete: if isAdmin();
+    }
+
+    match /video-thumbnails/{fileName} {
+      allow get: if true;
+      allow list: if false;
+      allow create, update: if isAdmin() && isImage(5 * 1024 * 1024);
+      allow delete: if isAdmin();
+    }
+
+    match /videos/{fileName} {
+      allow get: if true;
+      allow list: if false;
+      allow create, update: if isAdmin() && isVideo(500 * 1024 * 1024);
+      allow delete: if isAdmin();
+    }
+
+    match /self_ads/{fileName} {
+      allow get: if true;
+      allow list: if false;
+      allow create, update: if isAdmin() && isImage(10 * 1024 * 1024);
+      allow delete: if isAdmin();
+    }
+
+    // Community photos are isolated by the uploader's Firebase Auth UID.
+    // The owner may manage their file; the admin may remove abusive content.
+    match /community_posts/{userId}/{fileName} {
+      allow get: if true;
+      allow list: if false;
+      allow create, update: if isSignedIn()
+        && request.auth.uid == userId
+        && isImage(10 * 1024 * 1024);
+      allow delete: if isSignedIn()
+        && (request.auth.uid == userId || isAdmin());
     }
   }
 }

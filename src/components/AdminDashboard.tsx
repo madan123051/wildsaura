@@ -786,19 +786,17 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
   const handleCoverUpload = useCallback(async (file: File) => {
     setUploading(true);
     try {
-      const coverFile = await generateThumbnail(file, 800);
-      const compressedUrl = await new Promise<string>((resolve, reject) => {
+      // Story covers share the same photo-grade WebP pipeline as the main
+      // portfolio: up to 2560px and about 1MB. The old 800px thumbnail was
+      // visibly soft in featured cards and on high-density screens.
+      const coverFile = await bakeWatermarkOnFile(file);
+      const finalUrl = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result as string);
         reader.onerror = reject;
         reader.readAsDataURL(coverFile);
       });
-      setPreviewUrl(compressedUrl);
-      // Apply watermark
-      let finalUrl = compressedUrl;
-      try {
-        finalUrl = await applyWatermark(compressedUrl);
-      } catch {}
+      setPreviewUrl(finalUrl);
       setCoverImageUrl(finalUrl);
 
       // Also try uploading to Firebase Storage for persistence
@@ -806,13 +804,14 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
         const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
         const { storage } = await import('../firebase');
         const storageRef = ref(storage, `story-covers/${Date.now()}_${coverFile.name}`);
-        const response = await fetch(finalUrl);
-        const blob = await response.blob();
-        await uploadBytes(storageRef, blob);
+        await uploadBytes(storageRef, coverFile, {
+          contentType: coverFile.type || 'image/webp',
+          cacheControl: 'public,max-age=31536000,immutable',
+        });
         const firebaseUrl = await getDownloadURL(storageRef);
         setCoverImageUrl(firebaseUrl);
       } catch {
-        console.log('Firebase upload failed, using compressed data URL');
+        console.log('Firebase upload failed, using optimized data URL');
       }
     } catch {
       // Fallback to basic data URL
