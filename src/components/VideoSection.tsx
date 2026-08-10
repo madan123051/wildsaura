@@ -119,7 +119,9 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
   const displayVideos = videos.slice(0, INITIAL_COUNT);
   const hasMore = videos.length > INITIAL_COUNT;
 
-  if (videos.length === 0 || isLoading) {
+  if (videos.length === 0) return null;
+
+  if (isLoading) {
     const SkeletonVideoCard = () => (
       <div className="skeleton-card" style={{ overflow: 'hidden' }}>
         <div className="skeleton-image" style={{ width: '100%', paddingBottom: '56.25%', position: 'relative' }}>
@@ -271,8 +273,10 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
                       onEnded={() => setPlayingId(null)}
                     />
                   ) : (
-                    <div
-                      style={{ cursor: 'pointer', position: 'relative', width: '100%', height: '100%' }}
+                    <button
+                      type="button"
+                      aria-label={`Play ${video.title}`}
+                      style={{ cursor: 'pointer', position: 'relative', width: '100%', height: '100%', display: 'block', padding: 0, border: 0, background: 'transparent' }}
                       onClick={() => setPlayingId(video.id)}
                     >
                       <VideoThumb video={video} />
@@ -304,7 +308,7 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
                           {video.duration}
                         </div>
                       )}
-                    </div>
+                    </button>
                   )}
 
                   {/* ── Aspect Ratio Badge ── */}
@@ -389,6 +393,7 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
                       {/* Like Button */}
                       <button
                         onClick={() => onVideoLike(video.id)}
+                        aria-label={`${(video as any).liked ? 'Unlike' : 'Like'} ${video.title}`}
                         style={{
                           display: 'flex', alignItems: 'center', gap: '0.3rem',
                           background: 'none', border: 'none', cursor: 'pointer', padding: 0,

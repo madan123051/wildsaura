@@ -225,6 +225,9 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
     >
       <div 
         className="photo-modal-shell"
+        role="dialog"
+        aria-modal="true"
+        aria-label={photo.title}
         onClick={(e) => e.stopPropagation()}
         style={{
           position: 'relative', borderRadius: '1rem', width: 'min(100%, 96vw)', maxWidth: '1400px',
@@ -258,7 +261,6 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
               transition: 'opacity 260ms ease, transform 360ms ease',
             } as React.CSSProperties}
             decoding="async"
-            fetchPriority="high"
             sizes="100vw"
             draggable={false}
             onDragStart={(e) => e.preventDefault()}
@@ -294,6 +296,8 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
           {/* Close button - top right ON image */}
           <button 
             onClick={onClose}
+            aria-label="Close photo"
+            title="Close photo"
             style={{
               position: 'absolute', top: '0.6rem', right: '0.6rem', zIndex: 4,
               background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.15)',

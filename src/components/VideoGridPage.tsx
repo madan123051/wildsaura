@@ -3,16 +3,6 @@ import { ArrowLeft, Play, SlidersHorizontal, X, Eye, Heart } from 'lucide-react'
 import { Video, Comment, Visitor } from '../types';
 import { getOptimizedImageUrl } from '../utils/imageUrl';
 
-const useWindowSize = () => {
-  const [width, setWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
-  useEffect(() => {
-    const handler = () => setWidth(window.innerWidth);
-    window.addEventListener('resize', handler);
-    return () => window.removeEventListener('resize', handler);
-  }, []);
-  return width;
-};
-
 interface VideoGridPageProps {
   videos: Video[];
   isLoading?: boolean;
@@ -118,16 +108,6 @@ export const VideoGridPage: React.FC<VideoGridPageProps> = ({
   const [selectedMonth, setSelectedMonth] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
   const [playingId, setPlayingId] = useState<number | null>(null);
-  const width = useWindowSize();
-  
-  const getGridCols = () => {
-    if (width < 640) return 2;
-    if (width < 1024) return 2;
-    if (width < 1440) return 3;
-    if (width < 2200) return 4;
-    return 5;
-  };
-
   const years = useMemo(() => {
     const ys = new Set<string>();
     videos.forEach(v => { const y = getYear(v.createdAt); if (y) ys.add(y); });
@@ -168,6 +148,7 @@ export const VideoGridPage: React.FC<VideoGridPageProps> = ({
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', maxWidth: WIDE_PAGE_MAX, margin: '0 auto' }}>
           <button
             onClick={onBack}
+            aria-label="Back to home"
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               width: 38, height: 38, flexShrink: 0,
@@ -183,11 +164,11 @@ export const VideoGridPage: React.FC<VideoGridPageProps> = ({
           </button>
 
           <div style={{ flex: 1 }}>
-            <h1 className="font-cinzel" style={{
-              margin: 0, fontSize: '1rem', fontWeight: 700,
-              color: 'var(--wa-gold)', letterSpacing: '0.05em',
+            <h1 className="font-playfair" style={{
+              margin: 0, fontSize: '1.15rem', fontWeight: 600,
+              color: 'var(--wa-text)', letterSpacing: '-0.01em',
             }}>
-              🎬 All Videos
+              Motion Journal
             </h1>
             <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--wa-text-muted)' }}>
               {filtered.length} of {videos.length} videos
@@ -196,6 +177,8 @@ export const VideoGridPage: React.FC<VideoGridPageProps> = ({
 
           <button
             onClick={() => setShowFilters(p => !p)}
+            aria-expanded={showFilters}
+            aria-controls="video-archive-filters"
             style={{
               display: 'flex', alignItems: 'center', gap: '0.4rem',
               padding: '0.45rem 0.875rem',
@@ -211,7 +194,7 @@ export const VideoGridPage: React.FC<VideoGridPageProps> = ({
         </div>
 
         {showFilters && (
-          <div style={{
+          <div id="video-archive-filters" style={{
             maxWidth: WIDE_PAGE_MAX, margin: '0.75rem auto 0',
             display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end',
           }}>
@@ -267,11 +250,7 @@ export const VideoGridPage: React.FC<VideoGridPageProps> = ({
 
       <div style={{ maxWidth: WIDE_PAGE_MAX, margin: '0 auto', padding: '1.5rem 1rem' }}>
         {isLoading && videos.length === 0 ? (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: `repeat(${getGridCols()}, 1fr)`,
-            gap: '1.25rem',
-          }}>
+          <div className="video-archive-grid">
             {Array.from({ length: 6 }).map((_, index) => (
               <div key={index} className="skeleton-card" style={{ overflow: 'hidden', borderRadius: 14 }}>
                 <div className="skeleton-image" style={{ width: '100%', aspectRatio: '16/9' }} />
@@ -297,11 +276,7 @@ export const VideoGridPage: React.FC<VideoGridPageProps> = ({
             </button>
           </div>
         ) : (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: `repeat(${getGridCols()}, 1fr)`,
-            gap: '1.25rem',
-          }}>
+          <div className="video-archive-grid">
             {filtered.map(video => {
               const isPlaying = playingId === video.id;
               return (
@@ -336,8 +311,10 @@ export const VideoGridPage: React.FC<VideoGridPageProps> = ({
                         onEnded={() => setPlayingId(null)}
                       />
                     ) : (
-                      <div
-                        style={{ cursor: 'pointer', position: 'relative', width: '100%', height: '100%' }}
+                      <button
+                        type="button"
+                        aria-label={`Play ${video.title}`}
+                        style={{ cursor: 'pointer', position: 'relative', width: '100%', height: '100%', display: 'block', padding: 0, border: 0, background: 'transparent' }}
                         onClick={() => setPlayingId(video.id)}
                       >
                         <VideoThumbnail video={video} />
@@ -364,7 +341,7 @@ export const VideoGridPage: React.FC<VideoGridPageProps> = ({
                             padding: '0.2rem 0.5rem', borderRadius: 4,
                           }}>{video.duration}</span>
                         )}
-                      </div>
+                      </button>
                     )}
                   </div>
 
@@ -398,12 +375,14 @@ export const VideoGridPage: React.FC<VideoGridPageProps> = ({
                         <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                           <Eye size={11} /> {video.viewCount || 0}
                         </span>
-                        <span
-                          style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', color: (video as any).liked ? '#ff6b9d' : undefined }}
+                        <button
+                          type="button"
+                          aria-label={`${(video as any).liked ? 'Unlike' : 'Like'} ${video.title}`}
+                          style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', color: (video as any).liked ? '#ff6b9d' : undefined, padding: 0, border: 0, background: 'transparent', font: 'inherit' }}
                           onClick={() => onVideoLike(video.id)}
                         >
                           <Heart size={11} fill={(video as any).liked ? '#ff6b9d' : 'none'} /> {video.likeCount || 0}
-                        </span>
+                        </button>
                       </div>
                       <span>{formatDate(video.createdAt)}</span>
                     </div>

@@ -24,6 +24,7 @@ import { compressVideoForUpload } from '../utils/videoCompressor';
 import { readExifFromFile } from '../utils/exifReader';
 import { subscribeToContactMessages, deleteContactMessage, ContactMessage } from '../services/contactService';
 import { addGalleryPhotoToFirestore, deleteGalleryPhoto, subscribeToGalleryPhotos, uploadGalleryBlobToStorage, updateGalleryPhotoTitle } from '../services/galleryService';
+import './AdminDashboard.css';
 
 
 
@@ -51,15 +52,15 @@ interface AdminDashboardProps {
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
 const inputStyle: React.CSSProperties = {
-  width: '100%', padding: '0.6rem 0.75rem',
-  background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(201,168,76,0.15)',
-  borderRadius: '8px', color: 'var(--wa-light)', fontSize: '0.85rem',
+  width: '100%', padding: '0.78rem 0.9rem',
+  background: '#101a15', border: '1px solid rgba(185,201,173,0.18)',
+  borderRadius: '10px', color: 'var(--wa-text)', fontSize: '0.86rem',
   outline: 'none', boxSizing: 'border-box',
 };
 
 const labelStyle: React.CSSProperties = {
-  display: 'block', fontSize: '0.7rem', color: 'rgba(235,230,220,0.5)',
-  marginBottom: '0.35rem', letterSpacing: '0.05em',
+  display: 'block', fontSize: '0.66rem', color: 'rgba(243,240,232,0.56)',
+  marginBottom: '0.45rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700,
 };
 
 // ── AI Auto-Fill Logic ─────────────────────────────────────────────────────────
@@ -119,9 +120,10 @@ const UploadZone: React.FC<UploadZoneProps> = ({ onFileSelected, previewUrl, upl
   }, []);
 
   return (
-    <div>
+    <div className="admin-upload-zone">
       <label style={labelStyle}>{label} *</label>
       <div
+        className="admin-upload-dropzone"
         onClick={() => fileInputRef.current?.click()}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
@@ -198,13 +200,13 @@ const UploadZone: React.FC<UploadZoneProps> = ({ onFileSelected, previewUrl, upl
 
 // ── Stats Cards ──────────────────────────────────────────────────────────────
 const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: string | number; color: string; hint?: string }> = ({ icon, label, value, color, hint }) => (
-  <div style={{
-    background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.1)',
-    borderRadius: '12px', padding: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.7rem',
-    minHeight: 88,
+  <div className="admin-stat-card" style={{
+    background: 'linear-gradient(145deg, rgba(255,255,255,0.045), rgba(255,255,255,0.018))', border: '1px solid rgba(243,240,232,0.1)',
+    borderRadius: '18px', padding: '1rem', display: 'flex', alignItems: 'center', gap: '0.85rem',
+    minHeight: 102,
   }}>
-    <div style={{
-      width: 42, height: 42, borderRadius: '11px', flexShrink: 0,
+    <div className="admin-stat-card__icon" data-tone={color} style={{
+      width: 44, height: 44, borderRadius: '14px', flexShrink: 0,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       background: color === 'blue' ? 'rgba(59,130,246,0.15)' :
         color === 'red' ? 'rgba(239,68,68,0.15)' :
@@ -216,26 +218,27 @@ const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: string |
       {icon}
     </div>
     <div style={{ minWidth: 0 }}>
-      <p style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--wa-light)', lineHeight: 1 }}>{value}</p>
-      <p style={{ fontSize: '0.68rem', color: 'rgba(235,230,220,0.48)', marginTop: '0.2rem', lineHeight: 1.2 }}>{label}</p>
-      {hint && <p style={{ fontSize: '0.58rem', color: 'rgba(201,168,76,0.55)', marginTop: '0.18rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{hint}</p>}
+      <p className="admin-stat-card__value" style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--wa-text)', lineHeight: 1 }}>{value}</p>
+      <p className="admin-stat-card__label" style={{ fontSize: '0.67rem', color: 'rgba(243,240,232,0.5)', marginTop: '0.32rem', lineHeight: 1.2 }}>{label}</p>
+      {hint && <p className="admin-stat-card__hint" style={{ fontSize: '0.59rem', color: 'rgba(185,201,173,0.64)', marginTop: '0.2rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{hint}</p>}
     </div>
   </div>
 );
 
 const panelStyle: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.03)',
-  border: '1px solid rgba(201,168,76,0.1)',
-  borderRadius: '12px',
-  padding: '1rem',
+  background: 'linear-gradient(145deg, rgba(255,255,255,0.04), rgba(255,255,255,0.018))',
+  border: '1px solid rgba(243,240,232,0.1)',
+  borderRadius: '20px',
+  padding: '1.3rem',
+  boxShadow: '0 18px 46px rgba(0,0,0,0.16)',
 };
 
 const MiniBar: React.FC<{ label: string; value: number; max: number; note?: string; color?: string }> = ({ label, value, max, note, color = 'var(--wa-gold)' }) => {
   const pct = max > 0 ? Math.max(4, Math.round((value / max) * 100)) : 0;
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(82px, 0.8fr) 1.8fr auto', alignItems: 'center', gap: '0.55rem', marginBottom: '0.55rem' }}>
+    <div className="admin-mini-bar" style={{ display: 'grid', gridTemplateColumns: 'minmax(82px, 0.8fr) 1.8fr auto', alignItems: 'center', gap: '0.65rem', marginBottom: '0.65rem' }}>
       <span style={{ fontSize: '0.68rem', color: 'rgba(235,230,220,0.62)', textTransform: 'capitalize', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
-      <div style={{ height: 8, background: 'rgba(255,255,255,0.06)', borderRadius: 10, overflow: 'hidden' }}>
+      <div className="admin-mini-bar__track" style={{ height: 7, background: 'rgba(255,255,255,0.06)', borderRadius: 10, overflow: 'hidden' }}>
         <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 10 }} />
       </div>
       <span style={{ fontSize: '0.68rem', color: 'rgba(235,230,220,0.72)', textAlign: 'right', minWidth: 42 }}>{value}{note ? ` ${note}` : ''}</span>
@@ -2485,6 +2488,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
+  React.useEffect(() => {
+    if (!isMobile || !sidebarOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSidebarOpen(false);
+    };
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [isMobile, sidebarOpen]);
+
   const closeSidebarOnMobile = () => { if (isMobile) setSidebarOpen(false); };
 
   const totalLikes = photos.reduce((sum, p) => sum + p.likeCount, 0);
@@ -2578,11 +2595,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const handleDeleteVideo = (id: number) => { onDeleteVideo(id); setVideoDeleteConfirm(null); };
 
   const sidebarItemStyle = (active: boolean): React.CSSProperties => ({
-    display: 'flex', alignItems: 'center', gap: '0.6rem',
-    width: '100%', padding: '0.65rem 1rem', border: 'none',
-    borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem',
-    background: active ? 'rgba(249,115,22,0.2)' : 'transparent',
-    color: active ? '#ffffff' : 'rgba(248,250,252,0.88)',
+    display: 'flex', alignItems: 'center', gap: '0.7rem',
+    width: '100%', padding: '0.7rem 0.85rem', border: '1px solid transparent',
+    borderRadius: '11px', cursor: 'pointer', fontSize: '0.78rem', textAlign: 'left',
+    background: active ? 'rgba(185,201,173,0.12)' : 'transparent',
+    borderColor: active ? 'rgba(185,201,173,0.16)' : 'transparent',
+    color: active ? '#f3f0e8' : 'rgba(243,240,232,0.6)',
+    fontWeight: active ? 650 : 500,
     transition: 'all 0.2s',
   });
 
@@ -2619,10 +2638,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const topCategory = activeCategories[0] || analytics?.topCategories?.[0];
 
   return (
-    <div className="admin-dashboard" style={{ display: 'flex', minHeight: '100vh', background: 'var(--wa-dark)' }}>
+    <div className="admin-dashboard admin-shell" data-admin-view={view} style={{ display: 'flex', minHeight: '100vh', background: 'var(--wa-dark)' }}>
       {/* Mobile sidebar backdrop */}
       {isMobile && sidebarOpen && (
         <div
+          className="admin-sidebar-backdrop"
           onClick={() => setSidebarOpen(false)}
           style={{
             position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
@@ -2632,10 +2652,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       )}
 
       {/* Sidebar */}
-      <aside style={{
-        width: 240, background: 'rgba(5,12,8,0.97)',
-        borderRight: '1px solid rgba(201,168,76,0.12)',
-        display: 'flex', flexDirection: 'column', padding: '1.25rem 0.75rem',
+      <aside id="admin-navigation" className="admin-sidebar" style={{
+        width: 264, background: 'rgba(8,18,13,0.98)',
+        borderRight: '1px solid rgba(243,240,232,0.1)',
+        display: 'flex', flexDirection: 'column', padding: '1.15rem 0.8rem',
         position: isMobile ? 'fixed' : 'sticky',
         top: 0, left: 0,
         height: '100vh', boxSizing: 'border-box', overflowY: 'auto',
@@ -2644,23 +2664,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         transition: 'transform 0.28s cubic-bezier(0.4,0,0.2,1)',
         boxShadow: isMobile && sidebarOpen ? '4px 0 24px rgba(0,0,0,0.5)' : 'none',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0 0.5rem', marginBottom: '2rem' }}>
-          {logoUrl ? (
-            <img src={logoUrl} alt="Wilds Aura" style={{ height: 40, width: 'auto', objectFit: 'contain' }} />
-          ) : (
-            <>
-              <div style={{
-                width: 32, height: 32, borderRadius: '8px',
-                background: 'linear-gradient(135deg, rgba(201,168,76,0.3), rgba(201,168,76,0.1))',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: 'var(--wa-gold)', fontSize: '1rem', fontWeight: 700,
-              }}>W</div>
-              <span className="font-cinzel" style={{ color: 'var(--wa-gold)', fontSize: '0.85rem', fontWeight: 600 }}>Wilds Aura</span>
-            </>
+        <div className="admin-brand" style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', padding: '0.2rem 0.45rem 1.1rem', marginBottom: '0.8rem' }}>
+          <div className="admin-brand__mark">
+            {logoUrl ? (
+              <img src={logoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            ) : (
+              <span>WA</span>
+            )}
+          </div>
+          <div className="admin-brand__copy">
+            <span>Wilds Aura</span>
+            <small>Field desk</small>
+          </div>
+          {isMobile && (
+            <button className="admin-sidebar__close" onClick={() => setSidebarOpen(false)} aria-label="Close admin menu">
+              <X size={17} />
+            </button>
           )}
         </div>
 
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', flex: 1 }}>
+        <nav className="admin-nav" aria-label="Admin navigation" style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', flex: 1 }}>
           <button style={sidebarItemStyle(view === 'dashboard')} onClick={() => { setView('dashboard'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); closeSidebarOnMobile(); }}>
             <LayoutDashboard size={18} /> Dashboard Home
           </button>
@@ -2677,7 +2700,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <FileImage size={18} /> Photo Gallery
           </button>
 
-          <div style={{ borderTop: '1px solid rgba(201,168,76,0.08)', margin: '0.5rem 0', paddingTop: '0.5rem' }}>
+          <div className="admin-nav__section" style={{ borderTop: '1px solid rgba(243,240,232,0.08)', margin: '0.6rem 0 0.25rem', paddingTop: '0.65rem' }}>
             <p style={{ fontSize: '0.6rem', color: 'rgba(248,250,252,0.62)', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0 1rem', marginBottom: '0.25rem' }}>Content</p>
           </div>
 
@@ -2694,7 +2717,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <Plus size={18} /> Add Video
           </button>
 
-          <div style={{ borderTop: '1px solid rgba(201,168,76,0.08)', margin: '0.5rem 0', paddingTop: '0.5rem' }}>
+          <div className="admin-nav__section" style={{ borderTop: '1px solid rgba(243,240,232,0.08)', margin: '0.6rem 0 0.25rem', paddingTop: '0.65rem' }}>
             <p style={{ fontSize: '0.6rem', color: 'rgba(248,250,252,0.62)', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0 1rem', marginBottom: '0.25rem' }}>Social</p>
           </div>
           <button style={sidebarItemStyle(view === 'comments')} onClick={() => { setView('comments'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); closeSidebarOnMobile(); }}>
@@ -2716,7 +2739,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             )}
           </button>
 
-          <div style={{ borderTop: '1px solid rgba(201,168,76,0.08)', margin: '0.5rem 0', paddingTop: '0.5rem' }}>
+          <div className="admin-nav__section" style={{ borderTop: '1px solid rgba(243,240,232,0.08)', margin: '0.6rem 0 0.25rem', paddingTop: '0.65rem' }}>
             <p style={{ fontSize: '0.6rem', color: 'rgba(248,250,252,0.62)', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0 1rem', marginBottom: '0.25rem' }}>Settings</p>
           </div>
           <button style={sidebarItemStyle(view === 'ai-settings')} onClick={() => { setView('ai-settings'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); closeSidebarOnMobile(); }}>
@@ -2730,7 +2753,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </button>
         </nav>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', borderTop: '1px solid rgba(201,168,76,0.08)', paddingTop: '0.75rem' }}>
+        <div className="admin-sidebar__footer" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', borderTop: '1px solid rgba(243,240,232,0.08)', paddingTop: '0.75rem' }}>
           <button style={sidebarItemStyle(false)} onClick={onViewSite}><Eye size={18} /> View Site</button>
           <button
             style={{ ...sidebarItemStyle(false), color: 'rgba(239,68,68,0.6)' }}
@@ -2744,9 +2767,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       </aside>
 
       {/* Main Content */}
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <header style={{
-          padding: '0.75rem 1rem', borderBottom: '1px solid rgba(201,168,76,0.08)',
+      <main className="admin-main" style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+        <header className="admin-topbar" style={{
+          padding: '0.85rem 1.2rem', borderBottom: '1px solid rgba(243,240,232,0.08)',
           display: 'flex', alignItems: 'center', gap: '0.75rem',
           justifyContent: 'space-between', background: 'rgba(0,0,0,0.3)',
           position: 'sticky', top: 0, zIndex: 50,
@@ -2754,6 +2777,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: 0 }}>
             {/* Hamburger — mobile only */}
             <button
+              className="admin-menu-button"
               onClick={() => setSidebarOpen(o => !o)}
               style={{
                 display: isMobile ? 'flex' : 'none',
@@ -2763,6 +2787,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 borderRadius: '8px', cursor: 'pointer', color: 'var(--wa-gold)',
               }}
               aria-label="Toggle menu"
+              aria-controls="admin-navigation"
+              aria-expanded={sidebarOpen}
             >
               <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>☰</span>
             </button>
@@ -2770,6 +2796,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             {/* ← Dashboard back button (all views except dashboard) */}
             {view !== 'dashboard' && (
               <button
+                className="admin-back-button"
                 onClick={() => { setView('dashboard'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '0.3rem', flexShrink: 0,
@@ -2783,25 +2810,44 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </button>
             )}
 
-            <h1 className="font-cinzel" style={{
-              fontSize: isMobile ? '0.85rem' : '1.1rem',
+            <div className="admin-topbar__title">
+              <span>{view === 'dashboard' ? 'Studio operations' : 'Wilds Aura / Admin'}</span>
+              <h1 className="font-playfair" style={{
+              fontSize: isMobile ? '0.95rem' : '1.18rem',
               color: 'var(--wa-light)', fontWeight: 600,
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            }}>{getViewTitle()}</h1>
+              }}>{getViewTitle()}</h1>
+            </div>
           </div>
 
-          <button onClick={onViewSite} style={{
+          <button className="admin-view-site" onClick={onViewSite} style={{
             padding: '0.45rem 0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0,
             background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
             borderRadius: '8px', color: 'rgba(235,230,220,0.6)', cursor: 'pointer', fontSize: '0.75rem',
           }}><Eye size={14} />{!isMobile && ' View Site'}</button>
         </header>
 
-        <div style={{ padding: isMobile ? '1rem' : '2rem', flex: 1, overflowY: 'auto' }}>
+        <div className="admin-content" style={{ padding: isMobile ? '1rem' : 'clamp(1.5rem, 3vw, 2.6rem)', flex: 1, overflowY: 'auto' }}>
           {/* Dashboard View */}
           {view === 'dashboard' && (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(145px, 1fr))', gap: '0.7rem', marginBottom: '1rem' }}>
+              <section className="admin-dashboard-intro">
+                <div>
+                  <span className="admin-eyebrow">Collection control</span>
+                  <h2>Your field work,<br />in one place.</h2>
+                  <p>Publish new encounters, shape the journal, and follow how every story travels.</p>
+                </div>
+                <div className="admin-quick-actions" aria-label="Quick actions">
+                  <button onClick={() => setView('add')}><Camera size={16} /> New photograph</button>
+                  <button onClick={() => setView('add-story')}><BookOpen size={16} /> Write a story</button>
+                  <button onClick={() => setView('add-video')}><Film size={16} /> Add a film</button>
+                </div>
+                <div className="admin-live-status">
+                  <span /> {onlineCount} live {onlineCount === 1 ? 'visitor' : 'visitors'}
+                </div>
+              </section>
+
+              <div className="admin-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(145px, 1fr))', gap: '0.7rem', marginBottom: '1rem' }}>
                 <StatCard icon={<Users size={21} />} label="All Visitors" value={analyticsLoading ? '...' : formatMetric(analytics?.totalVisitors)} color="blue" hint={`${formatMetric(analytics?.anonymousVisitors)} anonymous`} />
                 <StatCard icon={<Wifi size={21} />} label="Online Now" value={onlineCount} color="green" hint="live sessions" />
                 <StatCard icon={<Eye size={21} />} label="Page Views" value={analyticsLoading ? '...' : formatMetric(analytics?.totalPageViews)} color="gold" hint={`${formatMetric(analytics?.totalEvents)} actions`} />
@@ -2812,7 +2858,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <StatCard icon={<MessageSquare size={21} />} label="Comments" value={formatMetric(analytics?.totalComments)} color="blue" />
               </div>
 
-              <div style={{ ...panelStyle, marginBottom: '1rem' }}>
+              <div className="admin-panel admin-panel--tracking" style={{ ...panelStyle, marginBottom: '1rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '0.85rem' }}>
                   <div>
                     <h3 className="font-cinzel" style={{ fontSize: '0.85rem', color: 'var(--wa-gold)', letterSpacing: '0.08em', margin: 0 }}>
@@ -2879,7 +2925,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
-                <div style={panelStyle}>
+                <div className="admin-panel" style={panelStyle}>
                   <h3 className="font-cinzel" style={{ fontSize: '0.82rem', color: 'var(--wa-gold)', marginBottom: '0.8rem', letterSpacing: '0.08em' }}>
                     Most Active Categories {rangeSummary ? `- ${rangeSummary.label}` : ''}
                   </h3>
@@ -2899,7 +2945,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   )}
                 </div>
 
-                <div style={panelStyle}>
+                <div className="admin-panel" style={panelStyle}>
                   <h3 className="font-cinzel" style={{ fontSize: '0.82rem', color: 'var(--wa-gold)', marginBottom: '0.8rem', letterSpacing: '0.08em' }}>
                     Top Pages
                   </h3>
@@ -2913,7 +2959,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
               </div>
 
-              <div style={{ ...panelStyle, marginBottom: '1rem' }}>
+              <div className="admin-panel" style={{ ...panelStyle, marginBottom: '1rem' }}>
                 <h3 className="font-cinzel" style={{ fontSize: '0.82rem', color: 'var(--wa-gold)', marginBottom: '0.8rem', letterSpacing: '0.08em' }}>
                   <Users size={16} style={{ marginRight: '0.4rem', verticalAlign: '-3px' }} />
                   Latest Visitor Sessions
@@ -2945,7 +2991,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 )}
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(145px, 1fr))', gap: '0.7rem' }}>
+              <div className="admin-stat-grid admin-stat-grid--content" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(145px, 1fr))', gap: '0.7rem' }}>
                 <StatCard icon={<Image size={21} />} label="Photos" value={photos.length} color="blue" />
                 <StatCard icon={<BookOpen size={21} />} label="Stories" value={stories.length} color="green" />
                 <StatCard icon={<Film size={21} />} label="Videos" value={videos.length} color="gold" />
