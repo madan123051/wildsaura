@@ -4,7 +4,6 @@ import { Header } from './components/Header';
 import { Hero } from './components/Hero';
 import { CategorySection } from './components/CategorySection';
 import { Gallery } from './components/Gallery';
-import { PhotoGallery } from './components/PhotoGallery';
 import { AboutSection } from './components/AboutSection';
 import { Footer } from './components/Footer';
 import { StoriesSection } from './components/StoriesSection';
@@ -19,6 +18,9 @@ const AdminDashboard = lazy(() =>
 );
 const PhotoModal = lazy(() =>
   import('./components/PhotoModal').then((module) => ({ default: module.PhotoModal })),
+);
+const PhotoGallery = lazy(() =>
+  import('./components/PhotoGallery').then((module) => ({ default: module.PhotoGallery })),
 );
 const SearchBar = lazy(() =>
   import('./components/SearchBar').then((module) => ({ default: module.SearchBar })),
@@ -151,16 +153,6 @@ const matchesVideoRoute = (video: Video, token: string) => {
 
 
 
-const CATEGORIES: Category[] = [
-  { key: 'wildlife', label: 'Wildlife', imageUrl: '/photos/photo-wildlife.jpeg' },
-  { key: 'birds', label: 'Birds', imageUrl: '/photos/photo-wildlife.jpeg' },
-  { key: 'macro', label: 'Macro', imageUrl: '/photos/photo-nature.jpeg' },
-  { key: 'domestic', label: 'Domestic Animals', imageUrl: '/photos/photo-nature.jpeg' },
-  { key: 'landscape', label: 'Landscapes', imageUrl: '/photos/photo-landscape.jpeg' },
-  { key: 'nature', label: 'Nature', imageUrl: '/photos/photo-nature.jpeg' },
-  { key: 'other', label: 'Portraits', imageUrl: '/photos/photo-portrait.jpeg' },
-];
-
 const FILTER_TABS: FilterTab[] = [
   { key: 'all', label: 'All' },
   { key: 'wildlife', label: 'Wildlife' },
@@ -194,7 +186,7 @@ const App: React.FC = () => {
       if (path === '/story-grid') return 'story-grid';
       if (path === '/video-grid') return 'video-grid';
       if (path.startsWith('/category/')) return 'photo-grid';
-      // Admin session exists but start from home, not admin dashboard
+      if (path === '/admin' && localStorage.getItem('wa_admin_session') === 'true') return 'admin-dashboard';
     }
     return 'home';
   });
@@ -223,6 +215,9 @@ const App: React.FC = () => {
   const galleryRef = useRef<HTMLElement | null>(null);
   const viewedTargetsRef = useRef<Set<string>>(new Set());
   const savedScrollRef = useRef<number>(0);
+  const photoReturnPathRef = useRef<string>('/');
+  const storyReturnPathRef = useRef<string>('/');
+  const videoReturnPathRef = useRef<string>('/');
 
   // New state
   const [visitor, setVisitor] = useState<Visitor | null>(null);
@@ -500,8 +495,6 @@ const App: React.FC = () => {
       }));
 
       setPhotos(prev => {
-        // Keep sample photos (those without firestoreId)
-        const samples = prev.filter(p => !p.firestoreId);
         // Build map of existing Firestore photos to preserve local state (liked, id)
         const existingMap = new Map(prev.filter(p => p.firestoreId).map(p => [p.firestoreId, p]));
         const updatedFirestore = mapped.map(m => {
@@ -511,7 +504,7 @@ const App: React.FC = () => {
           }
           return m;
         });
-        const allPhotos = [...updatedFirestore, ...samples];
+        const allPhotos = updatedFirestore;
 
         // Deep link: auto-open photo if pending (only on first snapshot)
         if (isFirstPhotoSnap && pendingPhotoSlug) {
@@ -552,7 +545,6 @@ const App: React.FC = () => {
       }));
 
       setStories(prev => {
-        const samples = prev.filter(s => !s.firestoreId);
         const existingMap = new Map(prev.filter(s => s.firestoreId).map(s => [s.firestoreId, s]));
         const updatedFirestore = mapped.map(m => {
           const existing = existingMap.get(m.firestoreId);
@@ -561,12 +553,7 @@ const App: React.FC = () => {
           }
           return m;
         });
-        const existingTitles = new Set(samples.map(s => safeLower(s.title)).filter(Boolean));
-        const nonDuplicate = updatedFirestore.filter(s => {
-          const normalizedTitle = safeLower(s.title);
-          return !normalizedTitle || !existingTitles.has(normalizedTitle);
-        });
-        const allStories = [...nonDuplicate, ...samples];
+        const allStories = updatedFirestore;
 
         // Deep link: auto-open story if pending (only on first snapshot)
         if (isFirstStorySnap && pendingStorySlug) {
@@ -823,8 +810,8 @@ const App: React.FC = () => {
 
     const onPopState = () => {
       const path = window.location.pathname;
+      setSelectedPhoto(null);
       if (path === '/' || path === '') {
-        setSelectedPhoto(null);
         setSelectedStory(null);
         setSelectedVideo(null);
         setView('home');
@@ -835,12 +822,37 @@ const App: React.FC = () => {
           setSelectedPhoto({ ...matchedPhoto, viewCount: (matchedPhoto.viewCount || 0) + 1 });
           setPhotos(prev => prev.map(p => p.id === matchedPhoto.id ? { ...p, viewCount: (p.viewCount || 0) + 1 } : p));
         }
+      } else if (path === '/photos' || path === '/photo-grid') {
+        setSelectedCategory('all');
+        setView('photo-grid');
+      } else if (path.startsWith('/category/')) {
+        const category = decodeURIComponent(path.replace('/category/', ''));
+        setSelectedCategory(category || 'all');
+        setView('photo-grid');
+      } else if (path === '/story-grid') {
+        setSelectedStory(null);
+        setView('story-grid');
+      } else if (path === '/video-grid') {
+        setSelectedVideo(null);
+        setView('video-grid');
       } else if (path === '/terms') {
         setView('terms');
       } else if (path === '/privacy-policy') {
         setView('privacy-policy');
       } else if (path === '/data-deletion') {
         setView('data-deletion');
+      } else if (path === '/marketplace') {
+        setView('marketplace');
+      } else if (path === '/community') {
+        setView('community');
+      } else if (path === '/ngo') {
+        setView('ngo');
+      } else if (path === '/about') {
+        setView('about');
+      } else if (path === '/contact') {
+        setView('contact');
+      } else if (path === '/admin') {
+        setView(localStorage.getItem('wa_admin_session') === 'true' ? 'admin-dashboard' : 'home');
       } else if (path.startsWith('/video/')) {
         const videoId = decodeURIComponent(path.replace('/video/', ''));
         const matchedVideo = videos.find((video) => matchesVideoRoute(video, videoId));
@@ -1250,6 +1262,7 @@ const App: React.FC = () => {
 
   const handleStoryClick = useCallback((story: Story) => {
     savedScrollRef.current = window.scrollY;
+    storyReturnPathRef.current = window.location.pathname.startsWith('/story/') ? '/' : window.location.pathname;
     setSelectedStory({ ...story, viewCount: story.viewCount + 1 });
     setStories((prev) => prev.map((s) => s.id === story.id ? { ...s, viewCount: s.viewCount + 1 } : s));
     recordView('story', story.firestoreId);
@@ -1274,6 +1287,7 @@ const App: React.FC = () => {
 
   const handleVideoClick = useCallback((video: Video) => {
     savedScrollRef.current = window.scrollY;
+    videoReturnPathRef.current = window.location.pathname.startsWith('/video/') ? '/' : window.location.pathname;
     const viewIncrement = getViewIncrement('video', video.firestoreId);
     const updated = { ...video, viewCount: (video.viewCount || 0) + viewIncrement };
     setSelectedVideo(updated);
@@ -1687,10 +1701,14 @@ const App: React.FC = () => {
     const updatedPhoto = photo ? { ...photo, viewCount: (photo.viewCount || 0) + viewIncrement } : null;
     if (photo) {
       savedScrollRef.current = window.scrollY;
+      const isModalNavigation = window.location.pathname.startsWith('/photo/');
+      if (!isModalNavigation) photoReturnPathRef.current = window.location.pathname;
       setPhotos((prev) => prev.map((p) => p.id === photo.id ? { ...p, viewCount: (p.viewCount || 0) + 1 } : p));
       recordView('photo', photo.firestoreId);
       const photoId = photo.slug || photo.firestoreId || String(photo.id);
-      window.history.pushState({}, '', '/photo/' + encodeURIComponent(photoId));
+      const nextPhotoPath = '/photo/' + encodeURIComponent(photoId);
+      if (isModalNavigation) window.history.replaceState({}, '', nextPhotoPath);
+      else window.history.pushState({}, '', nextPhotoPath);
       trackSiteEvent({
         type: 'photo_view',
         page: '/photo/' + encodeURIComponent(photoId),
@@ -1699,7 +1717,7 @@ const App: React.FC = () => {
         targetTitle: photo.title,
       });
     } else {
-      window.history.pushState({}, '', '/');
+      window.history.replaceState({}, '', photoReturnPathRef.current || '/');
     }
     setSelectedPhoto(updatedPhoto);
   }, [recordView, trackSiteEvent]);
@@ -1707,22 +1725,24 @@ const App: React.FC = () => {
   // ── Helper: Close Photo Modal ────────────────────────────────────────────
   const closePhoto = useCallback(() => {
     setSelectedPhoto(null);
-    window.history.pushState({}, '', '/');
+    window.history.replaceState({}, '', photoReturnPathRef.current || '/');
     requestAnimationFrame(() => { window.scrollTo(0, savedScrollRef.current); });
   }, []);
 
   // ── Helper: Go back from story to home ───────────────────────────────────
   const handleStoryBack = useCallback(() => {
-    setView('home');
+    const returnPath = storyReturnPathRef.current || '/';
+    setView(returnPath === '/story-grid' ? 'story-grid' : 'home');
     setSelectedStory(null);
-    window.history.pushState({}, '', '/');
+    window.history.replaceState({}, '', returnPath);
     requestAnimationFrame(() => { window.scrollTo(0, savedScrollRef.current); });
   }, []);
 
   const handleVideoBack = useCallback(() => {
-    setView('home');
+    const returnPath = videoReturnPathRef.current || '/';
+    setView(returnPath === '/video-grid' ? 'video-grid' : 'home');
     setSelectedVideo(null);
-    window.history.pushState({}, '', '/');
+    window.history.replaceState({}, '', returnPath);
     requestAnimationFrame(() => { window.scrollTo(0, savedScrollRef.current); });
   }, []);
 
@@ -1758,8 +1778,8 @@ const App: React.FC = () => {
               isGeneratingStory={false}
               isAdmin={isAdmin}
               visitor={visitor}
-              comments={photoComments[selectedPhoto.firestoreId || ''] || []}
-              onAddComment={(content) => handleAddPhotoComment(selectedPhoto.firestoreId || '', content)}
+              comments={photoComments[selectedPhoto.firestoreId || `preview-${selectedPhoto.slug || selectedPhoto.id}`] || []}
+              onAddComment={(content) => handleAddPhotoComment(selectedPhoto.firestoreId || `preview-${selectedPhoto.slug || selectedPhoto.id}`, content)}
               onDeleteComment={handleDeleteComment}
               onVisitorLoginClick={() => setShowVisitorLogin(true)}
               freeDownloadsLeft={Math.max(0, FREE_DOWNLOADS - downloadCount)}
@@ -2024,7 +2044,7 @@ const App: React.FC = () => {
     );
   }
 
-  const StaticPage = ({ title, text, cta }: { title: string; text: string; cta?: string }) => (
+  const StaticPage = ({ title, text, cta, image }: { title: string; text: string; cta?: string; image?: string }) => (
     <div style={{ minHeight: '100vh', background: 'var(--wa-bg)', display: 'flex', flexDirection: 'column' }}>
       <Header
         onScrollToGallery={scrollToGallery}
@@ -2041,32 +2061,32 @@ const App: React.FC = () => {
         isAdmin={isAdmin}
         onAdminClick={() => { setView('admin-dashboard'); window.history.pushState({}, '', '/admin'); }}
       />
-      <div style={{ flex: 1 }}>
-      <div className="wa-container" style={{ paddingTop: '1.5rem', paddingBottom: '5rem', maxWidth: 900 }}>
-        <button
-          onClick={() => { setView('home'); window.history.pushState({}, '', '/'); window.scrollTo(0, 0); }}
-          style={{
-            background: 'rgba(201,168,76,0.15)',
-            border: '1px solid rgba(201,168,76,0.35)',
-            color: 'var(--wa-gold)',
-            borderRadius: 8,
-            padding: '0.55rem 0.85rem',
-            marginBottom: '1rem',
-            cursor: 'pointer',
-            fontWeight: 600,
-          }}
-        >
-          ← Back to Home
-        </button>
-        <h1 style={{ fontSize: '2.5rem', color: 'var(--wa-text)', marginBottom: '1rem' }}>{title}</h1>
-        <p style={{ fontSize: '1.1rem', lineHeight: 1.8, color: 'var(--wa-muted)' }}>{text}</p>
-        {cta && <p style={{ marginTop: '1.5rem', fontWeight: 700, color: 'var(--wa-accent)' }}>{cta}</p>}
-      </div>
-      </div>
+      <main className="editorial-static-page">
+        <div className="wa-container editorial-static-page__grid">
+          <div className="editorial-static-page__content">
+            <button
+              type="button"
+              className="text-arrow-link"
+              onClick={() => { setView('home'); window.history.pushState({}, '', '/'); window.scrollTo(0, 0); }}
+            >
+              ← Back to home
+            </button>
+            <p className="section-kicker"><span>WA</span> Wilds Aura</p>
+            <h1>{title}</h1>
+            <p className="editorial-static-page__lead">{text}</p>
+            {cta && <p className="editorial-static-page__cta">{cta}</p>}
+          </div>
+          {image && (
+            <div className="editorial-static-page__image">
+              <img src={image} alt="" width={1200} height={900} />
+            </div>
+          )}
+        </div>
+      </main>
       <Footer {...footerNavProps} />
     </div>
   );
-  if (view === 'marketplace') return <StaticPage title="Buy & Sell Authentic Nepal Photography" text="Support local photographers by purchasing high-quality images. Use them for personal or commercial projects. Option A: Buy Now via Google Form/DM and payment by eSewa or bank. Option B: Stripe or Gumroad links." cta="20% of every purchase supports animal rescue in Nepal." />;
+  if (view === 'marketplace') return <StaticPage title="Authentic photography, collected with purpose." text="Support local photographers by licensing high-quality images for personal and commercial work through the WildSaura Market." cta="A share of every purchase supports animal rescue in Nepal." image="/photos/photo-wildlife.jpeg" />;
   if (view === 'community') return (
     <Suspense fallback={<RouteFallback />}>
       <CommunityPage
@@ -2103,24 +2123,22 @@ const App: React.FC = () => {
         />}
     </Suspense>
   );
-  if (view === 'ngo') return <StaticPage title="Save Animal Nepal" text="We are building a system to support injured and abandoned animals across Nepal. Through photography and community support, we aim to create real impact. Mission: rescue, treatment, and feeding. Future plan: transparent monthly reporting and verified rescue partners." />;
-  if (view === 'about') return <StaticPage title="About WildSaura" text="WildSaura connects photographers, nature lovers, and a mission to protect animals in Nepal. Start small, grow fast, and use visual storytelling for impact." />;
-  if (view === 'contact') return <StaticPage title="Contact" text="For partnerships, volunteering, and media inquiries, message us through the contact form on the homepage." />;
+  if (view === 'ngo') return <StaticPage title="A visual story can become practical care." text="We are building a transparent system to support injured and abandoned animals across Nepal through rescue, treatment, feeding, and trusted local partners." cta="The long-term plan includes verified rescue partners and clear monthly reporting." image="/photos/tiger-hero.jpg" />;
+  if (view === 'about') return <StaticPage title="A field journal made between two homes." text="Wilds Aura connects photographers, nature lovers, and a mission to protect animals through patient visual storytelling from Nepal and Japan." image="/madan-about.png" />;
+  if (view === 'contact') return <StaticPage title="Let’s start a thoughtful collaboration." text="For assignments, print licensing, conservation partnerships, volunteering, or media enquiries, use the contact form on the homepage or email hello@wildsaura.com." image="/photos/photo-landscape.jpeg" />;
 
   // ── Smart Category Thumbnails ────────────────────────────────────────────
   // Priority:
   //   1. Admin manual override via Site Settings (dashboard upload)
   //   2. Best photo from Firestore for that exact category (sorted by most liked = most engaging)
   //      Uses thumbnailUrl if available for fast loading
-  //   3. Gallery photos as fallback (rotates daily)
-  //   4. Static default image
+  //   3. Gallery photos (rotates daily)
   const todayDayIndex = Math.floor(Date.now() / (1000 * 60 * 60 * 24));
 
   const getAutoCategoryThumbnail = (
     settingsKey: keyof NonNullable<SiteSettings['categoryImages']>,
     galleryCategories: string[],
-    photoCategory: string,
-    fallback: string
+    photoCategory: string
   ): string => {
     // 1. Admin manual override takes priority
     const manual = siteSettings.categoryImages?.[settingsKey];
@@ -2134,8 +2152,7 @@ const App: React.FC = () => {
           p.tags?.some(t => t.toLowerCase() === photoCategory.toLowerCase())
         ) &&
              p.published !== false &&
-             p.imageUrl &&
-             !p.imageUrl.startsWith('/photos/')
+             p.imageUrl
       )
       .sort((a, b) => (b.likeCount || 0) - (a.likeCount || 0));
     if (fromPhotos.length > 0) {
@@ -2144,25 +2161,25 @@ const App: React.FC = () => {
       return best.thumbnailUrl || best.imageUrl;
     }
 
-    // 3. Fallback to gallery photos (rotates daily)
+    // 3. Gallery photos (rotates daily)
     const fromGallery = galleryPhotos.filter(p => galleryCategories.includes(p.category) && p.imageUrl);
     if (fromGallery.length > 0) {
       return fromGallery[todayDayIndex % fromGallery.length].imageUrl;
     }
 
-    // 4. Static default fallback
-    return fallback;
+    return '';
   };
 
   const dynamicCategories: Category[] = [
-    { key: 'wildlife',  label: 'Wildlife',        imageUrl: getAutoCategoryThumbnail('wildlife',  ['wildlife'],   'wildlife',  '/photos/photo-wildlife.jpeg') },
-    { key: 'birds',     label: 'Birds',            imageUrl: getAutoCategoryThumbnail('birds',     ['birds'],      'birds',     '/photos/photo-wildlife.jpeg') },
-    { key: 'macro',     label: 'Macro',            imageUrl: getAutoCategoryThumbnail('macro',     ['others'],     'macro',     '/photos/photo-nature.jpeg') },
-    { key: 'domestic',  label: 'Domestic Animals', imageUrl: getAutoCategoryThumbnail('domestic',  ['others'],     'domestic',  '/photos/photo-nature.jpeg') },
-    { key: 'landscape', label: 'Landscapes',       imageUrl: getAutoCategoryThumbnail('landscape', ['landscapes'], 'landscape', '/photos/photo-landscape.jpeg') },
-    { key: 'nature',    label: 'Nature',           imageUrl: getAutoCategoryThumbnail('nature',    ['others'],     'nature',    '/photos/photo-nature.jpeg') },
-    { key: 'other',     label: 'Portraits',        imageUrl: getAutoCategoryThumbnail('portraits', ['portraits'],  'other',     '/photos/photo-portrait.jpeg') },
-  ];
+    { key: 'wildlife',  label: 'Wildlife',        imageUrl: getAutoCategoryThumbnail('wildlife',  ['wildlife'],   'wildlife') },
+    { key: 'birds',     label: 'Birds',            imageUrl: getAutoCategoryThumbnail('birds',     ['birds'],      'birds') },
+    { key: 'macro',     label: 'Macro',            imageUrl: getAutoCategoryThumbnail('macro',     ['others'],     'macro') },
+    { key: 'domestic',  label: 'Domestic Animals', imageUrl: getAutoCategoryThumbnail('domestic',  ['others'],     'domestic') },
+    { key: 'landscape', label: 'Landscapes',       imageUrl: getAutoCategoryThumbnail('landscape', ['landscapes'], 'landscape') },
+    { key: 'nature',    label: 'Nature',           imageUrl: getAutoCategoryThumbnail('nature',    ['others'],     'nature') },
+    { key: 'street',    label: 'Street',           imageUrl: photos.find(p => p.category === 'street' && p.published !== false)?.thumbnailUrl || photos.find(p => p.category === 'street' && p.published !== false)?.imageUrl || '' },
+    { key: 'other',     label: 'Portraits',        imageUrl: getAutoCategoryThumbnail('portraits', ['portraits'],  'other') },
+  ].filter(category => photos.some(photo => photo.category === category.key && photo.published !== false));
 
   const searchablePhotos: Photo[] = [
     ...photos,
@@ -2223,7 +2240,7 @@ const App: React.FC = () => {
         onCommunityClick={handleCommunityClick}
       />
       <Hero onExplore={scrollToGallery} logoUrl={logoUrl} heroImages={siteSettings.heroImages} onCommunityClick={handleCommunityClick} />
-      <CategorySection categories={dynamicCategories} onCategoryClick={handleCategoryClick} loading={photosLoading} />
+      <CategorySection categories={dynamicCategories} onCategoryClick={handleCategoryClick} loading={photosLoading && photos.length === 0} />
       <Gallery
         photos={photos}
         filterTabs={FILTER_TABS}
@@ -2236,11 +2253,15 @@ const App: React.FC = () => {
         galleryRef={galleryRef}
         isLoggedIn={!!visitor}
         onLoginRequired={() => setShowVisitorLogin(true)}
-        onViewAll={() => { setView('photo-grid'); window.scrollTo(0, 0); }}
+        onViewAll={() => { setView('photo-grid'); window.history.pushState({}, '', '/photos'); window.scrollTo(0, 0); }}
         isLoading={photosLoading}
       />
-      <PhotoGallery photos={galleryPhotos} searchQuery={searchQuery} />
-      <StoriesSection stories={stories} isLoading={storiesLoading} onStoryClick={handleStoryClick} onViewAll={() => { setView('story-grid'); window.scrollTo(0, 0); }} />
+      {galleryPhotos.length > 0 && (
+        <Suspense fallback={<InlineFallback />}>
+          <PhotoGallery photos={galleryPhotos} searchQuery={searchQuery} />
+        </Suspense>
+      )}
+      <StoriesSection stories={stories} isLoading={storiesLoading} onStoryClick={handleStoryClick} onViewAll={() => { setView('story-grid'); window.history.pushState({}, '', '/story-grid'); window.scrollTo(0, 0); }} />
       <Suspense fallback={<InlineFallback />}>
         <VideoSection
           videos={videos}
@@ -2253,7 +2274,7 @@ const App: React.FC = () => {
           onVisitorLoginClick={() => setShowVisitorLogin(true)}
           isAdmin={isAdmin}
           onDeleteComment={handleDeleteComment}
-          onViewAll={() => { setView('video-grid'); window.scrollTo(0, 0); }}
+          onViewAll={() => { setView('video-grid'); window.history.pushState({}, '', '/video-grid'); window.scrollTo(0, 0); }}
         />
       </Suspense>
       <AboutSection onMapClick={() => setShowMap(true)} />
@@ -2282,8 +2303,8 @@ const App: React.FC = () => {
             isGeneratingStory={false}
             isAdmin={isAdmin}
             visitor={visitor}
-            comments={photoComments[selectedPhoto.firestoreId || ''] || []}
-            onAddComment={(content) => handleAddPhotoComment(selectedPhoto.firestoreId || '', content)}
+            comments={photoComments[selectedPhoto.firestoreId || `preview-${selectedPhoto.slug || selectedPhoto.id}`] || []}
+            onAddComment={(content) => handleAddPhotoComment(selectedPhoto.firestoreId || `preview-${selectedPhoto.slug || selectedPhoto.id}`, content)}
             onDeleteComment={handleDeleteComment}
             onVisitorLoginClick={() => setShowVisitorLogin(true)}
             freeDownloadsLeft={Math.max(0, FREE_DOWNLOADS - downloadCount)}

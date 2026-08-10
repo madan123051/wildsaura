@@ -4,16 +4,6 @@ import { Photo, FilterTab } from '../types';
 import { PhotoCard } from './PhotoCard';
 import { sortByCreatedAtDesc } from '../utils/dateSort';
 
-const useWindowSize = () => {
-  const [width, setWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
-  useEffect(() => {
-    const handler = () => setWidth(window.innerWidth);
-    window.addEventListener('resize', handler);
-    return () => window.removeEventListener('resize', handler);
-  }, []);
-  return width;
-};
-
 interface PhotoGridPageProps {
   photos: Photo[];
   filterTabs: FilterTab[];
@@ -76,21 +66,10 @@ export const PhotoGridPage: React.FC<PhotoGridPageProps> = ({
     setSelectedCategoryState(category);
     onCategoryChange?.(category);
     if (typeof window !== 'undefined') {
-      const nextPath = category === 'all' ? '/photo-grid' : `/category/${encodeURIComponent(category)}`;
+      const nextPath = category === 'all' ? '/photos' : `/category/${encodeURIComponent(category)}`;
       window.history.pushState({}, '', nextPath);
     }
   };
-  const width = useWindowSize();
-  
-  const getGridCols = () => {
-    if (width < 640) return 2;
-    if (width < 1024) return 3;
-    if (width < 1440) return 4;
-    if (width < 1920) return 5;
-    if (width < 2400) return 6;
-    return 7;
-  };
-
   const published = useMemo(() => sortByCreatedAtDesc(photos.filter(p => p.published !== false)), [photos]);
 
   const years = useMemo(() => {
@@ -139,6 +118,7 @@ export const PhotoGridPage: React.FC<PhotoGridPageProps> = ({
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', maxWidth: WIDE_PAGE_MAX, margin: '0 auto' }}>
           <button
             onClick={onBack}
+            aria-label="Back to home"
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               width: 38, height: 38, flexShrink: 0,
@@ -154,11 +134,11 @@ export const PhotoGridPage: React.FC<PhotoGridPageProps> = ({
           </button>
 
           <div style={{ flex: 1 }}>
-            <h1 className="font-cinzel" style={{
-              margin: 0, fontSize: '1rem', fontWeight: 700,
-              color: 'var(--wa-gold)', letterSpacing: '0.05em',
+            <h1 className="font-playfair" style={{
+              margin: 0, fontSize: '1.15rem', fontWeight: 600,
+              color: 'var(--wa-text)', letterSpacing: '-0.01em',
             }}>
-              📷 All Photos
+              Photographic Archive
             </h1>
             <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--wa-text-muted)' }}>
               {filtered.length} of {published.length} photos
@@ -167,6 +147,8 @@ export const PhotoGridPage: React.FC<PhotoGridPageProps> = ({
 
           <button
             onClick={() => setShowFilters(p => !p)}
+            aria-expanded={showFilters}
+            aria-controls="photo-archive-filters"
             style={{
               display: 'flex', alignItems: 'center', gap: '0.4rem',
               padding: '0.45rem 0.875rem',
@@ -183,7 +165,7 @@ export const PhotoGridPage: React.FC<PhotoGridPageProps> = ({
         </div>
 
         {showFilters && (
-          <div style={{
+          <div id="photo-archive-filters" style={{
             maxWidth: WIDE_PAGE_MAX, margin: '0.75rem auto 0',
             display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end',
           }}>
@@ -263,11 +245,7 @@ export const PhotoGridPage: React.FC<PhotoGridPageProps> = ({
 
       <div style={{ maxWidth: WIDE_PAGE_MAX, margin: '0 auto', padding: '1.5rem 1rem' }}>
         {isLoading && published.length === 0 ? (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: `repeat(${getGridCols()}, 1fr)`,
-            gap: '0.75rem',
-          }}>
+          <div className="photo-archive-grid">
             {Array.from({ length: 8 }).map((_, index) => (
               <div key={index} className="skeleton-card" style={{ overflow: 'hidden', borderRadius: '0.75rem' }}>
                 <div className="skeleton-image" style={{ width: '100%', aspectRatio: '1/1' }} />
@@ -296,11 +274,7 @@ export const PhotoGridPage: React.FC<PhotoGridPageProps> = ({
             </button>
           </div>
         ) : (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: `repeat(${getGridCols()}, 1fr)`,
-            gap: '0.75rem',
-          }}>
+          <div className="photo-archive-grid">
             {filtered.map((photo, index) => (
               <PhotoCard
                 key={photo.id}

@@ -1,14 +1,18 @@
 import React from 'react';
-import { Clock, Eye, Heart, ArrowRight, CalendarDays } from 'lucide-react';
+import { ArrowRight, Clock } from 'lucide-react';
 import { Story } from '../types';
-import { getOptimizedImageUrl } from '../utils/imageUrl';
+import { getOptimizedImageUrl, getOptimizedSrcSet } from '../utils/imageUrl';
 
-const formatStoryDate = (dateStr: string): string => {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return '';
-  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+const STORY_PLACEHOLDER = '/images/placeholder-card.svg';
+const INITIAL_COUNT = 3;
+
+const estimateReadTime = (content: string) => Math.max(1, Math.ceil(content.trim().split(/\s+/).length / 200));
+
+const formatStoryDate = (value: string) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 };
 
 interface StoriesSectionProps {
@@ -18,223 +22,117 @@ interface StoriesSectionProps {
   onViewAll?: () => void;
 }
 
-const INITIAL_COUNT = 6;
-const STORY_PLACEHOLDER = '/images/placeholder-card.svg';
-const estimateReadTime = (content: string): number => Math.max(1, Math.ceil(content.split(/\s+/).length / 200));
-
-const SkeletonStoryCard = () => (
-  <div className="skeleton-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-    <div className="skeleton-image" style={{ width: '100%', height: '160px', borderRadius: '8px' }} />
-    <div className="skeleton-text medium" />
-    <div className="skeleton-text short" />
-    <div className="skeleton-text full" />
-    <div className="skeleton-text full" />
-  </div>
-);
-
-export const StoriesSection: React.FC<StoriesSectionProps> = ({ stories, isLoading, onStoryClick, onViewAll }) => {
-  const displayStories = stories.slice(0, INITIAL_COUNT);
-  const hasMore = stories.length > INITIAL_COUNT;
-
-  if (isLoading) {
-    return (
-      <section id="stories" style={{ padding: '5rem 0', background: 'var(--wa-dark)' }}>
-        <div className="wa-container">
-          <div style={{ marginBottom: '3rem' }}>
-            <div style={{ textAlign: 'center' }}>
-              <p className="font-cinzel" style={{
-                fontSize: '0.7rem', letterSpacing: '0.3em', textTransform: 'uppercase',
-                color: 'var(--wa-gold)', marginBottom: '0.75rem',
-              }}>
-                Behind The Lens
-              </p>
-              <h2 className="font-playfair" style={{
-                fontSize: 'clamp(1.75rem, 4vw, 2.5rem)', fontWeight: 700,
-                background: 'linear-gradient(135deg, var(--wa-gold), var(--wa-gold-light))',
-                WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-                marginBottom: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-              }}>
-                📖 Stories & Adventures
-              </h2>
-              <p style={{ fontSize: '0.9rem', color: 'var(--wa-text-muted)', maxWidth: 500, margin: '0 auto' }}>
-                Dive into the tales behind each expedition — the patience, the thrill, and the untold moments.
-              </p>
-            </div>
-          </div>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-            gap: '1.5rem',
-          }}>
-            {Array.from({ length: INITIAL_COUNT }).map((_, i) => <SkeletonStoryCard key={i} />)}
-          </div>
-        </div>
-      </section>
-    );
-  }
+const StoryCard: React.FC<{
+  story: Story;
+  featured?: boolean;
+  onOpen: () => void;
+}> = ({ story, featured = false, onOpen }) => {
+  const image = getOptimizedImageUrl(story.coverImageUrl, {
+    width: featured ? 1200 : 800,
+    quality: 78,
+    fit: 'cover',
+  }) || story.coverImageUrl || STORY_PLACEHOLDER;
+  const srcSet = getOptimizedSrcSet(story.coverImageUrl, [480, 640, 800, 1000, 1200], {
+    quality: 78,
+    fit: 'cover',
+  });
+  const href = `/story/${encodeURIComponent(story.slug || story.firestoreId || String(story.id))}`;
 
   return (
-    <section id="stories" style={{ padding: '5rem 0', background: 'var(--wa-dark)' }}>
+    <article className={`journal-story-card ${featured ? 'journal-story-card--featured' : ''}`}>
+      <a
+        href={href}
+        onClick={(event) => {
+          event.preventDefault();
+          onOpen();
+        }}
+      >
+        <div className="journal-story-card__media">
+          <img
+            src={image}
+            srcSet={srcSet}
+            sizes={featured ? '(max-width: 900px) 100vw, 62vw' : '(max-width: 900px) 100vw, 32vw'}
+            alt={story.title}
+            width={featured ? 1200 : 800}
+            height={featured ? 760 : 620}
+            loading="lazy"
+            decoding="async"
+            onError={(event) => {
+              event.currentTarget.srcset = '';
+              event.currentTarget.onerror = null;
+              event.currentTarget.src = STORY_PLACEHOLDER;
+            }}
+          />
+          <span className="journal-story-card__wash" />
+          {story.tags[0] && <span className="journal-story-card__tag">{story.tags[0]}</span>}
+        </div>
+
+        <div className="journal-story-card__body">
+          <p className="journal-story-card__meta">
+            {formatStoryDate(story.createdAt)}
+            <span aria-hidden="true">/</span>
+            <span><Clock size={12} aria-hidden="true" /> {estimateReadTime(story.content)} min read</span>
+          </p>
+          <h3>{story.title}</h3>
+          <p className="journal-story-card__excerpt">{story.excerpt}</p>
+          <span className="journal-story-card__read">
+            Read field note <ArrowRight size={16} aria-hidden="true" />
+          </span>
+        </div>
+      </a>
+    </article>
+  );
+};
+
+export const StoriesSection: React.FC<StoriesSectionProps> = ({
+  stories,
+  isLoading = false,
+  onStoryClick,
+  onViewAll,
+}) => {
+  const visibleStories = stories.slice(0, INITIAL_COUNT);
+
+  return (
+    <section id="stories" className="journal-stories" aria-labelledby="stories-title">
       <div className="wa-container">
-        {/* Section Header */}
-        <div style={{ marginBottom: '3rem' }}>
-          <div style={{ textAlign: 'center' }}>
-            <p className="font-cinzel" style={{
-              fontSize: '0.7rem', letterSpacing: '0.3em', textTransform: 'uppercase',
-              color: 'var(--wa-gold)', marginBottom: '0.75rem',
-            }}>
-              Behind The Lens
-            </p>
-            <h2 className="font-playfair" style={{
-              fontSize: 'clamp(1.75rem, 4vw, 2.5rem)', fontWeight: 700,
-              background: 'linear-gradient(135deg, var(--wa-gold), var(--wa-gold-light))',
-              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-              marginBottom: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-            }}>
-              📖 Stories & Adventures
-              <span style={{
-                fontSize: '0.9rem', fontWeight: 400,
-                WebkitTextFillColor: 'var(--wa-text-muted)',
-              }}>
-                ({stories.length})
-              </span>
-            </h2>
-            <p style={{ fontSize: '0.9rem', color: 'var(--wa-text-muted)', maxWidth: 500, margin: '0 auto' }}>
-              Dive into the tales behind each expedition — the patience, the thrill, and the untold moments.
-            </p>
+        <div className="journal-stories__header">
+          <div>
+            <p className="section-kicker"><span>02</span> Field notes</p>
+            <h2 id="stories-title">Behind every frame,<br /><em>a story.</em></h2>
+          </div>
+          <div>
+            <p>Long waits, changing weather, and the small decisions that happen before a photograph is made.</p>
+            {onViewAll && (
+              <button type="button" className="text-arrow-link" onClick={onViewAll}>
+                Read all stories <ArrowRight size={17} aria-hidden="true" />
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Story Cards */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: '1.5rem',
-        }}>
-          {displayStories.map((story) => (
-            <div
-              key={story.id}
-              onClick={() => onStoryClick(story)}
-              style={{
-                cursor: 'pointer', borderRadius: '14px', overflow: 'hidden',
-                background: 'var(--wa-dark-card)',
-                border: '1px solid var(--wa-border)',
-                transition: 'border-color 0.3s, transform 0.3s',
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(201,168,76,0.3)';
-                e.currentTarget.style.transform = 'translateY(-4px)';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.borderColor = 'var(--wa-border)';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
-            >
-              <div style={{ position: 'relative', overflow: 'hidden' }}>
-                <img
-                  src={getOptimizedImageUrl(story.coverImageUrl, { width: 560, height: 360, quality: 72 }) || story.coverImageUrl || STORY_PLACEHOLDER}
-                  alt={story.title}
-                  style={{ width: '100%', height: 200, objectFit: 'cover', transition: 'transform 0.5s' }}
-                  loading="lazy"
-                  decoding="async"
-                />
-                <div style={{
-                  position: 'absolute', bottom: 0, left: 0, right: 0,
-                  background: 'linear-gradient(transparent, rgba(0,0,0,0.7))',
-                  padding: '1.5rem 1rem 0.75rem',
-                }}>
-                  <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                    {story.tags.slice(0, 3).map((tag) => (
-                      <span key={tag} style={{
-                        padding: '0.15rem 0.5rem', borderRadius: '9999px', fontSize: '0.6rem',
-                        background: 'rgba(201,168,76,0.2)', color: 'var(--wa-gold-light)',
-                        border: '1px solid rgba(201,168,76,0.3)',
-                      }}>
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
+        {isLoading && stories.length === 0 ? (
+          <div className="journal-stories__grid" aria-label="Loading stories">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <div className={`journal-story-skeleton ${index === 0 ? 'journal-story-skeleton--featured' : ''}`} key={index}>
+                <div className="skeleton-image" />
+                <div className="skeleton-text medium" />
+                <div className="skeleton-text full" />
               </div>
-
-              <div style={{ padding: '1.25rem' }}>
-                <h3 className="font-playfair" style={{
-                  fontSize: '1.1rem', fontWeight: 700, color: 'var(--wa-text)',
-                  marginBottom: '0.5rem', lineHeight: 1.3,
-                }}>
-                  <a
-                    href={`/story/${encodeURIComponent(story.slug || story.firestoreId || String(story.id))}`}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      onStoryClick(story);
-                    }}
-                    style={{ color: 'inherit', textDecoration: 'none' }}
-                  >
-                    {story.title}
-                  </a>
-                </h3>
-                <p style={{
-                  fontSize: '0.8rem', color: 'var(--wa-text-muted)', lineHeight: 1.6,
-                  marginBottom: '1rem',
-                  display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-                }}>
-                  {story.excerpt}
-                </p>
-
-                {story.createdAt && formatStoryDate(story.createdAt) && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.68rem', color: 'var(--wa-gold)', opacity: 0.75, marginBottom: '0.6rem' }}>
-                    <CalendarDays size={11} />
-                    <span>{formatStoryDate(story.createdAt)}</span>
-                  </div>
-                )}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--wa-text-muted)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                      <Clock size={12} /> {estimateReadTime(story.content)} min read
-                    </span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                      <Eye size={12} /> {story.viewCount}
-                    </span>
-                  </div>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'rgba(201,168,76,0.6)' }}>
-                    <Heart size={12} /> {story.likeCount}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* View All Stories Button — opens dedicated grid page */}
-        {hasMore && onViewAll && (
-          <div style={{ textAlign: 'center', marginTop: '2.5rem' }}>
-            <button
-              onClick={onViewAll}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-                padding: '0.75rem 2rem',
-                background: 'linear-gradient(135deg, var(--wa-gold), #b8892d)',
-                color: '#062013',
-                border: 'none',
-                borderRadius: '50px',
-                fontSize: '0.9rem', fontWeight: 700,
-                letterSpacing: '0.05em', cursor: 'pointer',
-                transition: 'all 0.3s ease',
-                boxShadow: '0 4px 15px rgba(201,168,76,0.3)',
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 8px 25px rgba(201,168,76,0.4)';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 15px rgba(201,168,76,0.3)';
-              }}
-            >
-              View All {stories.length} Stories <ArrowRight size={16} />
-            </button>
+            ))}
           </div>
+        ) : visibleStories.length > 0 ? (
+          <div className="journal-stories__grid">
+            {visibleStories.map((story, index) => (
+              <StoryCard
+                key={story.firestoreId || story.id}
+                story={story}
+                featured={index === 0}
+                onOpen={() => onStoryClick(story)}
+              />
+            ))}
+          </div>
+        ) : (
+          <p className="journal-stories__empty">New field notes are being prepared.</p>
         )}
       </div>
     </section>

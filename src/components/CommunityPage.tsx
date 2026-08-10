@@ -79,9 +79,9 @@ const POST_CATEGORIES = [
   { value: 'other', label: '✨ Other' },
 ];
 const NAV_SITES = [
-  { label: 'Drishya', href: 'https://drishya.wildsaura.com', emoji: '📸' },
-  { label: 'Market', href: 'https://market.wildsaura.com', emoji: '🛒' },
-  { label: 'Community Hub', href: 'https://community.wildsaura.com', emoji: '🌿' },
+  { label: 'Facebook', href: 'https://www.facebook.com/share/1HkdZy1UjZ/?mibextid=wwXIfr', emoji: 'f' },
+  { label: 'Instagram', href: 'https://www.instagram.com/wilds_aura?igsh=MTdtcHRjY296c2U4OA%3D%3D&utm_source=qr', emoji: '◎' },
+  { label: 'TikTok', href: 'https://www.tiktok.com/@wilds_aura?_r=1&_t=ZS-98lXpum9UVW', emoji: '♪' },
 ];
 
 

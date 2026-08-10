@@ -1,17 +1,7 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { ArrowLeft, BookOpen, SlidersHorizontal, X, Clock, Eye, Heart } from 'lucide-react';
 import { Story } from '../types';
 import { getOptimizedImageUrl } from '../utils/imageUrl';
-
-const useWindowSize = () => {
-  const [width, setWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
-  useEffect(() => {
-    const handler = () => setWidth(window.innerWidth);
-    window.addEventListener('resize', handler);
-    return () => window.removeEventListener('resize', handler);
-  }, []);
-  return width;
-};
 
 interface StoryGridPageProps {
   stories: Story[];
@@ -69,17 +59,6 @@ export const StoryGridPage: React.FC<StoryGridPageProps> = ({ stories, isLoading
   const [selectedYear, setSelectedYear] = useState('all');
   const [selectedTag, setSelectedTag] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
-  const width = useWindowSize();
-  
-  const getGridCols = () => {
-    if (width < 640) return 2;
-    if (width < 1024) return 2;
-    if (width < 1440) return 3;
-    if (width < 1920) return 4;
-    if (width < 2400) return 5;
-    return 6;
-  };
-
   const years = useMemo(() => {
     const ys = new Set<string>();
     stories.forEach(s => { const y = getYear(s.createdAt); if (y) ys.add(y); });
@@ -114,6 +93,7 @@ export const StoryGridPage: React.FC<StoryGridPageProps> = ({ stories, isLoading
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', maxWidth: WIDE_PAGE_MAX, margin: '0 auto' }}>
           <button
             onClick={onBack}
+            aria-label="Back to home"
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               width: 38, height: 38, flexShrink: 0,
@@ -129,11 +109,11 @@ export const StoryGridPage: React.FC<StoryGridPageProps> = ({ stories, isLoading
           </button>
 
           <div style={{ flex: 1 }}>
-            <h1 className="font-cinzel" style={{
-              margin: 0, fontSize: '1rem', fontWeight: 700,
-              color: 'var(--wa-gold)', letterSpacing: '0.05em',
+            <h1 className="font-playfair" style={{
+              margin: 0, fontSize: '1.15rem', fontWeight: 600,
+              color: 'var(--wa-text)', letterSpacing: '-0.01em',
             }}>
-              📖 All Stories
+              Field Stories
             </h1>
             <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--wa-text-muted)' }}>
               {filtered.length} of {stories.length} stories
@@ -142,6 +122,8 @@ export const StoryGridPage: React.FC<StoryGridPageProps> = ({ stories, isLoading
 
           <button
             onClick={() => setShowFilters(p => !p)}
+            aria-expanded={showFilters}
+            aria-controls="story-archive-filters"
             style={{
               display: 'flex', alignItems: 'center', gap: '0.4rem',
               padding: '0.45rem 0.875rem',
@@ -157,7 +139,7 @@ export const StoryGridPage: React.FC<StoryGridPageProps> = ({ stories, isLoading
         </div>
 
         {showFilters && (
-          <div style={{
+          <div id="story-archive-filters" style={{
             maxWidth: WIDE_PAGE_MAX, margin: '0.75rem auto 0',
             display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end',
           }}>
@@ -231,11 +213,7 @@ export const StoryGridPage: React.FC<StoryGridPageProps> = ({ stories, isLoading
             </button>
           </div>
         ) : (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: `repeat(${getGridCols()}, 1fr)`,
-            gap: '1.25rem',
-          }}>
+          <div className="story-archive-grid">
             {filtered.map((story, index) => (
               <div
                 key={story.id}
