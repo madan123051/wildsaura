@@ -1081,7 +1081,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
         .field-gallery__lightbox {
           position: fixed;
           inset: 0;
-          z-index: 1000;
+          z-index: 10000;
           display: grid;
           place-items: center;
           overflow-y: auto;
@@ -1092,9 +1092,9 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
 
         .field-gallery__lightbox-close {
           position: fixed;
-          z-index: 2;
-          top: clamp(1rem, 2vw, 1.6rem);
-          right: clamp(1rem, 2vw, 1.6rem);
+          z-index: 3;
+          top: max(clamp(1rem, 2vw, 1.6rem), calc(env(safe-area-inset-top, 0px) + 0.75rem));
+          right: max(clamp(1rem, 2vw, 1.6rem), calc(env(safe-area-inset-right, 0px) + 0.75rem));
           display: grid;
           place-items: center;
           width: 44px;
@@ -1104,6 +1104,9 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
           background: rgba(8,16,13,0.78);
           color: var(--fg-ivory);
           cursor: pointer;
+          touch-action: manipulation;
+          -webkit-tap-highlight-color: transparent;
+          box-shadow: 0 4px 18px rgba(0,0,0,0.48);
           transition: background 180ms ease, border-color 180ms ease;
         }
 
@@ -1254,7 +1257,11 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
 
           .field-gallery__lightbox {
             align-items: start;
-            padding: 4.5rem 1rem 1.5rem;
+            padding:
+              max(4.5rem, calc(env(safe-area-inset-top, 0px) + 4rem))
+              max(1rem, calc(env(safe-area-inset-right, 0px) + 0.75rem))
+              max(1.5rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem))
+              max(1rem, calc(env(safe-area-inset-left, 0px) + 0.75rem));
           }
 
           .field-gallery__lightbox-image-wrap {
