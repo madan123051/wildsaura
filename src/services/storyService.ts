@@ -1,6 +1,5 @@
-import { db, storage } from '../firebase';
-import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, serverTimestamp, onSnapshot, Unsubscribe, increment } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { db } from '../firebaseCore';
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, serverTimestamp, onSnapshot, Unsubscribe, increment, limit as queryLimit } from 'firebase/firestore';
 
 export interface FirestoreStory {
   id?: string;
@@ -34,6 +33,7 @@ function hasTitle(story: FirestoreStory): boolean {
 }
 
 export async function uploadStoryCoverToStorage(dataUrl: string, filename: string): Promise<string> {
+  const { storage, ref, uploadBytesResumable, getDownloadURL } = await import('../firebaseStorage');
   const storageRef = ref(storage, `story-covers/${Date.now()}_${filename}`);
   const blob = dataUrlToBlob(dataUrl);
   const contentType = blob.type || 'image/webp';
@@ -114,9 +114,12 @@ export async function incrementStoryCounter(docId: string, field: 'viewCount' | 
  */
 export function subscribeToStories(
   onUpdate: (stories: FirestoreStory[]) => void,
-  onError?: (error: Error) => void
+  onError?: (error: Error) => void,
+  maxResults?: number,
 ): Unsubscribe {
-  const q = query(collection(db, STORIES_COLLECTION), orderBy('createdAt', 'desc'));
+  const q = maxResults && maxResults > 0
+    ? query(collection(db, STORIES_COLLECTION), orderBy('createdAt', 'desc'), queryLimit(maxResults))
+    : query(collection(db, STORIES_COLLECTION), orderBy('createdAt', 'desc'));
   return onSnapshot(q,
     (snapshot) => {
       const stories = snapshot.docs

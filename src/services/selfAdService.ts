@@ -1,10 +1,9 @@
 // ── Self-Ad / Promotion Service — Firestore CRUD ──────────────────────
-import { db, storage } from '../firebase';
+import { db } from '../firebaseCore';
 import { 
   collection, doc, getDocs, addDoc, updateDoc, deleteDoc, 
   query, orderBy, Timestamp
 } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 
 export interface SelfAd {
   id: string;
@@ -84,6 +83,7 @@ export async function fetchEnabledSelfAds(): Promise<SelfAd[]> {
 
 // ── Upload ad image ──────────────────────────────────────────────────
 export async function uploadAdImage(file: File): Promise<{ url: string; path: string }> {
+  const { storage, ref, uploadBytes, getDownloadURL } = await import('../firebaseStorage');
   const ext = file.name.split('.').pop() || 'jpg';
   const fileName = `ad_${Date.now()}.${ext}`;
   const storagePath = `self_ads/${fileName}`;
@@ -108,7 +108,10 @@ export async function uploadAdImage(file: File): Promise<{ url: string; path: st
     } catch { /* use original */ }
   }
   
-  await uploadBytes(storageRef, uploadFile);
+  await uploadBytes(storageRef, uploadFile, {
+    contentType: uploadFile.type || 'image/webp',
+    cacheControl: 'public,max-age=31536000,immutable',
+  });
   const url = await getDownloadURL(storageRef);
   return { url, path: storagePath };
 }
@@ -137,6 +140,7 @@ export async function deleteSelfAd(ad: SelfAd): Promise<void> {
   // Delete image from storage if exists
   if (ad.imagePath) {
     try {
+      const { storage, ref, deleteObject } = await import('../firebaseStorage');
       const storageRef = ref(storage, ad.imagePath);
       await deleteObject(storageRef);
     } catch { /* image may not exist */ }

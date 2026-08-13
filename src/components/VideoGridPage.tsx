@@ -39,12 +39,12 @@ const VideoThumbnail: React.FC<{ video: Video }> = ({ video }) => {
   return (
     <>
       {!loaded && (
-        <div className="skeleton-image" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+        <div aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'var(--wa-dark-card)' }} />
       )}
       <img
         src={candidates[candidateIndex] || VIDEO_PLACEHOLDER}
         alt={video.title}
-        style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.4s, opacity 0.25s', opacity: loaded ? 1 : 0 }}
+        style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: loaded ? 1 : 0 }}
         loading="lazy"
         decoding="async"
         onLoad={() => setLoaded(true)}
@@ -66,7 +66,7 @@ const TagChips: React.FC<{ tags?: string[]; max?: number }> = ({ tags = [], max 
     <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', margin: '0 0 0.6rem' }}>
       {tags.slice(0, max).map((tag) => (
         <span key={tag} style={{
-          padding: '0.15rem 0.5rem', borderRadius: 9999, fontSize: '0.6rem',
+          padding: '0.15rem 0.5rem', borderRadius: 9999, fontSize: '0.75rem',
           background: 'rgba(201,168,76,0.12)', color: 'var(--wa-gold-light)',
           border: '1px solid rgba(201,168,76,0.24)',
         }}>
@@ -139,9 +139,7 @@ export const VideoGridPage: React.FC<VideoGridPageProps> = ({
   return (
     <div style={{ minHeight: '100vh', background: 'var(--wa-bg)', paddingBottom: '3rem' }}>
       <div style={{
-        position: 'sticky', top: 0, zIndex: 50,
-        background: 'rgba(10,20,15,0.97)',
-        backdropFilter: 'blur(12px)',
+        background: 'var(--wa-dark)',
         borderBottom: '1px solid rgba(201,168,76,0.15)',
         padding: '0.875rem 1rem',
       }}>
@@ -151,7 +149,7 @@ export const VideoGridPage: React.FC<VideoGridPageProps> = ({
             aria-label="Back to home"
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              width: 38, height: 38, flexShrink: 0,
+              width: 44, height: 44, flexShrink: 0,
               background: 'rgba(201,168,76,0.12)',
               border: '1px solid rgba(201,168,76,0.3)',
               borderRadius: '50%', cursor: 'pointer',
@@ -170,8 +168,10 @@ export const VideoGridPage: React.FC<VideoGridPageProps> = ({
             }}>
               Motion Journal
             </h1>
-            <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--wa-text-muted)' }}>
-              {filtered.length} of {videos.length} videos
+            <p role="status" aria-live="polite" style={{ margin: 0, fontSize: '0.75rem', color: 'var(--wa-text-muted)' }}>
+              {isLoading && videos.length === 0
+                ? 'Loading videos…'
+                : `${filtered.length} of ${videos.length} videos`}
             </p>
           </div>
 
@@ -181,7 +181,7 @@ export const VideoGridPage: React.FC<VideoGridPageProps> = ({
             aria-controls="video-archive-filters"
             style={{
               display: 'flex', alignItems: 'center', gap: '0.4rem',
-              padding: '0.45rem 0.875rem',
+              minHeight: 44, padding: '0.45rem 0.875rem',
               background: showFilters ? 'rgba(201,168,76,0.2)' : 'rgba(201,168,76,0.08)',
               border: '1px solid rgba(201,168,76,0.3)',
               borderRadius: 20, cursor: 'pointer',
@@ -198,14 +198,14 @@ export const VideoGridPage: React.FC<VideoGridPageProps> = ({
             maxWidth: WIDE_PAGE_MAX, margin: '0.75rem auto 0',
             display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end',
           }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.65rem', color: 'var(--wa-gold)', fontWeight: 700, letterSpacing: '0.1em', marginBottom: 4, textTransform: 'uppercase' }}>
+            <div role="group" aria-labelledby="video-year-label">
+              <span id="video-year-label" style={{ display: 'block', fontSize: '0.75rem', color: 'var(--wa-gold-light)', fontWeight: 700, letterSpacing: '0.1em', marginBottom: 4, textTransform: 'uppercase' }}>
                 Year
-              </label>
+              </span>
               <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
                 {years.map(y => (
-                  <button key={y} onClick={() => { setSelectedYear(y); setSelectedMonth('all'); }} style={{
-                    padding: '0.3rem 0.75rem', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600,
+                  <button key={y} onClick={() => { setSelectedYear(y); setSelectedMonth('all'); }} aria-pressed={selectedYear === y} style={{
+                    minHeight: 44, padding: '0.3rem 0.75rem', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600,
                     cursor: 'pointer', transition: 'all 0.2s',
                     background: selectedYear === y ? 'var(--wa-gold)' : 'rgba(255,255,255,0.05)',
                     color: selectedYear === y ? '#062013' : 'var(--wa-text-muted)',
@@ -218,16 +218,17 @@ export const VideoGridPage: React.FC<VideoGridPageProps> = ({
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.65rem', color: 'var(--wa-gold)', fontWeight: 700, letterSpacing: '0.1em', marginBottom: 4, textTransform: 'uppercase' }}>
+              <label htmlFor="video-month-filter" style={{ display: 'block', fontSize: '0.75rem', color: 'var(--wa-gold-light)', fontWeight: 700, letterSpacing: '0.1em', marginBottom: 4, textTransform: 'uppercase' }}>
                 Month
               </label>
               <select
+                id="video-month-filter"
                 value={selectedMonth}
                 onChange={e => setSelectedMonth(e.target.value)}
                 style={{
                   background: '#1a2a1f', color: 'var(--wa-text)',
                   border: '1px solid rgba(201,168,76,0.3)', borderRadius: 8,
-                  padding: '0.4rem 0.75rem', fontSize: '0.8rem', cursor: 'pointer',
+                  minHeight: 44, padding: '0.4rem 0.75rem', fontSize: '0.8rem', cursor: 'pointer',
                 }}
               >
                 {months.map(m => <option key={m} value={m}>{m === 'all' ? 'All Months' : m}</option>)}
@@ -237,7 +238,7 @@ export const VideoGridPage: React.FC<VideoGridPageProps> = ({
             {activeFilterCount > 0 && (
               <button onClick={() => { setSelectedYear('all'); setSelectedMonth('all'); }} style={{
                 display: 'flex', alignItems: 'center', gap: '0.3rem',
-                padding: '0.4rem 0.75rem',
+                minHeight: 44, padding: '0.4rem 0.75rem',
                 background: 'rgba(255,80,80,0.1)', border: '1px solid rgba(255,80,80,0.3)',
                 borderRadius: 8, cursor: 'pointer', color: '#ff6b6b', fontSize: '0.78rem', fontWeight: 600,
               }}>
@@ -250,16 +251,8 @@ export const VideoGridPage: React.FC<VideoGridPageProps> = ({
 
       <div style={{ maxWidth: WIDE_PAGE_MAX, margin: '0 auto', padding: '1.5rem 1rem' }}>
         {isLoading && videos.length === 0 ? (
-          <div className="video-archive-grid">
-            {Array.from({ length: 6 }).map((_, index) => (
-              <div key={index} className="skeleton-card" style={{ overflow: 'hidden', borderRadius: 14 }}>
-                <div className="skeleton-image" style={{ width: '100%', aspectRatio: '16/9' }} />
-                <div style={{ padding: '0.875rem' }}>
-                  <div className="skeleton-text medium" />
-                  <div className="skeleton-text short" />
-                </div>
-              </div>
-            ))}
+          <div role="status" aria-live="polite" style={{ minHeight: 240, display: 'grid', placeItems: 'center', color: 'var(--wa-text-muted)', fontSize: '0.875rem' }}>
+            Loading videos…
           </div>
         ) : filtered.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '6rem 0' }}>
@@ -268,7 +261,7 @@ export const VideoGridPage: React.FC<VideoGridPageProps> = ({
               No videos match the selected filters.
             </p>
             <button onClick={() => { setSelectedYear('all'); setSelectedMonth('all'); }} style={{
-              marginTop: '1rem', padding: '0.5rem 1.5rem',
+              minHeight: 44, marginTop: '1rem', padding: '0.5rem 1.5rem',
               background: 'var(--wa-gold)', color: '#062013',
               border: 'none', borderRadius: 20, cursor: 'pointer', fontWeight: 700,
             }}>
@@ -337,7 +330,7 @@ export const VideoGridPage: React.FC<VideoGridPageProps> = ({
                           <span style={{
                             position: 'absolute', bottom: 8, right: 8,
                             background: 'rgba(0,0,0,0.8)',
-                            color: '#fff', fontSize: '0.7rem', fontWeight: 600,
+                            color: '#fff', fontSize: '0.75rem', fontWeight: 600,
                             padding: '0.2rem 0.5rem', borderRadius: 4,
                           }}>{video.duration}</span>
                         )}
@@ -357,7 +350,7 @@ export const VideoGridPage: React.FC<VideoGridPageProps> = ({
                           event.preventDefault();
                           onVideoClick(video);
                         }}
-                        style={{ color: 'inherit', textDecoration: 'none' }}
+                        style={{ color: 'inherit', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', minHeight: 44 }}
                       >
                         {video.title}
                       </a>
@@ -370,7 +363,7 @@ export const VideoGridPage: React.FC<VideoGridPageProps> = ({
                       }}>{video.description}</p>
                     )}
                     <TagChips tags={video.tags} max={3} />
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--wa-text-muted)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--wa-text-muted)' }}>
                       <div style={{ display: 'flex', gap: '0.75rem' }}>
                         <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                           <Eye size={11} /> {video.viewCount || 0}
@@ -378,7 +371,8 @@ export const VideoGridPage: React.FC<VideoGridPageProps> = ({
                         <button
                           type="button"
                           aria-label={`${(video as any).liked ? 'Unlike' : 'Like'} ${video.title}`}
-                          style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', color: (video as any).liked ? '#ff6b9d' : undefined, padding: 0, border: 0, background: 'transparent', font: 'inherit' }}
+                          aria-pressed={Boolean((video as any).liked)}
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem', minWidth: 44, minHeight: 44, cursor: 'pointer', color: (video as any).liked ? '#ff6b9d' : undefined, padding: 0, border: 0, background: 'transparent', font: 'inherit' }}
                           onClick={() => onVideoLike(video.id)}
                         >
                           <Heart size={11} fill={(video as any).liked ? '#ff6b9d' : 'none'} /> {video.likeCount || 0}

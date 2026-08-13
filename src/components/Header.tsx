@@ -14,6 +14,7 @@ import {
 import { Visitor } from '../types';
 import { ANIMAL_AVATARS } from '../constants/avatarConstants';
 import { AvatarDisplay } from './AvatarDisplay';
+import { getOptimizedImageUrl, getOptimizedSrcSet } from '../utils/imageUrl';
 
 interface HeaderProps {
   onScrollToGallery: () => void;
@@ -157,6 +158,12 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   const currentPath = typeof window === 'undefined' ? '' : window.location.pathname;
+  const optimizedLogoUrl = logoUrl
+    ? getOptimizedImageUrl(logoUrl, { width: 128, quality: 88, fit: 'contain' })
+    : '';
+  const optimizedLogoSrcSet = logoUrl
+    ? getOptimizedSrcSet(logoUrl, [64, 96, 128], { quality: 88, fit: 'contain' })
+    : undefined;
 
   return (
     <header className={`wa-header ${scrolled || menuOpen ? 'wa-header--solid' : ''}`}>
@@ -169,7 +176,16 @@ export const Header: React.FC<HeaderProps> = ({
         >
           <span className="wa-header__crest" aria-hidden="true">
             {logoUrl ? (
-              <img src={logoUrl} alt="" decoding="async" />
+              <img
+                src={optimizedLogoUrl || logoUrl}
+                srcSet={optimizedLogoSrcSet}
+                sizes="39px"
+                alt=""
+                width={39}
+                height={39}
+                fetchPriority="low"
+                decoding="async"
+              />
             ) : (
               <Aperture size={22} strokeWidth={1.45} />
             )}
@@ -523,15 +539,13 @@ export const Header: React.FC<HeaderProps> = ({
           color: var(--wa-text);
           background: var(--wa-nav-bg-top);
           border-bottom: 1px solid transparent;
-          -webkit-backdrop-filter: blur(18px) saturate(1.15);
-          backdrop-filter: blur(18px) saturate(1.15);
           transition: background-color 240ms ease, border-color 240ms ease, box-shadow 240ms ease;
         }
 
         .wa-header--solid {
           background: var(--wa-nav-bg-scrolled);
           border-bottom-color: var(--wa-dropdown-border);
-          box-shadow: 0 14px 42px rgba(0, 0, 0, 0.16);
+          box-shadow: 0 8px 22px rgba(0, 0, 0, 0.14);
         }
 
         .wa-header__inner {
@@ -549,6 +563,7 @@ export const Header: React.FC<HeaderProps> = ({
           width: max-content;
           display: inline-flex;
           align-items: center;
+          min-height: 44px;
           gap: 0.72rem;
           color: var(--wa-text);
           text-decoration: none;
@@ -600,7 +615,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         .wa-header__wordmark strong {
           color: var(--wa-text);
-          font-family: 'Cinzel', Georgia, serif;
+          font-family: var(--wa-font-serif);
           font-size: 0.92rem;
           font-weight: 600;
           letter-spacing: 0.13em;
@@ -611,7 +626,7 @@ export const Header: React.FC<HeaderProps> = ({
         .wa-header__wordmark small {
           margin-top: 0.37rem;
           color: var(--wa-text-muted);
-          font-size: 0.51rem;
+          font-size: 0.75rem;
           font-weight: 600;
           letter-spacing: 0.18em;
           text-transform: uppercase;
@@ -627,9 +642,12 @@ export const Header: React.FC<HeaderProps> = ({
 
         .wa-header__nav-link {
           position: relative;
+          min-height: 44px;
+          display: inline-flex;
+          align-items: center;
           padding: 0.55rem clamp(0.38rem, 0.65vw, 0.7rem);
           color: var(--wa-nav-icon);
-          font-size: 0.68rem;
+          font-size: 0.75rem;
           font-weight: 650;
           letter-spacing: 0.105em;
           line-height: 1;
@@ -699,8 +717,8 @@ export const Header: React.FC<HeaderProps> = ({
         .wa-header__icon-button,
         .wa-header__menu-button {
           position: relative;
-          width: 38px;
-          height: 38px;
+          width: 44px;
+          height: 44px;
           display: inline-grid;
           place-items: center;
           padding: 0;
@@ -728,8 +746,8 @@ export const Header: React.FC<HeaderProps> = ({
           position: absolute;
           top: 1px;
           right: -2px;
-          min-width: 16px;
-          height: 16px;
+          min-width: 18px;
+          height: 18px;
           display: grid;
           place-items: center;
           padding: 0 3px;
@@ -737,7 +755,7 @@ export const Header: React.FC<HeaderProps> = ({
           background: #c7483f;
           border: 2px solid var(--wa-bg);
           border-radius: 999px;
-          font-size: 0.52rem;
+          font-size: 0.625rem;
           font-weight: 800;
           line-height: 1;
         }
@@ -750,7 +768,7 @@ export const Header: React.FC<HeaderProps> = ({
         }
 
         .wa-header__profile-chip {
-          height: 39px;
+          height: 44px;
           max-width: 126px;
           display: flex;
           align-items: center;
@@ -767,7 +785,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         .wa-header__profile-chip > span:last-child {
           overflow: hidden;
-          font-size: 0.69rem;
+          font-size: 0.75rem;
           font-weight: 700;
           text-overflow: ellipsis;
           white-space: nowrap;
@@ -788,8 +806,8 @@ export const Header: React.FC<HeaderProps> = ({
         }
 
         .wa-header__sign-out {
-          width: 34px;
-          height: 34px;
+          width: 44px;
+          height: 44px;
         }
 
         .wa-header__sign-out:hover {
@@ -797,14 +815,14 @@ export const Header: React.FC<HeaderProps> = ({
         }
 
         .wa-header__sign-in {
-          height: 38px;
+          min-height: 44px;
           margin-left: 0.32rem;
           padding: 0 0.95rem;
           color: var(--wa-text);
           background: transparent;
           border: 1px solid var(--wa-border-gold);
           border-radius: 999px;
-          font-size: 0.69rem;
+          font-size: 0.75rem;
           font-weight: 750;
           letter-spacing: 0.09em;
           text-transform: uppercase;
@@ -831,9 +849,7 @@ export const Header: React.FC<HeaderProps> = ({
           justify-content: flex-end;
           height: calc(100vh - 68px);
           height: calc(100dvh - 68px);
-          background: rgba(3, 9, 6, 0.6);
-          -webkit-backdrop-filter: blur(5px);
-          backdrop-filter: blur(5px);
+          background: rgba(3, 9, 6, 0.86);
           animation: waHeaderFadeIn 180ms ease both;
         }
 
@@ -844,11 +860,9 @@ export const Header: React.FC<HeaderProps> = ({
           overscroll-behavior: contain;
           padding: 1.55rem clamp(1rem, 5vw, 1.7rem) 2.5rem;
           color: var(--wa-text);
-          background:
-            radial-gradient(circle at 100% 0%, var(--wa-label-bg), transparent 36%),
-            var(--wa-dropdown-bg);
+          background: var(--wa-dropdown-bg);
           border-left: 1px solid var(--wa-dropdown-border);
-          box-shadow: -26px 0 70px rgba(0, 0, 0, 0.24);
+          box-shadow: -14px 0 30px rgba(0, 0, 0, 0.18);
           animation: waHeaderPanelIn 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
         }
 
@@ -862,7 +876,7 @@ export const Header: React.FC<HeaderProps> = ({
         .wa-header__visitor-copy small {
           display: block;
           color: var(--wa-gold);
-          font-size: 0.58rem;
+          font-size: 0.75rem;
           font-weight: 800;
           letter-spacing: 0.18em;
           text-transform: uppercase;
@@ -872,7 +886,7 @@ export const Header: React.FC<HeaderProps> = ({
           max-width: 330px;
           margin: 0.48rem 0 0;
           color: var(--wa-text-muted);
-          font-size: 0.76rem;
+          font-size: 0.875rem;
           line-height: 1.55;
         }
 
@@ -890,8 +904,8 @@ export const Header: React.FC<HeaderProps> = ({
           color: var(--wa-text);
           border-bottom: 1px solid var(--wa-border);
           text-decoration: none;
-          font-family: 'Cinzel', Georgia, serif;
-          font-size: 0.8rem;
+          font-family: var(--wa-font-serif);
+          font-size: 0.875rem;
           font-weight: 600;
           letter-spacing: 0.075em;
           transition: color 180ms ease, padding-left 180ms ease, background-color 180ms ease;
@@ -905,7 +919,7 @@ export const Header: React.FC<HeaderProps> = ({
         .wa-header__mobile-index {
           color: var(--wa-text-muted);
           font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-          font-size: 0.54rem;
+          font-size: 0.75rem;
           letter-spacing: 0.08em;
         }
 
@@ -960,7 +974,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         .wa-header__mobile-tools > button > span:last-child {
           overflow: hidden;
-          font-size: 0.58rem;
+          font-size: 0.75rem;
           font-weight: 700;
           text-overflow: ellipsis;
           white-space: nowrap;
@@ -1009,7 +1023,7 @@ export const Header: React.FC<HeaderProps> = ({
         .wa-header__visitor-copy strong {
           overflow: hidden;
           color: var(--wa-text);
-          font-size: 0.8rem;
+          font-size: 0.875rem;
           text-overflow: ellipsis;
           white-space: nowrap;
         }
@@ -1017,7 +1031,7 @@ export const Header: React.FC<HeaderProps> = ({
         .wa-header__visitor-copy > span {
           overflow: hidden;
           color: var(--wa-text-muted);
-          font-size: 0.65rem;
+          font-size: 0.75rem;
           text-overflow: ellipsis;
           white-space: nowrap;
         }
@@ -1031,7 +1045,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         .wa-header__visitor-actions > button,
         .wa-header__avatar-toggle {
-          min-height: 38px;
+          min-height: 44px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -1040,7 +1054,7 @@ export const Header: React.FC<HeaderProps> = ({
           background: transparent;
           border: 1px solid var(--wa-border);
           border-radius: 10px;
-          font-size: 0.68rem;
+          font-size: 0.75rem;
           font-weight: 700;
           cursor: pointer;
           transition: color 180ms ease, background-color 180ms ease, border-color 180ms ease;
@@ -1091,6 +1105,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         .wa-header__avatar-picker > button {
           min-width: 0;
+          min-height: 52px;
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -1117,7 +1132,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         .wa-header__avatar-picker > button > small {
           color: inherit;
-          font-size: 0.53rem;
+          font-size: 0.75rem;
         }
 
         .wa-header__guest-card {
@@ -1135,19 +1150,19 @@ export const Header: React.FC<HeaderProps> = ({
           display: block;
           margin-top: 0.28rem;
           color: var(--wa-text);
-          font-family: 'Cinzel', Georgia, serif;
-          font-size: 0.76rem;
+          font-family: var(--wa-font-serif);
+          font-size: 0.875rem;
         }
 
         .wa-header__guest-card p {
           margin: 0.35rem 0 0;
           color: var(--wa-text-muted);
-          font-size: 0.65rem;
+          font-size: 0.75rem;
           line-height: 1.45;
         }
 
         .wa-header__guest-card > button {
-          min-height: 36px;
+          min-height: 44px;
           display: inline-flex;
           align-items: center;
           gap: 0.22rem;
@@ -1156,7 +1171,7 @@ export const Header: React.FC<HeaderProps> = ({
           background: var(--wa-gold);
           border: 0;
           border-radius: 999px;
-          font-size: 0.62rem;
+          font-size: 0.75rem;
           font-weight: 800;
           white-space: nowrap;
           cursor: pointer;
@@ -1242,8 +1257,8 @@ export const Header: React.FC<HeaderProps> = ({
 
           .wa-header__icon-button,
           .wa-header__menu-button {
-            width: 36px;
-            height: 36px;
+            width: 44px;
+            height: 44px;
           }
 
           .wa-header__mobile-layer {

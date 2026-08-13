@@ -9,7 +9,7 @@ import {
   getDocs,
   Timestamp,
 } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db } from '../firebaseCore';
 import { getCurrentUser } from './authService';
 
 export interface UserProfile {

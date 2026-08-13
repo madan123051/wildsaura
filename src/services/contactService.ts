@@ -1,4 +1,5 @@
-import { auth, db } from '../firebase';
+import { auth } from '../firebaseAuth';
+import { db } from '../firebaseCore';
 import { signInAnonymously } from 'firebase/auth';
 import { collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, serverTimestamp, onSnapshot, Unsubscribe } from 'firebase/firestore';
 import { sendToAiControlCenter } from './aiControlWebhook';

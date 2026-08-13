@@ -3,9 +3,9 @@ import {
   LayoutDashboard, Image, Plus, Pencil, Trash2, LogOut, Eye, EyeOff, CheckSquare, Check,
   MapPin, Heart, BarChart3, TrendingUp, X, Save, Search, BookOpen,
   Upload, Sparkles, Film, Camera, FileImage, Loader2, Info,
-  Settings, Cpu, MessageCircle, Globe, Mail, DollarSign, Users, Activity, Share2, Wifi, Download, MessageSquare
+  Settings, Cpu, MessageCircle, Globe, Mail, Users, Activity, Share2, Wifi, Download, MessageSquare
 } from 'lucide-react';
-import { fetchSiteAnalytics, fetchRecentVisitors, getAdSenseSettings, saveAdSenseSettings, subscribeToOnlineCount, SiteAnalytics, AdSenseSettings, VisitorRecord } from '../services/analyticsService';
+import { fetchSiteAnalytics, fetchRecentVisitors, subscribeToOnlineCount, SiteAnalytics, VisitorRecord } from '../services/analyticsService';
 import { 
   fetchAllSelfAds, createSelfAd, updateSelfAd, deleteSelfAd, toggleSelfAd, 
   uploadAdImage, SelfAd 
@@ -28,7 +28,7 @@ import './AdminDashboard.css';
 
 
 
-type AdminView = 'dashboard' | 'photos' | 'add' | 'gallery' | 'stories' | 'add-story' | 'videos' | 'add-video' | 'comments' | 'messages' | 'ai-settings' | 'site-settings' | 'monetization' | 'self-ads';
+type AdminView = 'dashboard' | 'photos' | 'add' | 'gallery' | 'stories' | 'add-story' | 'videos' | 'add-video' | 'comments' | 'messages' | 'ai-settings' | 'site-settings' | 'self-ads';
 
 interface AdminDashboardProps {
   logoUrl?: string;
@@ -801,8 +801,7 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
 
       // Also try uploading to Firebase Storage for persistence
       try {
-        const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
-        const { storage } = await import('../firebase');
+        const { ref, uploadBytes, getDownloadURL, storage } = await import('../firebaseStorage');
         const storageRef = ref(storage, `story-covers/${Date.now()}_${coverFile.name}`);
         await uploadBytes(storageRef, coverFile, {
           contentType: coverFile.type || 'image/webp',
@@ -931,8 +930,7 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel, nextId
         console.warn('Compression failed, using original:', compErr);
       }
 
-      const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
-      const { storage } = await import('../firebase');
+      const { ref, uploadBytes, getDownloadURL, storage } = await import('../firebaseStorage');
       
       // Try upload with retry
       let url = '';
@@ -2161,7 +2159,7 @@ const GalleryManagement: React.FC = () => {
                         ? <img src={catPhotos[0].imageUrl} alt={option.label} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                         : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: '2.2rem' }}>📁</div>
                       }
-                      <span style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.62)', backdropFilter: 'blur(4px)', color: 'var(--wa-gold)', fontSize: '0.65rem', fontWeight: 700, padding: '0.18rem 0.45rem', borderRadius: '20px', border: '1px solid rgba(201,168,76,0.28)' }}>{catPhotos.length}</span>
+                      <span style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(5,14,9,0.88)', color: 'var(--wa-gold)', fontSize: '0.75rem', fontWeight: 700, padding: '0.18rem 0.45rem', borderRadius: '20px', border: '1px solid rgba(201,168,76,0.28)' }}>{catPhotos.length}</span>
                     </div>
                     <span style={{ display: 'block', padding: '0.55rem 0.75rem', color: 'var(--wa-light)', fontSize: '0.82rem', fontWeight: 700 }}>📂 {option.label}</span>
                   </button>
@@ -2183,7 +2181,7 @@ const GalleryManagement: React.FC = () => {
                   style={{ border: '1px solid rgba(201,168,76,0.18)', borderRadius: '14px', overflow: 'hidden', padding: 0, background: 'rgba(255,255,255,0.03)', cursor: 'pointer', textAlign: 'left' }}>
                   <div style={{ height: 105, position: 'relative', overflow: 'hidden' }}>
                     <img src={yPhotos[0].imageUrl} alt={year} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                    <span style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.62)', backdropFilter: 'blur(4px)', color: 'var(--wa-gold)', fontSize: '0.65rem', fontWeight: 700, padding: '0.18rem 0.45rem', borderRadius: '20px', border: '1px solid rgba(201,168,76,0.28)' }}>{yPhotos.length}</span>
+                    <span style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(5,14,9,0.88)', color: 'var(--wa-gold)', fontSize: '0.75rem', fontWeight: 700, padding: '0.18rem 0.45rem', borderRadius: '20px', border: '1px solid rgba(201,168,76,0.28)' }}>{yPhotos.length}</span>
                   </div>
                   <span style={{ display: 'block', padding: '0.55rem 0.75rem', color: 'var(--wa-light)', fontSize: '0.82rem', fontWeight: 700 }}>📅 {year}</span>
                 </button>
@@ -2204,7 +2202,7 @@ const GalleryManagement: React.FC = () => {
                   style={{ border: '1px solid rgba(201,168,76,0.18)', borderRadius: '14px', overflow: 'hidden', padding: 0, background: 'rgba(255,255,255,0.03)', cursor: 'pointer', textAlign: 'left' }}>
                   <div style={{ height: 105, position: 'relative', overflow: 'hidden' }}>
                     <img src={mPhotos[0].imageUrl} alt={month} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                    <span style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.62)', backdropFilter: 'blur(4px)', color: 'var(--wa-gold)', fontSize: '0.65rem', fontWeight: 700, padding: '0.18rem 0.45rem', borderRadius: '20px', border: '1px solid rgba(201,168,76,0.28)' }}>{mPhotos.length}</span>
+                    <span style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(5,14,9,0.88)', color: 'var(--wa-gold)', fontSize: '0.75rem', fontWeight: 700, padding: '0.18rem 0.45rem', borderRadius: '20px', border: '1px solid rgba(201,168,76,0.28)' }}>{mPhotos.length}</span>
                   </div>
                   <span style={{ display: 'block', padding: '0.55rem 0.75rem', color: 'var(--wa-light)', fontSize: '0.82rem', fontWeight: 700 }}>🗓️ {MONTH_NAMES[month]}</span>
                 </button>
@@ -2512,16 +2510,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [analyticsRange, setAnalyticsRange] = useState<'today' | 'week' | 'month' | 'year' | 'all'>('today');
   
-  // AdSense Settings
-  const [adsenseSettings, setAdsenseSettings] = useState<AdSenseSettings>({
-    publisherId: '', bannerSlot: '', inFeedSlot: '', inArticleSlot: '',
-    sidebarSlot: '', multiplexSlot: '', enabled: false,
-  });
-  const [adsenseSaving, setAdsenseSaving] = useState(false);
-
   // Load analytics on dashboard view
   React.useEffect(() => {
-    if (view !== 'dashboard' && view !== 'monetization') return;
+    if (view !== 'dashboard') return;
     let cancelled = false;
     
     const loadAnalytics = async () => {
@@ -2548,22 +2539,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     return () => { cancelled = true; unsub(); };
   }, [view]);
 
-  // Load AdSense settings
-  React.useEffect(() => {
-    if (view !== 'monetization') return;
-    getAdSenseSettings().then(setAdsenseSettings).catch(console.warn);
-  }, [view]);
-
-  const handleSaveAdsense = async () => {
-    setAdsenseSaving(true);
-    try {
-      await saveAdSenseSettings(adsenseSettings);
-      alert('✅ AdSense settings saved!');
-    } catch (err: any) {
-      alert('❌ Failed: ' + (err?.message || 'Unknown error'));
-    }
-    setAdsenseSaving(false);
-  };
   const nextPhotoId = Math.max(0, ...photos.map((p) => p.id)) + 1;
   const nextStoryId = Math.max(0, ...stories.map((s) => s.id)) + 1;
   const nextVideoId = Math.max(0, ...videos.map((v) => v.id)) + 1;
@@ -2606,7 +2581,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const getViewTitle = () => {
     if (view === 'dashboard') return 'Dashboard Home';
-    if (view === 'monetization') return 'Monetization / AdSense';
     if (view === 'self-ads') return 'Self Promotion Ads';
     if (view === 'photos') return editingPhoto ? 'Edit Photo' : 'Manage Photos';
     if (view === 'add') return 'Add New Photo';
@@ -2644,8 +2618,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           className="admin-sidebar-backdrop"
           onClick={() => setSidebarOpen(false)}
           style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
-            zIndex: 99, backdropFilter: 'blur(2px)',
+            position: 'fixed', inset: 0, background: 'rgba(3,8,5,0.88)',
+            zIndex: 99,
           }}
         />
       )}
@@ -2746,9 +2720,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </button>
           <button style={sidebarItemStyle(view === 'site-settings')} onClick={() => { setView('site-settings'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); closeSidebarOnMobile(); }}>
             <Globe size={18} /> Site Settings
-          </button>
-          <button style={sidebarItemStyle(view === 'monetization')} onClick={() => { setView('monetization'); setEditingPhoto(null); setEditingStory(null); setEditingVideo(null); closeSidebarOnMobile(); }}>
-            <DollarSign size={18} /> Monetization
           </button>
         </nav>
 
@@ -2999,114 +2970,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </>
           )}
 
-          {/* Monetization / AdSense Settings View */}
-          {view === 'monetization' && (
-            <div style={{ maxWidth: 700 }}>
-              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.1)', borderRadius: '12px', padding: '1.5rem', marginBottom: '1.5rem' }}>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--wa-gold)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <DollarSign size={22} /> Google AdSense Settings
-                </h3>
-                <p style={{ fontSize: '0.78rem', color: 'rgba(235,230,220,0.45)', marginBottom: '1.5rem' }}>
-                  Set up your AdSense Publisher ID and Ad Slot IDs to monetize your website.
-                  Sign up at <a href="https://www.google.com/adsense/" target="_blank" rel="noopener" style={{ color: 'var(--wa-gold)' }}>google.com/adsense</a>
-                </p>
-
-                {/* Enable/Disable Toggle */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem', padding: '0.75rem 1rem', borderRadius: '10px', background: adsenseSettings.enabled ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.05)', border: '1px solid ' + (adsenseSettings.enabled ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.15)') }}>
-                  <button
-                    onClick={() => setAdsenseSettings(prev => ({ ...prev, enabled: !prev.enabled }))}
-                    style={{
-                      width: 48, height: 26, borderRadius: 13, border: 'none', cursor: 'pointer',
-                      background: adsenseSettings.enabled ? '#4ade80' : 'rgba(255,255,255,0.15)',
-                      position: 'relative', transition: 'background 0.3s',
-                    }}
-                  >
-                    <div style={{
-                      width: 20, height: 20, borderRadius: '50%', background: '#fff',
-                      position: 'absolute', top: 3,
-                      left: adsenseSettings.enabled ? 25 : 3, transition: 'left 0.3s',
-                    }} />
-                  </button>
-                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: adsenseSettings.enabled ? '#4ade80' : 'rgba(235,230,220,0.5)' }}>
-                    {adsenseSettings.enabled ? 'Ads Enabled' : 'Ads Disabled'}
-                  </span>
-                </div>
-
-                <div style={{ display: 'grid', gap: '1rem' }}>
-                  <div>
-                    <label style={labelStyle}>Publisher ID *</label>
-                    <input
-                      value={adsenseSettings.publisherId}
-                      onChange={(e) => setAdsenseSettings(prev => ({ ...prev, publisherId: e.target.value }))}
-                      placeholder="ca-pub-XXXXXXXXXXXXXXXX"
-                      style={inputStyle}
-                    />
-                    <p style={{ fontSize: '0.68rem', color: 'rgba(235,230,220,0.3)', marginTop: '0.3rem' }}>
-                      Find this in your AdSense account → Account → Publisher ID
-                    </p>
-                  </div>
-
-                  <div style={{ borderTop: '1px solid rgba(201,168,76,0.08)', paddingTop: '1rem' }}>
-                    <p style={{ fontSize: '0.72rem', color: 'var(--wa-gold)', letterSpacing: '0.08em', marginBottom: '0.75rem', fontWeight: 600 }}>
-                      AD SLOT IDs (from AdSense → Ads → By ad unit)
-                    </p>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '0.75rem' }}>
-                    <div>
-                      <label style={labelStyle}>Banner Ad Slot</label>
-                      <input value={adsenseSettings.bannerSlot} onChange={(e) => setAdsenseSettings(prev => ({ ...prev, bannerSlot: e.target.value }))} placeholder="1234567890" style={inputStyle} />
-                    </div>
-                    <div>
-                      <label style={labelStyle}>In-Feed Ad Slot</label>
-                      <input value={adsenseSettings.inFeedSlot} onChange={(e) => setAdsenseSettings(prev => ({ ...prev, inFeedSlot: e.target.value }))} placeholder="1234567890" style={inputStyle} />
-                    </div>
-                    <div>
-                      <label style={labelStyle}>In-Article Ad Slot</label>
-                      <input value={adsenseSettings.inArticleSlot} onChange={(e) => setAdsenseSettings(prev => ({ ...prev, inArticleSlot: e.target.value }))} placeholder="1234567890" style={inputStyle} />
-                    </div>
-                    <div>
-                      <label style={labelStyle}>Sidebar Ad Slot</label>
-                      <input value={adsenseSettings.sidebarSlot} onChange={(e) => setAdsenseSettings(prev => ({ ...prev, sidebarSlot: e.target.value }))} placeholder="1234567890" style={inputStyle} />
-                    </div>
-                    <div>
-                      <label style={labelStyle}>Multiplex Ad Slot</label>
-                      <input value={adsenseSettings.multiplexSlot} onChange={(e) => setAdsenseSettings(prev => ({ ...prev, multiplexSlot: e.target.value }))} placeholder="1234567890" style={inputStyle} />
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  onClick={handleSaveAdsense}
-                  disabled={adsenseSaving}
-                  style={{
-                    marginTop: '1.5rem', padding: '0.75rem 2rem',
-                    background: adsenseSaving ? 'rgba(201,168,76,0.3)' : 'linear-gradient(135deg, #c9a84c, #b8943f)',
-                    border: 'none', borderRadius: '10px',
-                    color: adsenseSaving ? 'rgba(255,255,255,0.5)' : '#000',
-                    fontWeight: 700, fontSize: '0.9rem', cursor: adsenseSaving ? 'not-allowed' : 'pointer',
-                    display: 'flex', alignItems: 'center', gap: '0.5rem',
-                  }}
-                >
-                  {adsenseSaving ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Saving...</> : <><Save size={16} /> Save AdSense Settings</>}
-                </button>
-              </div>
-
-              {/* How it works */}
-              <div style={{ background: 'rgba(59,130,246,0.05)', border: '1px solid rgba(59,130,246,0.15)', borderRadius: '12px', padding: '1.25rem' }}>
-                <h4 style={{ fontSize: '0.9rem', color: '#60a5fa', marginBottom: '0.75rem' }}>📋 How to Set Up</h4>
-                <ol style={{ fontSize: '0.78rem', color: 'rgba(235,230,220,0.6)', lineHeight: 1.8, paddingLeft: '1.2rem', margin: 0 }}>
-                  <li>Sign up at <a href="https://www.google.com/adsense/" target="_blank" rel="noopener" style={{ color: 'var(--wa-gold)' }}>Google AdSense</a></li>
-                  <li>Add your website URL: <code style={{ color: 'var(--wa-gold)', background: 'rgba(0,0,0,0.3)', padding: '1px 6px', borderRadius: 4 }}>wildsaura.com</code></li>
-                  <li>Copy your Publisher ID (starts with <code style={{ color: 'var(--wa-gold)', background: 'rgba(0,0,0,0.3)', padding: '1px 6px', borderRadius: 4 }}>ca-pub-</code>)</li>
-                  <li>Create ad units → Copy each Slot ID</li>
-                  <li>Paste all IDs here and enable ads</li>
-                  <li>Google will review your site (1-2 weeks)</li>
-                </ol>
-              </div>
-            </div>
-          )}
-
           {/* Photos View */}
           {view === 'photos' && !editingPhoto && (
             <>
@@ -3213,7 +3076,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         style={{ border: '1px solid rgba(201,168,76,0.18)', borderRadius: '14px', overflow: 'hidden', padding: 0, background: 'rgba(255,255,255,0.03)', cursor: 'pointer', textAlign: 'left' }}>
                         <div style={{ height: 105, position: 'relative', overflow: 'hidden' }}>
                           <img src={yPhotos[0].imageUrl} alt={year} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                          <span style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.62)', backdropFilter: 'blur(4px)', color: 'var(--wa-gold)', fontSize: '0.65rem', fontWeight: 700, padding: '0.18rem 0.45rem', borderRadius: '20px', border: '1px solid rgba(201,168,76,0.28)' }}>{yPhotos.length}</span>
+                          <span style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(5,14,9,0.88)', color: 'var(--wa-gold)', fontSize: '0.75rem', fontWeight: 700, padding: '0.18rem 0.45rem', borderRadius: '20px', border: '1px solid rgba(201,168,76,0.28)' }}>{yPhotos.length}</span>
                         </div>
                         <span style={{ display: 'block', padding: '0.55rem 0.75rem', color: 'var(--wa-light)', fontSize: '0.82rem', fontWeight: 700 }}>📅 {year}</span>
                       </button>
@@ -3234,7 +3097,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         style={{ border: '1px solid rgba(201,168,76,0.18)', borderRadius: '14px', overflow: 'hidden', padding: 0, background: 'rgba(255,255,255,0.03)', cursor: 'pointer', textAlign: 'left' }}>
                         <div style={{ height: 105, position: 'relative', overflow: 'hidden' }}>
                           <img src={mPhotos[0].imageUrl} alt={month} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                          <span style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.62)', backdropFilter: 'blur(4px)', color: 'var(--wa-gold)', fontSize: '0.65rem', fontWeight: 700, padding: '0.18rem 0.45rem', borderRadius: '20px', border: '1px solid rgba(201,168,76,0.28)' }}>{mPhotos.length}</span>
+                          <span style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(5,14,9,0.88)', color: 'var(--wa-gold)', fontSize: '0.75rem', fontWeight: 700, padding: '0.18rem 0.45rem', borderRadius: '20px', border: '1px solid rgba(201,168,76,0.28)' }}>{mPhotos.length}</span>
                         </div>
                         <span style={{ display: 'block', padding: '0.55rem 0.75rem', color: 'var(--wa-light)', fontSize: '0.82rem', fontWeight: 700 }}>🗓️ {MP_MONTH_NAMES[month]}</span>
                       </button>

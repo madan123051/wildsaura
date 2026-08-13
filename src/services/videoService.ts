@@ -1,6 +1,5 @@
-import { db, storage } from '../firebase';
-import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, serverTimestamp, onSnapshot, Unsubscribe, increment } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { db } from '../firebaseCore';
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, serverTimestamp, onSnapshot, Unsubscribe, increment, limit as queryLimit } from 'firebase/firestore';
 
 /**
  * ═══════════════════════════════════════════════════════════════════════
@@ -58,6 +57,7 @@ export async function uploadVideoThumbnailToStorage(
   filename: string,
   onProgress?: (progress: number) => void
 ): Promise<string> {
+  const { storage, ref, uploadBytesResumable, getDownloadURL } = await import('../firebaseStorage');
   const storageRef = ref(storage, `video-thumbnails/${Date.now()}_${filename}`);
 
   let blob: Blob;
@@ -76,7 +76,10 @@ export async function uploadVideoThumbnailToStorage(
       reject(new Error('Thumbnail upload timed out after 30 seconds.'));
     }, 30000);
 
-    const uploadTask = uploadBytesResumable(storageRef, blob, { contentType });
+    const uploadTask = uploadBytesResumable(storageRef, blob, {
+      contentType,
+      cacheControl: 'public,max-age=31536000,immutable',
+    });
 
     uploadTask.on(
       'state_changed',
@@ -116,6 +119,7 @@ export async function uploadVideoToStorage(
   filename: string,
   onProgress?: (progress: number) => void
 ): Promise<string> {
+  const { storage, ref, uploadBytesResumable, getDownloadURL } = await import('../firebaseStorage');
   const storageRef = ref(storage, `videos/${Date.now()}_${filename}`);
 
   let blob: Blob;
@@ -137,7 +141,10 @@ export async function uploadVideoToStorage(
       reject(new Error('Video upload timed out after 3 minutes. File may be too large or connection too slow.'));
     }, 180000);
 
-    const uploadTask = uploadBytesResumable(storageRef, blob, { contentType });
+    const uploadTask = uploadBytesResumable(storageRef, blob, {
+      contentType,
+      cacheControl: 'public,max-age=31536000,immutable',
+    });
 
     uploadTask.on(
       'state_changed',
@@ -211,9 +218,12 @@ export async function incrementVideoCounter(docId: string, field: 'viewCount' | 
  */
 export function subscribeToVideos(
   onUpdate: (videos: FirestoreVideo[]) => void,
-  onError?: (error: Error) => void
+  onError?: (error: Error) => void,
+  maxResults?: number,
 ): Unsubscribe {
-  const q = query(collection(db, VIDEOS_COLLECTION), orderBy('createdAt', 'desc'));
+  const q = maxResults && maxResults > 0
+    ? query(collection(db, VIDEOS_COLLECTION), orderBy('createdAt', 'desc'), queryLimit(maxResults))
+    : query(collection(db, VIDEOS_COLLECTION), orderBy('createdAt', 'desc'));
   return onSnapshot(q,
     (snapshot) => {
       const videos = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as FirestoreVideo));

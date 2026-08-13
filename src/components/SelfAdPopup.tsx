@@ -70,7 +70,7 @@ const SelfAdPopup: React.FC = () => {
       onClick={handleClose}
       style={{
         position: 'fixed', inset: 0, zIndex: 99999,
-        background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+        background: 'rgba(3,8,5,0.88)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: '1rem',
         animation: closing ? 'selfAdFadeOut 0.3s ease' : 'selfAdFadeIn 0.4s ease',
@@ -84,32 +84,36 @@ const SelfAdPopup: React.FC = () => {
       <div
         onClick={e => e.stopPropagation()}
         style={{
-          background: 'linear-gradient(145deg, #1a1a2e, #16213e)',
+          position: 'relative',
+          background: '#101a14',
           borderRadius: '16px',
           border: '1px solid rgba(201,168,76,0.3)',
           maxWidth: '420px', width: '100%',
           overflow: 'hidden',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.5), 0 0 30px rgba(201,168,76,0.1)',
+          boxShadow: '0 12px 34px rgba(0,0,0,0.32)',
           animation: closing ? 'selfAdFadeOut 0.3s ease' : 'selfAdSlideUp 0.5s ease 0.1s both',
         }}
       >
         {/* Close Button */}
         <button
           onClick={handleClose}
+          aria-label="Close promotion"
           style={{
             position: 'absolute', top: '8px', right: '8px', zIndex: 10,
-            width: '32px', height: '32px', borderRadius: '50%',
-            background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.2)',
+            width: '44px', height: '44px', borderRadius: '50%',
+            background: '#07100b', border: '1px solid rgba(255,255,255,0.2)',
             color: '#fff', fontSize: '18px', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             transition: 'all 0.2s',
           }}
           onMouseEnter={e => {
-            e.currentTarget.style.background = 'rgba(201,168,76,0.8)';
+            e.currentTarget.style.background = '#9fcb8f';
+            e.currentTarget.style.color = '#062013';
             e.currentTarget.style.transform = 'scale(1.1)';
           }}
           onMouseLeave={e => {
-            e.currentTarget.style.background = 'rgba(0,0,0,0.6)';
+            e.currentTarget.style.background = '#07100b';
+            e.currentTarget.style.color = '#fff';
             e.currentTarget.style.transform = 'scale(1)';
           }}
         >
@@ -127,11 +131,6 @@ const SelfAdPopup: React.FC = () => {
                 objectFit: 'cover', display: 'block',
               }}
             />
-            {/* Gradient overlay at bottom of image */}
-            <div style={{
-              position: 'absolute', bottom: 0, left: 0, right: 0, height: '60px',
-              background: 'linear-gradient(transparent, #1a1a2e)',
-            }} />
           </div>
         )}
 
@@ -141,7 +140,7 @@ const SelfAdPopup: React.FC = () => {
           <div style={{
             display: 'inline-block', padding: '2px 10px', borderRadius: '10px',
             background: 'rgba(201,168,76,0.15)', color: '#c9a84c',
-            fontSize: '0.65rem', fontWeight: 600, letterSpacing: '0.5px',
+            fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.5px',
             textTransform: 'uppercase', marginBottom: '0.5rem',
           }}>
             ✦ Promoted
@@ -171,8 +170,8 @@ const SelfAdPopup: React.FC = () => {
               <button
                 onClick={handleClick}
                 style={{
-                  flex: 1, padding: '0.65rem 1rem',
-                  background: 'linear-gradient(135deg, #c9a84c, #b8943f)',
+                  flex: 1, minHeight: 44, padding: '0.65rem 1rem',
+                  background: '#9fcb8f',
                   border: 'none', borderRadius: '10px',
                   color: '#1a1a2e', fontWeight: 700, fontSize: '0.85rem',
                   cursor: 'pointer', transition: 'all 0.2s',
@@ -180,7 +179,7 @@ const SelfAdPopup: React.FC = () => {
                 }}
                 onMouseEnter={e => {
                   e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 4px 15px rgba(201,168,76,0.4)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
                 }}
                 onMouseLeave={e => {
                   e.currentTarget.style.transform = 'translateY(0)';
@@ -193,7 +192,7 @@ const SelfAdPopup: React.FC = () => {
             <button
               onClick={handleClose}
               style={{
-                padding: '0.65rem 1rem',
+                minHeight: 44, padding: '0.65rem 1rem',
                 background: 'rgba(255,255,255,0.05)',
                 border: '1px solid rgba(255,255,255,0.15)',
                 borderRadius: '10px', color: 'rgba(255,255,255,0.5)',

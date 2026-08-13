@@ -1,5 +1,5 @@
 export const LOCAL_IMAGE_VARIANTS: Record<string, number[]> = {
-  '/photos/logo-header.webp': [320, 360],
+  '/photos/logo-header.webp': [64, 96, 128, 160, 320, 360],
   '/photos/logo.jpeg': [320, 480, 640, 960, 1024],
   '/photos/logo.png': [320, 480, 560],
   '/photos/photo-landscape.jpeg': [320, 480, 640, 960, 1264],

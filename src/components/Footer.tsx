@@ -1,5 +1,6 @@
 import React from 'react';
 import { ArrowUpRight, Facebook, Instagram, Music2 } from 'lucide-react';
+import { getOptimizedImageUrl, getOptimizedSrcSet } from '../utils/imageUrl';
 
 interface FooterProps {
   logoUrl?: string;
@@ -25,6 +26,12 @@ export const Footer: React.FC<FooterProps> = ({
     { label: 'Privacy', href: '/privacy-policy', onClick: onPrivacyPolicyClick },
     { label: 'Data deletion', href: '/data-deletion', onClick: onDataDeletionClick },
   ];
+  const optimizedLogoUrl = logoUrl
+    ? getOptimizedImageUrl(logoUrl, { width: 160, quality: 88, fit: 'contain' })
+    : '';
+  const optimizedLogoSrcSet = logoUrl
+    ? getOptimizedSrcSet(logoUrl, [96, 128, 160], { quality: 88, fit: 'contain' })
+    : undefined;
 
   return (
     <footer className="editorial-footer">
@@ -32,7 +39,18 @@ export const Footer: React.FC<FooterProps> = ({
         <div className="editorial-footer__top">
           <div className="editorial-footer__brand">
             <a href="/" aria-label="Wilds Aura home">
-              {logoUrl && <img src={logoUrl} alt="" width={360} height={320} loading="lazy" />}
+              {logoUrl && (
+                <img
+                  src={optimizedLogoUrl || logoUrl}
+                  srcSet={optimizedLogoSrcSet}
+                  sizes="52px"
+                  alt=""
+                  width={52}
+                  height={52}
+                  loading="lazy"
+                  decoding="async"
+                />
+              )}
               <span><strong>Wilds Aura</strong><small>Photography · Stories · Conservation</small></span>
             </a>
             <p>A visual field journal from Nepal and Japan, made with patience and respect for the wild.</p>

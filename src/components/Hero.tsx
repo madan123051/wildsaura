@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowDown, ArrowUpRight, MapPin } from 'lucide-react';
 import { getOptimizedImageUrl, getOptimizedSrcSet } from '../utils/imageUrl';
 
@@ -7,62 +7,70 @@ interface HeroProps {
   logoUrl?: string;
   heroImages?: string[];
   onCommunityClick?: () => void;
-  isLoading?: boolean;
 }
 
 const DEFAULT_HERO_IMAGE = '/photos/tiger-hero.jpg';
+
+type NavigatorWithConnection = Navigator & {
+  connection?: { saveData?: boolean };
+};
 
 export const Hero: React.FC<HeroProps> = ({
   onExplore,
   heroImages,
   onCommunityClick,
-  isLoading = false,
 }) => {
-  const images = heroImages?.filter(Boolean).length ? heroImages.filter(Boolean) : [DEFAULT_HERO_IMAGE];
+  // Keep the local, preloaded photograph as the initial LCP. Firebase images are
+  // available from the pagination, but are not discovered or downloaded until a
+  // visitor explicitly selects one.
+  const images = useMemo(() => {
+    const remoteImages = (heroImages ?? [])
+      .filter((image): image is string => typeof image === 'string' && image.trim().length > 0)
+      .filter((image) => image !== DEFAULT_HERO_IMAGE);
+
+    return [DEFAULT_HERO_IMAGE, ...Array.from(new Set(remoteImages))];
+  }, [heroImages]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [prefersReducedData] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const saveData = (window.navigator as NavigatorWithConnection).connection?.saveData;
+    return Boolean(saveData || window.matchMedia?.('(prefers-reduced-data: reduce)').matches);
+  });
   const currentImage = images[currentIndex] || DEFAULT_HERO_IMAGE;
+  const imageWidth = prefersReducedData ? 960 : 1920;
+  const imageQuality = prefersReducedData ? 72 : 80;
+  const sourceWidths = prefersReducedData
+    ? [480, 640, 960]
+    : [640, 960, 1280, 1600, 1920];
   const optimizedImage = getOptimizedImageUrl(currentImage, {
-    width: 1920,
-    quality: 80,
+    width: imageWidth,
+    quality: imageQuality,
     fit: 'cover',
   });
-  const optimizedSrcSet = getOptimizedSrcSet(currentImage, [640, 960, 1280, 1600, 1920], {
-    quality: 80,
+  const optimizedSrcSet = getOptimizedSrcSet(currentImage, sourceWidths, {
+    quality: imageQuality,
     fit: 'cover',
   });
 
   useEffect(() => {
-    setCurrentIndex((index) => (index < images.length ? index : 0));
-  }, [images.length]);
-
-  useEffect(() => {
-    if (images.length <= 1) return;
-    const interval = window.setInterval(
-      () => setCurrentIndex((index) => (index + 1) % images.length),
-      6500,
-    );
-    return () => window.clearInterval(interval);
+    setCurrentIndex((index) => Math.min(Math.max(index, 0), images.length - 1));
   }, [images.length]);
 
   return (
     <section id="top" className="editorial-hero" aria-label="Wilds Aura introduction">
       <div className="editorial-hero__media" aria-hidden="true">
-        {isLoading ? (
-          <div className="editorial-hero__placeholder skeleton-image" />
-        ) : (
-          <img
-            key={currentImage}
-            src={optimizedImage || currentImage}
-            srcSet={optimizedSrcSet}
-            sizes="100vw"
-            alt=""
-            width={1920}
-            height={1280}
-            loading="eager"
-            fetchPriority="high"
-            decoding="async"
-          />
-        )}
+        <img
+          key={currentImage}
+          src={optimizedImage || currentImage}
+          srcSet={optimizedSrcSet}
+          sizes="100vw"
+          alt=""
+          width={1133}
+          height={768}
+          loading={currentIndex === 0 ? 'eager' : 'lazy'}
+          fetchPriority={currentIndex === 0 ? 'high' : 'auto'}
+          decoding="async"
+        />
       </div>
       <div className="editorial-hero__wash" />
 
@@ -146,14 +154,12 @@ export const Hero: React.FC<HeroProps> = ({
           height: 100%;
           object-fit: cover;
           object-position: center 42%;
-          animation: heroReveal 1.1s cubic-bezier(.2,.7,.2,1) both;
         }
         .editorial-hero__wash {
           z-index: 1;
           background:
             linear-gradient(90deg, rgba(6, 9, 7, .92) 0%, rgba(6, 9, 7, .67) 35%, rgba(6, 9, 7, .12) 70%),
-            linear-gradient(0deg, rgba(6, 9, 7, .88) 0%, transparent 48%),
-            linear-gradient(180deg, rgba(6, 9, 7, .62) 0%, transparent 24%);
+            linear-gradient(0deg, rgba(6, 9, 7, .88) 0%, transparent 52%);
           pointer-events: none;
         }
         .editorial-hero__inner {
@@ -176,7 +182,7 @@ export const Hero: React.FC<HeroProps> = ({
           gap: .85rem;
           margin: 0 0 1.4rem;
           color: rgba(245, 242, 233, .78);
-          font: 600 .72rem/1.2 Inter, sans-serif;
+          font: 600 .75rem/1.2 var(--wa-font-sans);
           letter-spacing: .18em;
           text-transform: uppercase;
         }
@@ -188,7 +194,7 @@ export const Hero: React.FC<HeroProps> = ({
         .editorial-hero h1 {
           margin: 0;
           max-width: 900px;
-          font-family: 'Playfair Display', Georgia, serif;
+          font-family: var(--wa-font-serif);
           font-size: clamp(4rem, 9vw, 8.4rem);
           font-weight: 500;
           line-height: .82;
@@ -225,7 +231,7 @@ export const Hero: React.FC<HeroProps> = ({
           gap: .75rem;
           border-radius: 999px;
           padding: .9rem 1.25rem;
-          font: 600 .78rem/1 Inter, sans-serif;
+          font: 600 .78rem/1 var(--wa-font-sans);
           letter-spacing: .08em;
           text-transform: uppercase;
           text-decoration: none;
@@ -272,8 +278,8 @@ export const Hero: React.FC<HeroProps> = ({
           gap: .4rem;
         }
         .editorial-hero__pagination button {
-          width: 2.25rem;
-          height: 2.25rem;
+          width: 44px;
+          height: 44px;
           display: grid;
           place-items: center;
           border: 0;
@@ -281,27 +287,21 @@ export const Hero: React.FC<HeroProps> = ({
           background: transparent;
           color: rgba(245, 242, 233, .55);
           cursor: pointer;
-          font: 600 .66rem/1 Inter, sans-serif;
+          font: 600 .75rem/1 var(--wa-font-sans);
         }
         .editorial-hero__pagination button[aria-current='true'] {
           border-color: #d7a866;
           color: #fff;
-        }
-        @keyframes heroReveal {
-          from { opacity: 0; transform: scale(1.035); }
-          to { opacity: 1; transform: scale(1); }
         }
         @media (max-width: 760px) {
           .editorial-hero { min-height: 820px; }
           .editorial-hero__inner { min-height: 820px; padding-top: 7rem; padding-bottom: 1.5rem; }
           .editorial-hero__media img { object-position: 58% center; }
           .editorial-hero__wash {
-            background:
-              linear-gradient(0deg, rgba(6, 9, 7, .97) 0%, rgba(6, 9, 7, .66) 44%, rgba(6, 9, 7, .12) 75%),
-              linear-gradient(180deg, rgba(6, 9, 7, .58) 0%, transparent 26%);
+            background: linear-gradient(0deg, rgba(6, 9, 7, .97) 0%, rgba(6, 9, 7, .66) 44%, rgba(6, 9, 7, .16) 78%);
           }
           .editorial-hero__content { width: 100%; padding-bottom: 3.5rem; }
-          .editorial-hero__eyebrow { margin-bottom: 1.15rem; font-size: .62rem; gap: .6rem; }
+          .editorial-hero__eyebrow { margin-bottom: 1.15rem; font-size: .75rem; gap: .6rem; }
           .editorial-hero__eyebrow-rule { width: 1.5rem; }
           .editorial-hero h1 { font-size: clamp(3.5rem, 18vw, 5.8rem); line-height: .87; }
           .editorial-hero h1 span { margin-left: 0; }
@@ -312,7 +312,6 @@ export const Hero: React.FC<HeroProps> = ({
           .editorial-hero__pagination { display: none; }
         }
         @media (prefers-reduced-motion: reduce) {
-          .editorial-hero__media img { animation: none; }
           .editorial-hero__primary,
           .editorial-hero__secondary { transition: none; }
         }

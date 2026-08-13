@@ -1,6 +1,5 @@
-import { db, storage } from '../../firebase';
+import { db } from '../../firebaseCore';
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 export interface FirestorePhoto {
   id?: string;
@@ -34,6 +33,7 @@ function dataUrlToBlob(dataUrl: string): Blob {
 }
 
 export async function uploadPhotoToStorage(dataUrl: string, filename: string): Promise<string> {
+  const { storage, ref, uploadBytesResumable, getDownloadURL } = await import('../../firebaseStorage');
   const storageRef = ref(storage, `photos/${Date.now()}_${filename}`);
   const blob = dataUrlToBlob(dataUrl);
   const contentType = blob.type || 'image/webp';

@@ -1,4 +1,4 @@
-import { db } from '../firebase';
+import { db } from '../firebaseCore';
 import { doc, setDoc, getDoc, updateDoc, serverTimestamp, collection, query, where, onSnapshot, deleteDoc, Unsubscribe } from 'firebase/firestore';
 
 const VISITORS_COLLECTION = 'visitors';

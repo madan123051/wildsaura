@@ -15,6 +15,9 @@ import { getOptimizedImageUrl, getOptimizedSrcSet } from '../utils/imageUrl';
 interface PhotoGalleryProps {
   photos: GalleryPhoto[];
   searchQuery: string;
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
+  onLoadAll?: () => void;
 }
 
 interface CategoryDefinition {
@@ -283,7 +286,13 @@ const GalleryBreadcrumbs: React.FC<{ items: BreadcrumbItem[] }> = ({ items }) =>
   </nav>
 );
 
-export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery }) => {
+export const PhotoGallery: React.FC<PhotoGalleryProps> = ({
+  photos,
+  searchQuery,
+  hasMore = false,
+  isLoadingMore = false,
+  onLoadAll,
+}) => {
   const [openCategory, setOpenCategory] = useState<GalleryCategory | null>(null);
   const [openYear, setOpenYear] = useState<string | null>(null);
   const [openMonth, setOpenMonth] = useState<string | null>(null);
@@ -476,6 +485,17 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
                 season and year.
               </p>
               <span>{formatCount(viewCount, isSearching || openMonth ? 'frame' : 'entry', isSearching || openMonth ? 'frames' : 'entries')}</span>
+              {hasMore && onLoadAll && (
+                <button
+                  type="button"
+                  className="field-gallery__load-all"
+                  onClick={onLoadAll}
+                  disabled={isLoadingMore}
+                >
+                  {isLoadingMore ? 'Loading archive…' : 'Load full archive'}
+                  {!isLoadingMore && <ArrowUpRight size={15} aria-hidden="true" />}
+                </button>
+              )}
             </div>
           </div>
 
@@ -639,9 +659,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
           isolation: isolate;
           overflow: hidden;
           padding: clamp(5rem, 9vw, 8.5rem) 0;
-          background:
-            radial-gradient(circle at 80% 4%, rgba(93, 122, 92, 0.12), transparent 28rem),
-            linear-gradient(180deg, #09130f 0%, var(--fg-bg) 42%, #060c09 100%);
+          background: var(--fg-bg);
           color: var(--fg-ivory);
         }
 
@@ -650,12 +668,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
           inset: 0;
           z-index: -1;
           pointer-events: none;
-          opacity: 0.2;
-          background-image:
-            linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.014) 1px, transparent 1px);
-          background-size: 44px 44px;
-          mask-image: linear-gradient(to bottom, black, transparent 82%);
+          display: none;
         }
 
         .field-gallery__container {
@@ -675,7 +688,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
           border-bottom: 1px solid var(--fg-line);
           color: var(--fg-muted);
           font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-          font-size: 0.65rem;
+          font-size: 0.75rem;
           letter-spacing: 0.14em;
           text-transform: uppercase;
         }
@@ -695,7 +708,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
           margin: 0 0 0.65rem;
           color: var(--fg-brass);
           font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-          font-size: 0.64rem;
+          font-size: 0.75rem;
           font-weight: 600;
           letter-spacing: 0.16em;
           line-height: 1.4;
@@ -706,7 +719,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
           max-width: 900px;
           margin: 0;
           color: var(--fg-ivory);
-          font-family: 'Cinzel', Georgia, serif;
+          font-family: var(--wa-font-serif);
           font-size: clamp(2.25rem, 6.6vw, 6.4rem);
           font-weight: 500;
           letter-spacing: -0.035em;
@@ -729,9 +742,31 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
         .field-gallery__intro > span {
           color: var(--fg-moss);
           font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-          font-size: 0.7rem;
+          font-size: 0.75rem;
           letter-spacing: 0.12em;
           text-transform: uppercase;
+        }
+
+        .field-gallery__load-all {
+          width: fit-content;
+          min-height: 44px;
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
+          margin-top: 0.85rem;
+          padding: 0.55rem 0.9rem;
+          border: 1px solid var(--fg-line);
+          border-radius: 999px;
+          background: transparent;
+          color: var(--fg-ivory);
+          font: 650 0.75rem/1 var(--wa-font-sans);
+          letter-spacing: 0.06em;
+          cursor: pointer;
+        }
+
+        .field-gallery__load-all:disabled {
+          cursor: wait;
+          opacity: 0.7;
         }
 
         .field-gallery__search-status,
@@ -756,7 +791,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
           display: inline-flex;
           align-items: center;
           gap: 0.45rem;
-          min-height: 38px;
+          min-height: 44px;
           padding: 0.45rem 0.8rem;
           border: 1px solid var(--fg-line);
           border-radius: 999px;
@@ -764,7 +799,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
           color: var(--fg-ivory);
           cursor: pointer;
           font: inherit;
-          font-size: 0.72rem;
+          font-size: 0.75rem;
           transition: border-color 180ms ease, background 180ms ease;
         }
 
@@ -803,7 +838,8 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
           background: transparent;
           color: var(--fg-muted);
           font: inherit;
-          font-size: 0.72rem;
+          min-height: 44px;
+          font-size: 0.75rem;
           white-space: nowrap;
         }
 
@@ -842,7 +878,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
           color: inherit;
           cursor: pointer;
           text-align: left;
-          box-shadow: 0 18px 45px rgba(0,0,0,0.18);
+          box-shadow: 0 10px 26px rgba(0,0,0,0.14);
           transition: transform 240ms ease, border-color 240ms ease, background 240ms ease;
         }
 
@@ -890,9 +926,8 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
 
         .field-gallery__image-skeleton {
           display: block;
-          background: linear-gradient(105deg, #0e1914 8%, #1b2c22 20%, #0e1914 34%);
-          background-size: 220% 100%;
-          animation: fieldGalleryShimmer 1.3s linear infinite;
+          background: #14241b;
+          animation: none;
         }
 
         .field-gallery__image {
@@ -911,10 +946,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
           display: grid;
           place-items: center;
           color: rgba(183,198,165,0.48);
-          background:
-            linear-gradient(135deg, transparent 49.5%, rgba(255,255,255,0.035) 50%, transparent 50.5%),
-            #0d1813;
-          background-size: 24px 24px;
+          background: #0d1813;
         }
 
         .field-gallery__folio,
@@ -929,11 +961,10 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
           height: 2rem;
           padding: 0 0.35rem;
           border: 1px solid rgba(238,233,220,0.28);
-          background: rgba(4,10,7,0.7);
-          backdrop-filter: blur(8px);
+          background: rgba(4,10,7,0.88);
           color: var(--fg-ivory);
           font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-          font-size: 0.61rem;
+          font-size: 0.75rem;
           letter-spacing: 0.08em;
         }
 
@@ -953,7 +984,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
 
         .field-gallery__folder-heading strong {
           color: var(--fg-ivory);
-          font-family: 'Cinzel', Georgia, serif;
+          font-family: var(--wa-font-serif);
           font-size: clamp(1.15rem, 1.8vw, 1.55rem);
           font-weight: 500;
           line-height: 1.2;
@@ -986,7 +1017,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
           margin-top: 0.85rem;
           color: var(--fg-moss);
           font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-          font-size: 0.64rem;
+          font-size: 0.75rem;
           letter-spacing: 0.1em;
           text-transform: uppercase;
         }
@@ -1027,7 +1058,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
           max-width: 35ch;
           overflow: hidden;
           color: var(--fg-ivory);
-          font-family: 'Cinzel', Georgia, serif;
+          font-family: var(--wa-font-serif);
           font-size: clamp(0.92rem, 1.3vw, 1.15rem);
           font-weight: 500;
           line-height: 1.35;
@@ -1037,7 +1068,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
 
         .field-gallery__photo-caption .field-gallery__eyebrow {
           margin-bottom: 0.3rem;
-          font-size: 0.56rem;
+          font-size: 0.75rem;
         }
 
         .field-gallery__photo-spec {
@@ -1045,7 +1076,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
           padding-top: 1.25rem;
           color: #6f7c72;
           font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-          font-size: 0.58rem;
+          font-size: 0.75rem;
           letter-spacing: 0.06em;
           white-space: nowrap;
         }
@@ -1069,7 +1100,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
         .field-gallery__empty-state p {
           margin: 0;
           color: var(--fg-ivory);
-          font-family: 'Cinzel', Georgia, serif;
+          font-family: var(--wa-font-serif);
           font-size: 1.1rem;
         }
 
@@ -1087,7 +1118,6 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
           overflow-y: auto;
           padding: clamp(1rem, 3vw, 2.5rem);
           background: rgba(3,7,5,0.96);
-          backdrop-filter: blur(18px);
         }
 
         .field-gallery__lightbox-close {
@@ -1133,7 +1163,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
           height: auto;
           max-height: 76vh;
           object-fit: contain;
-          box-shadow: 0 30px 90px rgba(0,0,0,0.55);
+          box-shadow: 0 16px 42px rgba(0,0,0,0.42);
         }
 
         .field-gallery__lightbox-caption {
@@ -1148,7 +1178,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
         .field-gallery__lightbox-caption h3 {
           margin: 0;
           color: var(--fg-ivory);
-          font-family: 'Cinzel', Georgia, serif;
+          font-family: var(--wa-font-serif);
           font-size: clamp(1.1rem, 2vw, 1.55rem);
           font-weight: 500;
         }
@@ -1156,7 +1186,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
         .field-gallery__lightbox-caption p {
           margin: 0.4rem 0 0;
           color: var(--fg-muted);
-          font-size: 0.76rem;
+          font-size: 0.875rem;
         }
 
         .field-gallery__lightbox-caption dl {
@@ -1173,7 +1203,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ photos, searchQuery 
         .field-gallery__lightbox-caption dd {
           margin: 0;
           font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-          font-size: 0.61rem;
+          font-size: 0.75rem;
           letter-spacing: 0.08em;
           text-transform: uppercase;
         }

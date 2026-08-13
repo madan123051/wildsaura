@@ -5,7 +5,7 @@
 // a ?return= param so the user is sent back after completing verification.
 // =====================================================================
 import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db } from '../firebaseCore';
 
 export const IDENTITY_VERIFY_URL = 'https://identity.wildsaura.com';
 

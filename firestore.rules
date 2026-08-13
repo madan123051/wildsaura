@@ -87,7 +87,7 @@ service cloud.firestore {
     // Only the two browser-safe settings documents are public.
     // AI provider configuration and every mutation remain admin-only.
     match /settings/{settingId} {
-      allow read: if settingId in ['siteSettings', 'adsense'] || isAdmin();
+      allow read: if settingId == 'siteSettings' || isAdmin();
       allow write: if isAdmin();
     }
 

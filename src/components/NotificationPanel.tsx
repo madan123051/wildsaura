@@ -82,11 +82,10 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         right: '16px',
         width: 'min(380px, calc(100vw - 32px))',
         maxHeight: 'calc(100vh - 100px)',
-        background: 'rgba(18, 18, 22, 0.98)',
-        backdropFilter: 'blur(20px)',
+        background: '#0c1711',
         borderRadius: '16px',
         border: '1px solid rgba(201, 168, 76, 0.15)',
-        boxShadow: '0 20px 60px rgba(0,0,0,0.6), 0 0 30px rgba(201,168,76,0.05)',
+        boxShadow: '0 12px 34px rgba(0,0,0,0.34)',
         zIndex: 1000,
         display: 'flex',
         flexDirection: 'column',
@@ -110,17 +109,15 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             fontWeight: 700,
             fontFamily: "'Cinzel', serif",
             letterSpacing: '0.08em',
-            background: 'linear-gradient(135deg, #c9a84c 0%, #e8d18c 50%, #c9a84c 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
+            color: 'var(--wa-gold)',
           }}>
             Notifications
           </span>
           {unreadCount > 0 && (
             <span style={{
-              background: 'linear-gradient(135deg, #3f7b4a 0%, #9fcb8f 55%, #72aa81 100%)',
-              color: '#000',
-              fontSize: '0.6rem',
+              background: '#9fcb8f',
+              color: '#062013',
+              fontSize: '0.75rem',
               fontWeight: 700,
               padding: '0.1rem 0.45rem',
               borderRadius: '10px',
@@ -143,8 +140,9 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.3rem',
+                minHeight: 44,
                 color: 'var(--wa-gold)',
-                fontSize: '0.65rem',
+                fontSize: '0.75rem',
                 fontWeight: 600,
                 transition: 'all 0.2s',
               }}
@@ -156,17 +154,22 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
           )}
           <button
             onClick={onClose}
+            aria-label="Close notifications"
             style={{
-              background: 'none',
-              border: 'none',
+              width: 44,
+              height: 44,
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(255,255,255,0.08)',
               color: 'rgba(255,255,255,0.4)',
               cursor: 'pointer',
-              padding: '0.3rem',
+              padding: 0,
               borderRadius: '6px',
               transition: 'all 0.2s',
+              display: 'grid',
+              placeItems: 'center',
             }}
             onMouseOver={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
-            onMouseOut={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.4)'; e.currentTarget.style.background = 'none'; }}
+            onMouseOut={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.4)'; e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
           >
             <X size={18} />
           </button>
@@ -192,7 +195,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.85rem', fontWeight: 500 }}>
               No notifications yet
             </span>
-            <span style={{ color: 'rgba(255,255,255,0.15)', fontSize: '0.72rem' }}>
+            <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem' }}>
               We'll notify you when something happens
             </span>
           </div>
@@ -209,8 +212,8 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                 margin: '0.25rem 0',
                 borderRadius: '12px',
                 background: notif.read
-                  ? 'rgba(255,255,255,0.02)'
-                  : 'linear-gradient(135deg, rgba(201,168,76,0.08) 0%, rgba(201,168,76,0.03) 100%)',
+                  ? '#101813'
+                  : '#152219',
                 border: notif.read
                   ? '1px solid rgba(255,255,255,0.03)'
                   : '1px solid rgba(201,168,76,0.15)',
@@ -220,13 +223,13 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
               }}
               onMouseOver={e => {
                 e.currentTarget.style.background = notif.read
-                  ? 'rgba(255,255,255,0.04)'
-                  : 'linear-gradient(135deg, rgba(201,168,76,0.12) 0%, rgba(201,168,76,0.05) 100%)';
+                  ? '#142018'
+                  : '#19271e';
               }}
               onMouseOut={e => {
                 e.currentTarget.style.background = notif.read
-                  ? 'rgba(255,255,255,0.02)'
-                  : 'linear-gradient(135deg, rgba(201,168,76,0.08) 0%, rgba(201,168,76,0.03) 100%)';
+                  ? '#101813'
+                  : '#152219';
               }}
             >
               {/* Unread dot */}
@@ -238,15 +241,14 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                   width: 6,
                   height: 6,
                   borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #3f7b4a 0%, #9fcb8f 55%, #72aa81 100%)',
-                  boxShadow: '0 0 8px rgba(201,168,76,0.5)',
+                  background: '#9fcb8f',
                 }} />
               )}
 
               {/* Icon */}
               <div style={{
-                width: 38,
-                height: 38,
+                width: 44,
+                height: 44,
                 borderRadius: '10px',
                 background: notif.read ? 'rgba(255,255,255,0.05)' : 'rgba(201,168,76,0.12)',
                 display: 'flex',
@@ -286,26 +288,30 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                     <button
                       onClick={(e) => { e.stopPropagation(); onDelete(notif.id); }}
                       title="Delete notification"
+                      aria-label={`Delete ${notif.title} notification`}
                       style={{
-                        background: 'none',
-                        border: 'none',
+                        width: 44,
+                        height: 44,
+                        background: 'rgba(255,255,255,0.02)',
+                        border: '1px solid transparent',
                         color: 'rgba(255,255,255,0.2)',
                         cursor: 'pointer',
-                        padding: '0.2rem',
+                        padding: 0,
                         borderRadius: '4px',
                         transition: 'all 0.2s',
                         display: 'flex',
                         alignItems: 'center',
+                        justifyContent: 'center',
                       }}
                       onMouseOver={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; }}
-                      onMouseOut={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.2)'; e.currentTarget.style.background = 'none'; }}
+                      onMouseOut={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.2)'; e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }}
                     >
                       <Trash2 size={13} />
                     </button>
                   </div>
                 </div>
                 <p style={{
-                  fontSize: '0.73rem',
+                  fontSize: '0.78rem',
                   color: notif.read ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.55)',
                   margin: '0.3rem 0 0',
                   lineHeight: 1.45,
@@ -314,8 +320,8 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                   {notif.message}
                 </p>
                 <span style={{
-                  fontSize: '0.62rem',
-                  color: 'rgba(255,255,255,0.2)',
+                  fontSize: '0.75rem',
+                  color: 'rgba(255,255,255,0.45)',
                   marginTop: '0.3rem',
                   display: 'block',
                 }}>
@@ -341,9 +347,10 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
               background: 'none',
               border: 'none',
               color: 'rgba(255,255,255,0.3)',
-              fontSize: '0.7rem',
+              fontSize: '0.75rem',
               cursor: 'pointer',
               padding: '0.3rem 0.8rem',
+              minHeight: 44,
               borderRadius: '6px',
               transition: 'all 0.2s',
               fontWeight: 500,
