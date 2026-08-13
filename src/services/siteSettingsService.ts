@@ -1,6 +1,5 @@
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../firebase';
+import { db } from '../firebaseCore';
 
 export interface SiteSettings {
   heroImages: string[];      // Array of image URLs for hero slider
@@ -166,7 +165,8 @@ function compressToWebP(
  * Stores under gallery/site-settings/ path — covered by the existing
  * `match /gallery/{allPaths=**}` rule which is already deployed.
  */
-function uploadSiteAsset(filename: string, blob: Blob): Promise<string> {
+async function uploadSiteAsset(filename: string, blob: Blob): Promise<string> {
+  const { storage, ref, uploadBytesResumable, getDownloadURL } = await import('../firebaseStorage');
   const storageRef = ref(storage, `gallery/site-settings/${filename}`);
   const contentType = blob.type || 'image/webp';
 
@@ -177,7 +177,10 @@ function uploadSiteAsset(filename: string, blob: Blob): Promise<string> {
       reject(new Error('Upload timed out after 60 seconds. Please check your internet connection.'));
     }, 60_000);
 
-    const task = uploadBytesResumable(storageRef, blob, { contentType });
+    const task = uploadBytesResumable(storageRef, blob, {
+      contentType,
+      cacheControl: 'public,max-age=31536000,immutable',
+    });
 
     task.on(
       'state_changed',

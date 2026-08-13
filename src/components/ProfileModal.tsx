@@ -371,8 +371,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       position: 'fixed' as const,
       inset: 0 as const,
       zIndex: 120,
-      background: 'rgba(0, 0, 0, 0.65)',
-      backdropFilter: 'blur(6px)',
+      background: 'rgba(3, 8, 5, 0.88)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -383,9 +382,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       maxHeight: '90vh',
       overflowY: 'auto' as const,
       borderRadius: 16,
-      background: 'var(--wa-dropdown-bg)',
+      background: '#0d1711',
       border: '1px solid var(--wa-dropdown-border)',
-      boxShadow: '0 20px 60px rgba(0,0,0,0.35)',
+      boxShadow: '0 12px 34px rgba(0,0,0,0.3)',
       padding: '1.5rem',
     },
     label: {
@@ -403,6 +402,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       color: 'var(--wa-text)',
       outline: 'none',
       fontSize: '0.92rem',
+      minHeight: 44,
     },
     card: {
       background: 'var(--wa-label-bg)',
@@ -417,6 +417,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       cursor: 'pointer',
       fontWeight: 700 as const,
       fontSize: '0.88rem',
+      minHeight: 44,
     },
     alert: (type: 'error' | 'success') => ({
       padding: '0.6rem 0.9rem',
@@ -457,11 +458,18 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
           </h2>
           <button
             onClick={onClose}
+            aria-label="Close profile"
             style={{
-              background: 'none',
-              border: 'none',
+              width: 44,
+              height: 44,
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid var(--wa-border)',
+              borderRadius: 8,
               color: 'var(--wa-text)',
               cursor: 'pointer',
+              display: 'grid',
+              placeItems: 'center',
+              padding: 0,
             }}
           >
             <X size={20} />
@@ -562,7 +570,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     style={{
                       background: 'rgba(168,216,162,0.15)',
                       color: 'var(--wa-gold)',
-                      fontSize: '0.72rem',
+                      fontSize: '0.75rem',
                       padding: '2px 8px',
                       borderRadius: 20,
                       border: '1px solid rgba(168,216,162,0.3)',
@@ -575,7 +583,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                       style={{
                         background: 'rgba(79,159,98,0.15)',
                         color: 'var(--wa-gold)',
-                        fontSize: '0.72rem',
+                        fontSize: '0.75rem',
                         padding: '2px 8px',
                         borderRadius: 20,
                         border: '1px solid rgba(79,159,98,0.3)',
@@ -608,7 +616,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 },
               ].map(({ label, value }) => (
                 <div key={label} style={s.card}>
-                  <div style={{ color: 'var(--wa-text-muted)', fontSize: '0.72rem' }}>
+                  <div style={{ color: 'var(--wa-text-muted)', fontSize: '0.75rem' }}>
                     {label}
                   </div>
                   <div style={{ color: 'var(--wa-gold)', fontSize: '1.1rem', fontWeight: 700 }}>
@@ -707,7 +715,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                       style={{
                         ...s.button,
                         width: '100%',
-                        background: 'linear-gradient(135deg, #3f7b4a 0%, #9fcb8f 55%, #72aa81 100%)',
+                        background: '#9fcb8f',
                         color: '#062013',
                         fontSize: '0.8rem',
                         padding: '0.4rem 0.6rem',
@@ -730,7 +738,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               style={{
                 ...s.button,
                 width: '100%',
-                background: 'linear-gradient(135deg, #3f7b4a 0%, #9fcb8f 55%, #72aa81 100%)',
+                background: '#9fcb8f',
                 color: '#062013',
                 marginBottom: '0.6rem',
               }}
@@ -842,7 +850,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                       }}
                     >
                       <div style={{ fontSize: '1.3rem' }}>{animal.emoji}</div>
-                      <div style={{ fontSize: '0.68rem' }}>{animal.label}</div>
+                      <div style={{ fontSize: '0.75rem' }}>{animal.label}</div>
                     </button>
                   );
                 })}
@@ -859,8 +867,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     type="button"
                     onClick={() => handleAvatarColorChange(color)}
                     style={{
-                      width: 30,
-                      height: 30,
+                      width: 44,
+                      height: 44,
                       borderRadius: '50%',
                       background: color,
                       border:
@@ -936,7 +944,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 style={{
                   ...s.button,
                   flex: 1,
-                  background: 'linear-gradient(135deg, #3f7b4a 0%, #9fcb8f 55%, #72aa81 100%)',
+                  background: '#9fcb8f',
                   color: '#062013',
                 }}
               >

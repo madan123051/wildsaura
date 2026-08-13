@@ -70,7 +70,6 @@ const PhotoMap = lazy(() =>
 const NotificationPanel = lazy(() =>
   import('./components/NotificationPanel').then((module) => ({ default: module.NotificationPanel })),
 );
-const AdSenseHead = lazy(() => import('./components/AdSenseHead'));
 const SelfAdPopup = lazy(() => import('./components/SelfAdPopup'));
 
 const logoUrl = '/photos/logo-header.webp';
@@ -165,6 +164,38 @@ const FILTER_TABS: FilterTab[] = [
   { key: 'other', label: 'Portraits' },
 ];
 
+const HOME_PHOTO_LIMIT = 10;
+const HOME_STORY_LIMIT = 3;
+const HOME_VIDEO_LIMIT = 4;
+const HOME_GALLERY_LIMIT = 12;
+const LIVE_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+
+const readLiveCache = <T,>(key: string): T[] => {
+  if (typeof window === 'undefined') return [];
+  try {
+    const cached = JSON.parse(localStorage.getItem(key) || 'null') as {
+      savedAt?: number;
+      items?: T[];
+    } | null;
+    if (!cached?.savedAt || !Array.isArray(cached.items)) return [];
+    if (Date.now() - cached.savedAt > LIVE_CACHE_TTL_MS) {
+      localStorage.removeItem(key);
+      return [];
+    }
+    return cached.items;
+  } catch {
+    return [];
+  }
+};
+
+const writeLiveCache = <T,>(key: string, items: T[]) => {
+  try {
+    localStorage.setItem(key, JSON.stringify({ savedAt: Date.now(), items }));
+  } catch {
+    // Browsers may disable storage; live Firestore data remains the source of truth.
+  }
+};
+
 // ── App ─────────────────────────────────────────────────────────────────────
 type AppView = 'home' | 'admin-dashboard' | 'story-detail' | 'video-detail' | 'terms' | 'privacy-policy' | 'data-deletion' | 'marketplace' | 'community' | 'ngo' | 'about' | 'contact' | 'photos' | 'photo-grid' | 'story-grid' | 'video-grid';
 
@@ -202,17 +233,21 @@ const App: React.FC = () => {
     return 'all';
   });
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
-  const [photos, setPhotos] = useState<Photo[]>([]);
-  const [stories, setStories] = useState<Story[]>([]);
-  const [videos, setVideos] = useState<Video[]>([]);
+  const [photos, setPhotos] = useState<Photo[]>(() => readLiveCache<Photo>('wa_live_photo_preview'));
+  const [stories, setStories] = useState<Story[]>(() => readLiveCache<Story>('wa_live_story_preview'));
+  const [videos, setVideos] = useState<Video[]>(() => readLiveCache<Video>('wa_live_video_preview'));
   const [photosLoading, setPhotosLoading] = useState(true);
   const [storiesLoading, setStoriesLoading] = useState(true);
   const [videosLoading, setVideosLoading] = useState(true);
   const [deferNonCritical, setDeferNonCritical] = useState(false);
   const [galleryPhotos, setGalleryPhotos] = useState<GalleryPhoto[]>([]);
+  const [loadHomeGallery, setLoadHomeGallery] = useState(false);
+  const [galleryIsFull, setGalleryIsFull] = useState(false);
+  const [galleryLoadingAll, setGalleryLoadingAll] = useState(false);
   const [selectedStory, setSelectedStory] = useState<Story | null>(null);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const galleryRef = useRef<HTMLElement | null>(null);
+  const homeGalleryLoadRef = useRef<HTMLDivElement | null>(null);
   const viewedTargetsRef = useRef<Set<string>>(new Set());
   const savedScrollRef = useRef<number>(0);
   const photoReturnPathRef = useRef<string>('/');
@@ -222,6 +257,7 @@ const App: React.FC = () => {
   // New state
   const [visitor, setVisitor] = useState<Visitor | null>(null);
   const [showSearch, setShowSearch] = useState(false);
+  const [searchPhotos, setSearchPhotos] = useState<Photo[] | null>(null);
   const [showVisitorLogin, setShowVisitorLogin] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -323,84 +359,158 @@ const App: React.FC = () => {
   }, [getTrackingVisitor]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setDeferNonCritical(true), 1200);
+    const win = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+    if (win.requestIdleCallback) {
+      const idleHandle = win.requestIdleCallback(() => setDeferNonCritical(true), { timeout: 6000 });
+      return () => win.cancelIdleCallback?.(idleHandle);
+    }
+    const timer = window.setTimeout(() => setDeferNonCritical(true), 5500);
     return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {
-    trackSiteEvent({
+    if (view !== 'home' || loadHomeGallery) return;
+    const target = homeGalleryLoadRef.current;
+    if (!target || !('IntersectionObserver' in window)) {
+      const timer = window.setTimeout(() => setLoadHomeGallery(true), 5000);
+      return () => window.clearTimeout(timer);
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setLoadHomeGallery(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '600px 0px' },
+    );
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [loadHomeGallery, view]);
+
+  const loadFullGallery = useCallback(async () => {
+    if (galleryIsFull || galleryLoadingAll) return;
+    setGalleryLoadingAll(true);
+    try {
+      const service = await import('./services/galleryService');
+      const items = await service.getGalleryPhotosFromFirestore();
+      setGalleryPhotos(items);
+      setGalleryIsFull(true);
+    } catch (error) {
+      console.warn('Full gallery fetch failed:', error);
+    } finally {
+      setGalleryLoadingAll(false);
+    }
+  }, [galleryIsFull, galleryLoadingAll]);
+
+  useEffect(() => {
+    const event = {
       type: 'page_view',
       page: window.location.pathname || '/',
       category: selectedCategory !== 'all' ? selectedCategory : undefined,
-    });
+    };
+    const win = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+    if (win.requestIdleCallback) {
+      const idleHandle = win.requestIdleCallback(() => trackSiteEvent(event), { timeout: 5000 });
+      return () => win.cancelIdleCallback?.(idleHandle);
+    }
+    const timer = window.setTimeout(() => trackSiteEvent(event), 3000);
+    return () => window.clearTimeout(timer);
   }, [trackSiteEvent, view, selectedCategory, selectedPhoto?.firestoreId, selectedStory?.firestoreId, selectedVideo?.firestoreId]);
+
+  const restoreAuthImmediately = view === 'admin-dashboard';
 
   useEffect(() => {
     let disposed = false;
     let unsubscribe: (() => void) | undefined;
+    let idleHandle: number | undefined;
+    let fallbackTimer: number | undefined;
 
-    Promise.all([import('firebase/auth'), import('./firebase')]).then(([authModule, firebaseModule]) => {
-      if (disposed) return;
-      unsubscribe = authModule.onAuthStateChanged(firebaseModule.auth, async (firebaseUser) => {
-        if (firebaseUser && firebaseUser.email) {
-          // Only auto-restore if visitor not already set (page reload scenario)
-          if (!visitorRef.current) {
-            try {
-              const saved = await getVisitorFromFirestore(firebaseUser.email);
-              if (saved) {
-                setVisitor({
-                  displayName: saved.displayName || firebaseUser.displayName || firebaseUser.email.split('@')[0] || 'User',
-                  email: firebaseUser.email,
-                  avatarColor: saved.avatarColor || '#c9a84c',
-                  avatarUrl: saved.avatarUrl || firebaseUser.photoURL || undefined,
-                  avatarAnimal: saved.avatarAnimal || undefined,
-                  loginMethod: (saved.loginMethod || 'email') as any,
-                });
-                setDownloadCount(saved.downloadCount || 0);
-                // Auto-detect admin by email
-                if (firebaseUser.email.toLowerCase() === ADMIN_EMAIL) {
-                  setIsAdmin(true);
-                  localStorage.setItem('wa_admin_session', 'true');
-                }
-              } else {
-                setVisitor({
-                  displayName: firebaseUser.displayName || firebaseUser.email.split('@')[0] || 'User',
-                  email: firebaseUser.email,
-                  avatarColor: '#9fcb8f',
-                  avatarUrl: firebaseUser.photoURL || undefined,
-                  loginMethod: 'email',
-                });
-                // Auto-detect admin by email
-                if (firebaseUser.email.toLowerCase() === ADMIN_EMAIL) {
-                  setIsAdmin(true);
-                  localStorage.setItem('wa_admin_session', 'true');
-                }
-              }
-              // Load user's likes
+    const restoreAuth = () => {
+      import('./firebaseAuth').then(({ observeAuthState }) => {
+        if (disposed) return;
+        unsubscribe = observeAuthState(async (firebaseUser) => {
+          if (firebaseUser && firebaseUser.email) {
+            // Only auto-restore if visitor not already set (page reload scenario)
+            if (!visitorRef.current) {
               try {
-                const likes = await getUserLikes(firebaseUser.email);
-                const likeSet = new Set(likes.map(l => `${l.targetType}_${l.targetId}`));
-                setUserLikes(likeSet);
-              } catch {}
-            } catch (err) {
-              console.warn('Session restore failed:', err);
+                const saved = await getVisitorFromFirestore(firebaseUser.email);
+                if (saved) {
+                  setVisitor({
+                    displayName: saved.displayName || firebaseUser.displayName || firebaseUser.email.split('@')[0] || 'User',
+                    email: firebaseUser.email,
+                    avatarColor: saved.avatarColor || '#c9a84c',
+                    avatarUrl: saved.avatarUrl || firebaseUser.photoURL || undefined,
+                    avatarAnimal: saved.avatarAnimal || undefined,
+                    loginMethod: (saved.loginMethod || 'email') as any,
+                  });
+                  setDownloadCount(saved.downloadCount || 0);
+                  // Auto-detect admin by email
+                  if (firebaseUser.email.toLowerCase() === ADMIN_EMAIL) {
+                    setIsAdmin(true);
+                    localStorage.setItem('wa_admin_session', 'true');
+                  }
+                } else {
+                  setVisitor({
+                    displayName: firebaseUser.displayName || firebaseUser.email.split('@')[0] || 'User',
+                    email: firebaseUser.email,
+                    avatarColor: '#9fcb8f',
+                    avatarUrl: firebaseUser.photoURL || undefined,
+                    loginMethod: 'email',
+                  });
+                  // Auto-detect admin by email
+                  if (firebaseUser.email.toLowerCase() === ADMIN_EMAIL) {
+                    setIsAdmin(true);
+                    localStorage.setItem('wa_admin_session', 'true');
+                  }
+                }
+                // Load user's likes
+                try {
+                  const likes = await getUserLikes(firebaseUser.email);
+                  const likeSet = new Set(likes.map(l => `${l.targetType}_${l.targetId}`));
+                  setUserLikes(likeSet);
+                } catch {}
+              } catch (err) {
+                console.warn('Session restore failed:', err);
+              }
+            }
+          } else {
+            if (visitorRef.current) {
+              setVisitor(null);
+              setDownloadCount(0);
+              setUserLikes(new Set());
             }
           }
-        } else {
-          if (visitorRef.current) {
-            setVisitor(null);
-            setDownloadCount(0);
-            setUserLikes(new Set());
-          }
-        }
-      });
-    }).catch((err) => console.warn('Auth restore failed:', err));
+        });
+      }).catch((err) => console.warn('Auth restore failed:', err));
+    };
+
+    const win = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+    if (restoreAuthImmediately) {
+      restoreAuth();
+    } else if (win.requestIdleCallback) {
+      idleHandle = win.requestIdleCallback(restoreAuth, { timeout: 5000 });
+    } else {
+      fallbackTimer = window.setTimeout(restoreAuth, 3000);
+    }
 
     return () => {
       disposed = true;
+      if (idleHandle !== undefined) win.cancelIdleCallback?.(idleHandle);
+      if (fallbackTimer !== undefined) window.clearTimeout(fallbackTimer);
       unsubscribe?.();
     };
-  }, []);
+  }, [restoreAuthImmediately]);
 
   // ── Deep Link State ──────────────────────────────────────────────────────
   const [pendingPhotoSlug, setPendingPhotoSlug] = useState<string | null>(() => {
@@ -424,6 +534,19 @@ const App: React.FC = () => {
     return m ? decodeURIComponent(m[1]) : null;
   });
 
+  const subscriptionPriority: 'photos' | 'stories' | 'videos' | 'admin' | 'home' | 'other' =
+    view === 'admin-dashboard'
+      ? 'admin'
+      : pendingStorySlug || view === 'story-grid' || view === 'story-detail'
+        ? 'stories'
+        : pendingVideoId || view === 'video-grid' || view === 'video-detail'
+          ? 'videos'
+          : pendingPhotoSlug || selectedPhoto !== null || view === 'photo-grid'
+            ? 'photos'
+            : view === 'home'
+              ? 'home'
+              : 'other';
+
   // ── Real-time Data Subscriptions (LIVE updates across all browsers) ────────
   useEffect(() => {
     let disposed = false;
@@ -436,7 +559,6 @@ const App: React.FC = () => {
       const [
         photoService,
         storyService,
-        galleryService,
         videoService,
         commentService,
         visitorService,
@@ -444,7 +566,6 @@ const App: React.FC = () => {
       ] = await Promise.all([
         import('./services/photoService'),
         import('./services/storyService'),
-        import('./services/galleryService'),
         import('./services/videoService'),
         import('./services/commentService'),
         import('./services/visitorService'),
@@ -452,15 +573,11 @@ const App: React.FC = () => {
       ]);
       if (disposed) return;
 
-      const initialPath = window.location.pathname;
-      const priority: 'photos' | 'stories' | 'videos' | 'home' =
-        pendingStorySlug || initialPath === '/story-grid' || initialPath.startsWith('/story/')
-          ? 'stories'
-          : pendingVideoId || initialPath === '/video-grid' || initialPath.startsWith('/video/')
-            ? 'videos'
-            : pendingPhotoSlug || initialPath === '/photo-grid' || initialPath === '/photos' || initialPath.startsWith('/photo/') || initialPath.startsWith('/category/')
-              ? 'photos'
-              : 'home';
+      const priority = subscriptionPriority;
+
+      const photoLimit = priority === 'photos' || priority === 'admin' ? undefined : HOME_PHOTO_LIMIT;
+      const storyLimit = priority === 'stories' || priority === 'admin' ? undefined : HOME_STORY_LIMIT;
+      const videoLimit = priority === 'videos' || priority === 'admin' ? undefined : HOME_VIDEO_LIMIT;
 
     // ── Real-time PHOTOS subscription ──────────────────────────────────
     const startPhotos = () => photoService.subscribeToPhotos((firestorePhotos) => {
@@ -515,15 +632,28 @@ const App: React.FC = () => {
               setPhotos(current => current.map(p => p.id === matchedPhoto.id ? { ...p, viewCount: (p.viewCount || 0) + 1 } : p));
               setPendingPhotoSlug(null);
             }, 100);
+          } else {
+            setTimeout(() => {
+              photoReturnPathRef.current = '/';
+              window.history.replaceState({}, '', '/');
+              setPendingPhotoSlug(null);
+            }, 0);
           }
         }
         isFirstPhotoSnap = false;
+        writeLiveCache(
+          'wa_live_photo_preview',
+          allPhotos.slice(0, HOME_PHOTO_LIMIT).map((photo) => ({
+            ...photo,
+            createdAt: photo.createdAt?.toDate?.()?.toISOString?.() || photo.createdAt || null,
+          })),
+        );
         return allPhotos;
       });
     }, (err) => {
       console.warn('Photo subscription error:', err);
       setPhotosLoading(false);
-    });
+    }, photoLimit);
 
     // ── Real-time STORIES subscription ─────────────────────────────────
     const startStories = () => storyService.subscribeToStories((firestoreStories) => {
@@ -564,22 +694,22 @@ const App: React.FC = () => {
               setView('story-detail');
               setPendingStorySlug(null);
             }, 100);
+          } else {
+            setTimeout(() => {
+              setView('home');
+              window.history.replaceState({}, '', '/');
+              setPendingStorySlug(null);
+            }, 0);
           }
         }
         isFirstStorySnap = false;
+        writeLiveCache('wa_live_story_preview', allStories.slice(0, HOME_STORY_LIMIT));
         return allStories;
       });
     }, (err) => {
       console.warn('Story subscription error:', err);
       setStoriesLoading(false);
-    });
-
-    // ── Real-time GALLERY subscription ─────────────────────────────────
-    const startGallery = () => galleryService.subscribeToGalleryPhotos((photos) => {
-      setGalleryPhotos(photos);
-    }, (err) => {
-      console.warn('Gallery subscription error:', err);
-    });
+    }, storyLimit);
 
     // ── Real-time VIDEOS subscription ──────────────────────────────────
     const startVideos = () => videoService.subscribeToVideos((firestoreVideos) => {
@@ -624,15 +754,22 @@ const App: React.FC = () => {
               setView('video-detail');
               setPendingVideoId(null);
             }, 100);
+          } else {
+            setTimeout(() => {
+              setView('home');
+              window.history.replaceState({}, '', '/');
+              setPendingVideoId(null);
+            }, 0);
           }
         }
         isFirstVideoSnap = false;
+        writeLiveCache('wa_live_video_preview', allVideos.slice(0, HOME_VIDEO_LIMIT));
         return allVideos;
       });
     }, (err) => {
       console.warn('Video subscription error:', err);
       setVideosLoading(false);
-    });
+    }, videoLimit);
 
     // ── Real-time COMMENTS subscription (already live!) ────────────────
     const startComments = () => commentService.subscribeToAllComments((allComments) => {
@@ -706,11 +843,10 @@ const App: React.FC = () => {
       setSiteSettings(settings);
     });
 
-      type SubscriptionKey = 'photos' | 'stories' | 'gallery' | 'videos' | 'comments' | 'online' | 'settings';
+      type SubscriptionKey = 'photos' | 'stories' | 'videos' | 'comments' | 'online' | 'settings';
       const starters: Record<SubscriptionKey, () => () => void> = {
         photos: startPhotos,
         stories: startStories,
-        gallery: startGallery,
         videos: startVideos,
         comments: startComments,
         online: startOnline,
@@ -727,36 +863,38 @@ const App: React.FC = () => {
         cleanups.push(() => window.clearTimeout(timer));
       };
 
-      if (priority === 'stories') {
-        start('stories');
-        delay('comments', 500);
-        delay('photos', 1200);
-        delay('videos', 1400);
-        delay('gallery', 1600);
-        delay('settings', 900);
-      } else if (priority === 'videos') {
-        start('videos');
-        delay('comments', 500);
-        delay('photos', 1200);
-        delay('stories', 1400);
-        delay('gallery', 1600);
-        delay('settings', 900);
-      } else if (priority === 'photos') {
+      if (priority === 'admin') {
+        setPhotosLoading(true);
+        setStoriesLoading(true);
+        setVideosLoading(true);
         start('photos');
-        delay('comments', 700);
-        delay('gallery', 900);
-        delay('stories', 1300);
-        delay('videos', 1500);
-        delay('settings', 900);
-      } else {
+        start('stories');
+        start('videos');
+        start('comments');
+        start('online');
+      } else if (priority === 'stories') {
+        setStoriesLoading(true);
+        start('stories');
+      } else if (priority === 'videos') {
+        setVideosLoading(true);
+        start('videos');
+      } else if (priority === 'photos') {
+        setPhotosLoading(true);
+        start('photos');
+      } else if (priority === 'home') {
+        setPhotosLoading(true);
+        setStoriesLoading(true);
+        setVideosLoading(true);
         start('settings');
         start('photos');
         delay('stories', 250);
         delay('videos', 450);
-        delay('gallery', 650);
-        delay('comments', 1000);
+        if (isAdmin) delay('online', 1200);
+      } else {
+        setPhotosLoading(false);
+        setStoriesLoading(false);
+        setVideosLoading(false);
       }
-      delay('online', 1200);
     };
 
     startSubscriptions().catch((err) => {
@@ -771,7 +909,7 @@ const App: React.FC = () => {
       cleanups.forEach((cleanup) => cleanup());
       onlineCleanupRef.current = null;
     };
-  }, []);
+  }, [isAdmin, subscriptionPriority]);
 
 
   // Apply user likes to photos/stories/videos when userLikes changes (keyed by firestoreId)
@@ -821,6 +959,8 @@ const App: React.FC = () => {
         if (matchedPhoto) {
           setSelectedPhoto({ ...matchedPhoto, viewCount: (matchedPhoto.viewCount || 0) + 1 });
           setPhotos(prev => prev.map(p => p.id === matchedPhoto.id ? { ...p, viewCount: (p.viewCount || 0) + 1 } : p));
+        } else {
+          setPendingPhotoSlug(photoSlug);
         }
       } else if (path === '/photos' || path === '/photo-grid') {
         setSelectedCategory('all');
@@ -860,6 +1000,8 @@ const App: React.FC = () => {
           setSelectedVideo({ ...matchedVideo, viewCount: (matchedVideo.viewCount || 0) + 1 });
           setVideos(prev => prev.map(v => v.id === matchedVideo.id ? { ...v, viewCount: (v.viewCount || 0) + 1 } : v));
           setView('video-detail');
+        } else {
+          setPendingVideoId(videoId);
         }
       } else if (path.startsWith('/story/')) {
         const slug = getStorySlugFromPath(path);
@@ -873,6 +1015,8 @@ const App: React.FC = () => {
           setSelectedStory({ ...matchedStory, viewCount: (matchedStory.viewCount || 0) + 1 });
           setStories(prev => prev.map(s => s.id === matchedStory.id ? { ...s, viewCount: (s.viewCount || 0) + 1 } : s));
           setView('story-detail');
+        } else {
+          setPendingStorySlug(slug);
         }
       }
     };
@@ -960,15 +1104,22 @@ const App: React.FC = () => {
   const handleCategoryClick = useCallback((key: string) => {
     setSelectedCategory(key);
     trackSiteEvent({ type: 'category_view', page: `/category/${key}`, category: key });
-    setTimeout(() => galleryRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+    setView('photo-grid');
+    window.history.pushState({}, '', `/category/${encodeURIComponent(key)}`);
+    window.scrollTo(0, 0);
   }, [trackSiteEvent]);
 
   const handleGalleryCategoryChange = useCallback((key: string) => {
     setSelectedCategory(key);
     if (key !== 'all') {
       trackSiteEvent({ type: 'category_view', page: `/category/${key}`, category: key });
+      if (view === 'home') {
+        setView('photo-grid');
+        window.history.pushState({}, '', `/category/${encodeURIComponent(key)}`);
+        window.scrollTo(0, 0);
+      }
     }
-  }, [trackSiteEvent]);
+  }, [trackSiteEvent, view]);
 
   const handleLike = useCallback((id: number) => {
     setPhotos((prev) => {
@@ -1395,8 +1546,8 @@ const App: React.FC = () => {
   }, []);
 
   const handleVisitorLogout = useCallback(() => {
-    Promise.all([import('firebase/auth'), import('./firebase')])
-      .then(([authModule, firebaseModule]) => authModule.signOut(firebaseModule.auth))
+    import('./firebaseAuth')
+      .then(({ signOutCurrentUser }) => signOutCurrentUser())
       .catch(console.warn);
     setVisitor(null);
     setIsAdmin(false);
@@ -1729,6 +1880,168 @@ const App: React.FC = () => {
     requestAnimationFrame(() => { window.scrollTo(0, savedScrollRef.current); });
   }, []);
 
+  useEffect(() => {
+    if (view !== 'home' || !loadHomeGallery) return;
+    let disposed = false;
+    import('./services/galleryService')
+      .then((service) => service.getGalleryPhotosFromFirestore(HOME_GALLERY_LIMIT))
+      .then((items) => {
+        if (!disposed) setGalleryPhotos(items);
+      })
+      .catch((error) => console.warn('Deferred gallery fetch failed:', error));
+    return () => { disposed = true; };
+  }, [loadHomeGallery, view]);
+
+  useEffect(() => {
+    if (!showSearch || searchPhotos) return;
+    let disposed = false;
+    import('./services/photoService')
+      .then((service) => service.getPhotosFromFirestore())
+      .then((items) => {
+        if (disposed) return;
+        const mapped: Photo[] = items.map((photo, index) => ({
+          id: Date.now() + index,
+          firestoreId: photo.id,
+          slug: photo.slug || '',
+          title: photo.title,
+          category: photo.category as any,
+          imageUrl: photo.imageUrl,
+          thumbnailUrl: photo.thumbnailUrl || undefined,
+          location: photo.location || '',
+          caption: photo.caption || '',
+          type: (photo.type || 'photo') as 'photo' | 'video',
+          cameraModel: photo.cameraModel || '',
+          lens: photo.lens || '',
+          aperture: photo.aperture || '',
+          shutterSpeed: photo.shutterSpeed || '',
+          iso: photo.iso || '',
+          focalLength: photo.focalLength || '',
+          tags: photo.tags || [],
+          animalName: photo.animalName || '',
+          photographer: photo.photographer || '',
+          latitude: photo.latitude || undefined,
+          longitude: photo.longitude || undefined,
+          published: photo.published !== false,
+          likeCount: photo.likeCount || 0,
+          viewCount: photo.viewCount || 0,
+          liked: userLikes.has(`photo_${photo.id}`),
+          createdAt: photo.createdAt || null,
+        }));
+        setSearchPhotos(mapped);
+      })
+      .catch((error) => console.warn('Search photo fetch failed:', error));
+    return () => { disposed = true; };
+  }, [searchPhotos, showSearch]);
+
+  useEffect(() => {
+    const targets: Array<{ type: 'photo' | 'story' | 'video'; id: string }> = [];
+    if (selectedPhoto?.firestoreId) targets.push({ type: 'photo', id: selectedPhoto.firestoreId });
+    if (selectedStory?.firestoreId) targets.push({ type: 'story', id: selectedStory.firestoreId });
+    if (selectedVideo?.firestoreId) targets.push({ type: 'video', id: selectedVideo.firestoreId });
+
+    const shouldLoadVisibleVideoComments = view === 'home' || view === 'video-grid';
+    if (shouldLoadVisibleVideoComments) {
+      videos
+        .slice(0, view === 'home' ? HOME_VIDEO_LIMIT : videos.length)
+        .forEach((video) => {
+          if (video.firestoreId) targets.push({ type: 'video', id: video.firestoreId });
+        });
+    }
+
+    if (targets.length === 0) return;
+    let disposed = false;
+    const cleanups: Array<() => void> = [];
+
+    import('./services/commentService').then((service) => {
+      if (disposed) return;
+      targets.forEach(({ type, id }) => {
+        const unsubscribe = service.subscribeToCommentsForTarget(type, id, (items) => {
+          const mapped: Comment[] = items.map((comment, index) => ({
+            id: Date.now() + index,
+            firestoreId: comment.id,
+            displayName: comment.displayName,
+            avatarColor: comment.avatarColor || '',
+            avatarUrl: comment.avatarUrl || '',
+            content: comment.content,
+            createdAt: comment.createdAt?.toDate?.()?.toISOString?.()?.split('T')[0] || new Date().toISOString().split('T')[0],
+          }));
+          const setter = type === 'photo' ? setPhotoComments : type === 'story' ? setStoryComments : setVideoComments;
+          setter((previous) => ({ ...previous, [id]: mapped }));
+        });
+        cleanups.push(unsubscribe);
+      });
+    }).catch((error) => console.warn('Target comment subscription failed:', error));
+
+    return () => {
+      disposed = true;
+      cleanups.forEach((cleanup) => cleanup());
+    };
+  }, [selectedPhoto?.firestoreId, selectedStory?.firestoreId, selectedVideo?.firestoreId, videos, view]);
+
+  const renderSharedOverlays = () => (
+    <Suspense fallback={<InlineFallback />}>
+      {selectedPhoto && (
+        <PhotoModal
+          photo={selectedPhoto}
+          onClose={closePhoto}
+          onLike={() => handleLike(selectedPhoto.id)}
+          onShare={() => handleShare(selectedPhoto)}
+          onDownload={() => handleDownload(selectedPhoto)}
+          onGenerateStory={() => handleGenerateStory(selectedPhoto)}
+          isGeneratingStory={false}
+          isAdmin={isAdmin}
+          visitor={visitor}
+          comments={photoComments[selectedPhoto.firestoreId || `preview-${selectedPhoto.slug || selectedPhoto.id}`] || []}
+          onAddComment={(content) => handleAddPhotoComment(selectedPhoto.firestoreId || `preview-${selectedPhoto.slug || selectedPhoto.id}`, content)}
+          onDeleteComment={handleDeleteComment}
+          onVisitorLoginClick={() => setShowVisitorLogin(true)}
+          freeDownloadsLeft={Math.max(0, FREE_DOWNLOADS - downloadCount)}
+          isDownloading={isDownloading}
+          photos={(searchPhotos || photos).filter((photo) => photo.published !== false)}
+          onNavigate={openPhoto}
+        />
+      )}
+      {showSearch && (
+        <SearchBar
+          isOpen={showSearch}
+          onClose={() => { setShowSearch(false); setSearchQuery(''); }}
+          query={searchQuery}
+          onQueryChange={setSearchQuery}
+          photos={searchPhotos || photos}
+          onPhotoClick={openPhoto}
+        />
+      )}
+      {showVisitorLogin && (
+        <VisitorLogin
+          isOpen={showVisitorLogin}
+          onClose={() => setShowVisitorLogin(false)}
+          onLogin={handleVisitorLogin}
+        />
+      )}
+      {showProfile && (
+        <ProfileModal
+          isOpen={showProfile}
+          visitor={visitor}
+          onClose={() => setShowProfile(false)}
+          onVisitorUpdate={handleVisitorUpdate}
+          onLogout={handleVisitorLogout}
+          downloadCount={downloadCount}
+        />
+      )}
+      {showNotifPanel && (
+        <NotificationPanel
+          isOpen={showNotifPanel}
+          onClose={() => setShowNotifPanel(false)}
+          notifications={notifications}
+          onMarkRead={handleMarkRead}
+          onMarkAllRead={handleMarkAllRead}
+          onDelete={handleDeleteNotif}
+          onClearAll={handleClearAllNotifs}
+        />
+      )}
+    </Suspense>
+  );
+
   // ── Helper: Go back from story to home ───────────────────────────────────
   const handleStoryBack = useCallback(() => {
     const returnPath = storyReturnPathRef.current || '/';
@@ -1767,27 +2080,7 @@ const App: React.FC = () => {
             isLoggedIn={!!visitor}
             onLoginRequired={() => setShowVisitorLogin(true)}
           />
-          {selectedPhoto && (
-            <PhotoModal
-              photo={selectedPhoto}
-              onClose={closePhoto}
-              onLike={() => handleLike(selectedPhoto.id)}
-              onShare={() => handleShare(selectedPhoto)}
-              onDownload={() => handleDownload(selectedPhoto)}
-              onGenerateStory={() => handleGenerateStory(selectedPhoto)}
-              isGeneratingStory={false}
-              isAdmin={isAdmin}
-              visitor={visitor}
-              comments={photoComments[selectedPhoto.firestoreId || `preview-${selectedPhoto.slug || selectedPhoto.id}`] || []}
-              onAddComment={(content) => handleAddPhotoComment(selectedPhoto.firestoreId || `preview-${selectedPhoto.slug || selectedPhoto.id}`, content)}
-              onDeleteComment={handleDeleteComment}
-              onVisitorLoginClick={() => setShowVisitorLogin(true)}
-              freeDownloadsLeft={Math.max(0, FREE_DOWNLOADS - downloadCount)}
-              isDownloading={isDownloading}
-              photos={photos.filter(p => p.published !== false)}
-              onNavigate={(photo) => openPhoto(photo)}
-            />
-          )}
+          {renderSharedOverlays()}
         </Suspense>
       </div>
     );
@@ -1804,6 +2097,7 @@ const App: React.FC = () => {
             onBack={() => { setView('home'); window.history.pushState({}, '', '/'); window.scrollTo(0, 0); }}
             onStoryClick={handleStoryClick}
           />
+          {renderSharedOverlays()}
         </Suspense>
       </div>
     );
@@ -1827,6 +2121,7 @@ const App: React.FC = () => {
             isAdmin={isAdmin}
             onDeleteComment={handleDeleteComment}
           />
+          {renderSharedOverlays()}
         </Suspense>
       </div>
     );
@@ -1884,22 +2179,7 @@ const App: React.FC = () => {
           </Suspense>
         </div>
         <Footer {...footerNavProps} />
-        <Suspense fallback={<InlineFallback />}>
-          {deferNonCritical && <AIChatbot photos={photos} onPhotoClick={openPhoto} />}
-          {showSearch && <SearchBar
-            isOpen={showSearch}
-            onClose={() => { setShowSearch(false); setSearchQuery(''); }}
-            query={searchQuery}
-            onQueryChange={setSearchQuery}
-            photos={photos}
-            onPhotoClick={openPhoto}
-          />}
-          {showVisitorLogin && <VisitorLogin
-            isOpen={showVisitorLogin}
-            onClose={() => setShowVisitorLogin(false)}
-            onLogin={handleVisitorLogin}
-          />}
-        </Suspense>
+        {renderSharedOverlays()}
       </div>
     );
   }
@@ -1930,22 +2210,7 @@ const App: React.FC = () => {
           </Suspense>
         </div>
         <Footer {...footerNavProps} />
-        <Suspense fallback={<InlineFallback />}>
-          {deferNonCritical && <AIChatbot photos={photos} onPhotoClick={openPhoto} />}
-          {showSearch && <SearchBar
-            isOpen={showSearch}
-            onClose={() => { setShowSearch(false); setSearchQuery(''); }}
-            query={searchQuery}
-            onQueryChange={setSearchQuery}
-            photos={photos}
-            onPhotoClick={openPhoto}
-          />}
-          {showVisitorLogin && <VisitorLogin
-            isOpen={showVisitorLogin}
-            onClose={() => setShowVisitorLogin(false)}
-            onLogin={handleVisitorLogin}
-          />}
-        </Suspense>
+        {renderSharedOverlays()}
       </div>
     );
   }
@@ -1985,22 +2250,7 @@ const App: React.FC = () => {
           </Suspense>
         </div>
         <Footer {...footerNavProps} />
-        <Suspense fallback={<InlineFallback />}>
-          {deferNonCritical && <AIChatbot photos={photos} onPhotoClick={openPhoto} />}
-          {showSearch && <SearchBar
-            isOpen={showSearch}
-            onClose={() => { setShowSearch(false); setSearchQuery(''); }}
-            query={searchQuery}
-            onQueryChange={setSearchQuery}
-            photos={photos}
-            onPhotoClick={(p) => { openPhoto(p); setView('home'); }}
-          />}
-          {showVisitorLogin && <VisitorLogin
-            isOpen={showVisitorLogin}
-            onClose={() => setShowVisitorLogin(false)}
-            onLogin={handleVisitorLogin}
-          />}
-        </Suspense>
+        {renderSharedOverlays()}
       </div>
     );
   }
@@ -2040,11 +2290,12 @@ const App: React.FC = () => {
           </Suspense>
         </div>
         <Footer {...footerNavProps} />
+        {renderSharedOverlays()}
       </div>
     );
   }
 
-  const StaticPage = ({ title, text, cta, image }: { title: string; text: string; cta?: string; image?: string }) => (
+  const StaticPage = ({ title, text, cta, image, imageSrcSet, imageSizes }: { title: string; text: string; cta?: string; image?: string; imageSrcSet?: string; imageSizes?: string }) => (
     <div style={{ minHeight: '100vh', background: 'var(--wa-bg)', display: 'flex', flexDirection: 'column' }}>
       <Header
         onScrollToGallery={scrollToGallery}
@@ -2078,12 +2329,13 @@ const App: React.FC = () => {
           </div>
           {image && (
             <div className="editorial-static-page__image">
-              <img src={image} alt="" width={1200} height={900} />
+              <img src={image} srcSet={imageSrcSet} sizes={imageSizes} alt="" width={1200} height={900} />
             </div>
           )}
         </div>
       </main>
       <Footer {...footerNavProps} />
+      {renderSharedOverlays()}
     </div>
   );
   if (view === 'marketplace') return <StaticPage title="Authentic photography, collected with purpose." text="Support local photographers by licensing high-quality images for personal and commercial work through the WildSaura Market." cta="A share of every purchase supports animal rescue in Nepal." image="/photos/photo-wildlife.jpeg" />;
@@ -2108,23 +2360,11 @@ const App: React.FC = () => {
           onDataDeletionClick={handleDataDeletionClick}
           onProfileClick={handleProfileClick}
         />
-        {showVisitorLogin && <VisitorLogin
-          isOpen={showVisitorLogin}
-          onClose={() => setShowVisitorLogin(false)}
-          onLogin={handleVisitorLogin}
-        />}
-        {showProfile && <ProfileModal
-          isOpen={showProfile}
-          visitor={visitor}
-          onClose={() => setShowProfile(false)}
-          onVisitorUpdate={handleVisitorUpdate}
-          onLogout={handleVisitorLogout}
-          downloadCount={downloadCount}
-        />}
+        {renderSharedOverlays()}
     </Suspense>
   );
   if (view === 'ngo') return <StaticPage title="A visual story can become practical care." text="We are building a transparent system to support injured and abandoned animals across Nepal through rescue, treatment, feeding, and trusted local partners." cta="The long-term plan includes verified rescue partners and clear monthly reporting." image="/photos/tiger-hero.jpg" />;
-  if (view === 'about') return <StaticPage title="A field journal made between two homes." text="Wilds Aura connects photographers, nature lovers, and a mission to protect animals through patient visual storytelling from Nepal and Japan." image="/madan-about.png" />;
+  if (view === 'about') return <StaticPage title="A field journal made between two homes." text="Wilds Aura connects photographers, nature lovers, and a mission to protect animals through patient visual storytelling from Nepal and Japan." image="/images/optimized/madan-about-png-1024.webp" imageSrcSet="/images/optimized/madan-about-png-560.webp 560w, /images/optimized/madan-about-png-800.webp 800w, /images/optimized/madan-about-png-1024.webp 1024w" imageSizes="(max-width: 760px) calc(100vw - 2rem), 50vw" />;
   if (view === 'contact') return <StaticPage title="Let’s start a thoughtful collaboration." text="For assignments, print licensing, conservation partnerships, volunteering, or media enquiries, use the contact form on the homepage or email hello@wildsaura.com." image="/photos/photo-landscape.jpeg" />;
 
   // ── Smart Category Thumbnails ────────────────────────────────────────────
@@ -2179,10 +2419,10 @@ const App: React.FC = () => {
     { key: 'nature',    label: 'Nature',           imageUrl: getAutoCategoryThumbnail('nature',    ['others'],     'nature') },
     { key: 'street',    label: 'Street',           imageUrl: photos.find(p => p.category === 'street' && p.published !== false)?.thumbnailUrl || photos.find(p => p.category === 'street' && p.published !== false)?.imageUrl || '' },
     { key: 'other',     label: 'Portraits',        imageUrl: getAutoCategoryThumbnail('portraits', ['portraits'],  'other') },
-  ].filter(category => photos.some(photo => photo.category === category.key && photo.published !== false));
+  ];
 
   const searchablePhotos: Photo[] = [
-    ...photos,
+    ...(searchPhotos || photos),
     ...galleryPhotos.map((photo, index) => ({
       id: 1000000 + index,
       title: photo.title,
@@ -2200,9 +2440,6 @@ const App: React.FC = () => {
 // ── Home View ──
   return (
     <div style={{ minHeight: '100vh', background: 'var(--wa-bg)' }}>
-      {deferNonCritical && <Suspense fallback={<InlineFallback />}>
-        <AdSenseHead />
-      </Suspense>}
       {(pullDistance > 0 || isPullRefreshing) && (
         <div
           style={{
@@ -2256,9 +2493,16 @@ const App: React.FC = () => {
         onViewAll={() => { setView('photo-grid'); window.history.pushState({}, '', '/photos'); window.scrollTo(0, 0); }}
         isLoading={photosLoading}
       />
+      <div ref={homeGalleryLoadRef} aria-hidden="true" style={{ height: 1 }} />
       {galleryPhotos.length > 0 && (
         <Suspense fallback={<InlineFallback />}>
-          <PhotoGallery photos={galleryPhotos} searchQuery={searchQuery} />
+          <PhotoGallery
+            photos={galleryPhotos}
+            searchQuery={searchQuery}
+            hasMore={!galleryIsFull && galleryPhotos.length >= HOME_GALLERY_LIMIT}
+            isLoadingMore={galleryLoadingAll}
+            onLoadAll={loadFullGallery}
+          />
         </Suspense>
       )}
       <StoriesSection stories={stories} isLoading={storiesLoading} onStoryClick={handleStoryClick} onViewAll={() => { setView('story-grid'); window.history.pushState({}, '', '/story-grid'); window.scrollTo(0, 0); }} />

@@ -1,5 +1,5 @@
-import { collection, addDoc, getDocs, query, orderBy, onSnapshot, Unsubscribe, doc, deleteDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { collection, addDoc, getDocs, query, orderBy, onSnapshot, Unsubscribe, doc, deleteDoc, where } from 'firebase/firestore';
+import { db } from '../firebaseCore';
 import { sendToAiControlCenter } from './aiControlWebhook';
 
 export interface FirestoreComment {
@@ -12,6 +12,9 @@ export interface FirestoreComment {
   content: string;
   createdAt?: any;
 }
+
+const commentCreatedAtMillis = (comment: FirestoreComment): number =>
+  comment.createdAt?.toMillis?.() ?? comment.createdAt?.getTime?.() ?? 0;
 
 export async function addCommentToFirestore(comment: Omit<FirestoreComment, 'id'>): Promise<string> {
   try {
@@ -50,11 +53,15 @@ export async function deleteCommentFromFirestore(commentId: string): Promise<voi
 
 export async function getCommentsForTarget(targetType: string, targetId: string): Promise<FirestoreComment[]> {
   try {
-    const q = query(collection(db, 'comments'), orderBy('createdAt', 'asc'));
+    const q = query(
+      collection(db, 'comments'),
+      where('targetType', '==', targetType),
+      where('targetId', '==', targetId),
+    );
     const snapshot = await getDocs(q);
     return snapshot.docs
       .map(doc => ({ id: doc.id, ...doc.data() } as FirestoreComment))
-      .filter(c => c.targetType === targetType && c.targetId === targetId);
+      .sort((a, b) => commentCreatedAtMillis(a) - commentCreatedAtMillis(b));
   } catch (error) {
     console.error('Error getting comments:', error);
     return [];
@@ -91,5 +98,31 @@ export function subscribeToAllComments(
       console.error('Comment subscription error:', error);
       if (onError) onError(error);
     }
+  );
+}
+
+/** Subscribe only to comments belonging to one visible photo, story, or video. */
+export function subscribeToCommentsForTarget(
+  targetType: FirestoreComment['targetType'],
+  targetId: string,
+  onUpdate: (comments: FirestoreComment[]) => void,
+  onError?: (error: Error) => void,
+): Unsubscribe {
+  const q = query(
+    collection(db, 'comments'),
+    where('targetType', '==', targetType),
+    where('targetId', '==', targetId),
+  );
+  return onSnapshot(q,
+    (snapshot) => {
+      const comments = snapshot.docs
+        .map(commentDoc => ({ id: commentDoc.id, ...commentDoc.data() } as FirestoreComment))
+        .sort((a, b) => commentCreatedAtMillis(a) - commentCreatedAtMillis(b));
+      onUpdate(comments);
+    },
+    (error) => {
+      console.error('Target comment subscription error:', error);
+      if (onError) onError(error);
+    },
   );
 }

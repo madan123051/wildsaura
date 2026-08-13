@@ -22,11 +22,11 @@ const VideoThumb: React.FC<{ video: Video }> = ({ video }) => {
 
   return (
     <>
-      {!loaded && <div className="skeleton-image" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />}
+      {!loaded && <div aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'var(--wa-dark-card)' }} />}
       <img
         src={candidates[candidateIndex] || VIDEO_PLACEHOLDER}
         alt={video.title}
-        style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s, opacity 0.25s', opacity: loaded ? 1 : 0 }}
+        style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: loaded ? 1 : 0 }}
         loading="lazy"
         decoding="async"
         onLoad={() => setLoaded(true)}
@@ -48,7 +48,7 @@ const VideoTagChips: React.FC<{ tags: string[] }> = ({ tags }) => (
     <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
       {tags.slice(0, 3).map((tag) => (
         <span key={tag} style={{
-          padding: '0.15rem 0.5rem', borderRadius: '9999px', fontSize: '0.6rem',
+          padding: '0.15rem 0.5rem', borderRadius: '9999px', fontSize: '0.75rem',
           background: 'rgba(201,168,76,0.12)', color: 'var(--wa-gold-light)',
           border: '1px solid rgba(201,168,76,0.24)',
         }}>
@@ -119,35 +119,20 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
   const displayVideos = videos.slice(0, INITIAL_COUNT);
   const hasMore = videos.length > INITIAL_COUNT;
 
-  if (videos.length === 0) return null;
-
-  if (isLoading) {
-    const SkeletonVideoCard = () => (
-      <div className="skeleton-card" style={{ overflow: 'hidden' }}>
-        <div className="skeleton-image" style={{ width: '100%', paddingBottom: '56.25%', position: 'relative' }}>
-          <div style={{ position: 'absolute', inset: 0 }} />
-        </div>
-        <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <div className="skeleton-text medium" />
-          <div className="skeleton-text short" />
-        </div>
-      </div>
-    );
-
+  if (isLoading && videos.length === 0) {
     return (
-      <section id="videos" style={{ padding: '5rem 0', background: 'linear-gradient(180deg, var(--wa-dark) 0%, rgba(10,10,10,1) 100%)' }}>
+      <section id="videos" style={{ padding: '5rem 0', background: 'var(--wa-dark)' }}>
         <div className="wa-container">
           <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
             <p className="font-cinzel" style={{
-              fontSize: '0.7rem', letterSpacing: '0.3em', textTransform: 'uppercase',
+              fontSize: '0.75rem', letterSpacing: '0.3em', textTransform: 'uppercase',
               color: 'var(--wa-gold)', marginBottom: '0.75rem',
             }}>
               Moving Moments
             </p>
             <h2 className="font-playfair" style={{
               fontSize: 'clamp(1.75rem, 4vw, 2.5rem)', fontWeight: 700,
-              background: 'linear-gradient(135deg, var(--wa-gold), var(--wa-gold-light))',
-              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+              color: 'var(--wa-gold-light)',
               marginBottom: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
             }}>
               🎬 Videos
@@ -156,18 +141,15 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
               Experience the wild in motion — cinematic glimpses into the heart of nature.
             </p>
           </div>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
-            gap: '1.5rem',
-            alignItems: 'start',
-          }}>
-            {Array.from({ length: INITIAL_COUNT }).map((_, i) => <SkeletonVideoCard key={i} />)}
+          <div role="status" aria-live="polite" style={{ minHeight: 180, display: 'grid', placeItems: 'center', color: 'var(--wa-text-muted)', fontSize: '0.875rem' }}>
+            Loading videos…
           </div>
         </div>
       </section>
     );
   }
+
+  if (videos.length === 0) return null;
 
   /* ── share handler ──────────────────────────────────────── */
   const handleShare = async (video: Video) => {
@@ -193,26 +175,25 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
   };
 
   return (
-    <section id="videos" style={{ padding: '5rem 0', background: 'linear-gradient(180deg, var(--wa-dark) 0%, rgba(10,10,10,1) 100%)' }}>
+    <section id="videos" style={{ padding: '5rem 0', background: 'var(--wa-dark)' }}>
       <div className="wa-container">
         {/* Section Header */}
         <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
           <p className="font-cinzel" style={{
-            fontSize: '0.7rem', letterSpacing: '0.3em', textTransform: 'uppercase',
+            fontSize: '0.75rem', letterSpacing: '0.3em', textTransform: 'uppercase',
             color: 'var(--wa-gold)', marginBottom: '0.75rem',
           }}>
             Moving Moments
           </p>
           <h2 className="font-playfair" style={{
             fontSize: 'clamp(1.75rem, 4vw, 2.5rem)', fontWeight: 700,
-            background: 'linear-gradient(135deg, var(--wa-gold), var(--wa-gold-light))',
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+            color: 'var(--wa-gold-light)',
             marginBottom: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
           }}>
             🎬 Videos
             <span style={{
               fontSize: '0.9rem', fontWeight: 400,
-              WebkitTextFillColor: 'var(--wa-text-muted)',
+              color: 'var(--wa-text-muted)',
             }}>
               ({videos.length})
             </span>
@@ -225,7 +206,7 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
         {/* Video Cards */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))',
           gap: '1.5rem',
           alignItems: 'start',
         }}>
@@ -303,7 +284,7 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
                           position: 'absolute', bottom: 8, right: 8,
                           padding: '0.2rem 0.5rem', borderRadius: '4px',
                           background: 'rgba(0,0,0,0.8)', color: '#fff',
-                          fontSize: '0.7rem', fontWeight: 600,
+                          fontSize: '0.75rem', fontWeight: 600,
                         }}>
                           {video.duration}
                         </div>
@@ -320,7 +301,7 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
                                   (video as any).aspectRatio === '1:1' ? 'rgba(251,191,36,0.8)' :
                                   (video as any).aspectRatio === '4:5' ? 'rgba(59,130,246,0.8)' :
                                   'rgba(34,197,94,0.8)',
-                      color: '#fff', fontSize: '0.55rem', fontWeight: 700,
+                      color: '#fff', fontSize: '0.75rem', fontWeight: 700,
                       letterSpacing: '0.04em', zIndex: 2,
                     }}>
                       {(video as any).aspectRatio === '16:9' ? '🖥️' :
@@ -334,7 +315,7 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
                     position: 'absolute', bottom: 8, right: 8,
                     padding: '0.15rem 0.45rem', borderRadius: '4px',
                     background: 'rgba(0,0,0,0.55)', color: 'var(--wa-gold)',
-                    fontSize: '0.55rem', fontWeight: 700, letterSpacing: '0.06em',
+                    fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em',
                     pointerEvents: 'none', zIndex: 2,
                   }}>
                     © WILDSAURA
@@ -353,7 +334,7 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
                         event.preventDefault();
                         onVideoClick(video);
                       }}
-                      style={{ color: 'inherit', textDecoration: 'none' }}
+                      style={{ color: 'inherit', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', minHeight: 44 }}
                     >
                       {video.title}
                     </a>
@@ -371,13 +352,13 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
 
                   {/* Date row */}
                   {video.createdAt && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.68rem', color: 'var(--wa-gold)', opacity: 0.75, marginBottom: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', color: 'var(--wa-gold-light)', marginBottom: '0.5rem' }}>
                       <CalendarDays size={11} />
                       <span>{timeAgo(video.createdAt)}</span>
                     </div>
                   )}
                   {/* Stats row — with like, share buttons */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--wa-text-muted)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--wa-text-muted)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                       {video.location && (
                         <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
@@ -392,13 +373,16 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                       {/* Like Button */}
                       <button
+                        type="button"
                         onClick={() => onVideoLike(video.id)}
                         aria-label={`${(video as any).liked ? 'Unlike' : 'Like'} ${video.title}`}
+                        aria-pressed={Boolean((video as any).liked)}
                         style={{
-                          display: 'flex', alignItems: 'center', gap: '0.3rem',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem',
+                          minWidth: 44, minHeight: 44,
                           background: 'none', border: 'none', cursor: 'pointer', padding: 0,
                           color: (video as any).liked ? 'var(--wa-gold)' : 'rgba(201,168,76,0.6)',
-                          fontSize: '0.7rem', transition: 'color 0.2s, transform 0.2s',
+                          fontSize: '0.75rem', transition: 'color 0.2s, transform 0.2s',
                         }}
                         onMouseOver={(e) => { e.currentTarget.style.transform = 'scale(1.15)'; }}
                         onMouseOut={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
@@ -414,11 +398,14 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
 
                       {/* Share Button */}
                       <button
+                        type="button"
                         onClick={() => handleShare(video)}
+                        aria-label={`Share ${video.title}`}
                         style={{
-                          display: 'flex', alignItems: 'center', gap: '0.3rem',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem',
+                          minWidth: 44, minHeight: 44,
                           background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                          color: 'var(--wa-text-muted)', fontSize: '0.7rem', transition: 'color 0.2s, transform 0.2s',
+                          color: 'var(--wa-text-muted)', fontSize: '0.75rem', transition: 'color 0.2s, transform 0.2s',
                         }}
                         onMouseOver={(e) => { e.currentTarget.style.color = 'var(--wa-gold)'; e.currentTarget.style.transform = 'scale(1.15)'; }}
                         onMouseOut={(e) => { e.currentTarget.style.color = 'var(--wa-text-muted)'; e.currentTarget.style.transform = 'scale(1)'; }}
@@ -443,10 +430,11 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
                   {/* View all comments toggle */}
                   {hasHiddenComments && (
                     <button
+                      type="button"
                       onClick={() => setExpandedComments((p) => ({ ...p, [video.id]: true }))}
                       style={{
-                        background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                        fontSize: '0.72rem', color: 'var(--wa-text-muted)', marginBottom: '0.5rem',
+                        minHeight: 44, background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                        fontSize: '0.75rem', color: 'var(--wa-text-muted)', marginBottom: '0.5rem',
                         transition: 'color 0.2s',
                       }}
                       onMouseOver={(e) => { e.currentTarget.style.color = 'var(--wa-gold)'; }}
@@ -471,30 +459,31 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
                               width: 26, height: 26, minWidth: 26, borderRadius: '50%',
                               background: c.avatarColor || 'var(--wa-gold)',
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              fontSize: '0.65rem', fontWeight: 700, color: '#fff',
+                              fontSize: '0.75rem', fontWeight: 700, color: '#fff',
                             }}>
                               {(c.displayName || '?')[0].toUpperCase()}
                             </div>
                           )}
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--wa-gold-light)', marginRight: '0.4rem' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--wa-gold-light)', marginRight: '0.4rem' }}>
                               {c.displayName}
                             </span>
-                            <span style={{ fontSize: '0.72rem', color: 'var(--wa-text-muted)', wordBreak: 'break-word' }}>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--wa-text-muted)', wordBreak: 'break-word' }}>
                               {c.content}
                             </span>
-                            <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', marginTop: '0.15rem' }}>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--wa-text-muted)', marginTop: '0.15rem' }}>
                               {timeAgo(c.createdAt)}
                             </div>
                           </div>
                           {isAdmin && c.firestoreId && onDeleteComment && (
                             <button
+                              type="button"
                               onClick={() => onDeleteComment(c.firestoreId!)}
-                              title="Delete comment"
+                              aria-label={`Delete comment by ${c.displayName}`}
                               style={{
                                 background: 'rgba(255,60,60,0.15)', border: '1px solid rgba(255,60,60,0.3)',
-                                borderRadius: '4px', cursor: 'pointer', padding: '0.15rem',
-                                color: 'rgba(255,100,100,0.8)', display: 'flex', alignItems: 'center',
+                                width: 44, height: 44, borderRadius: '4px', cursor: 'pointer', padding: 0,
+                                color: '#ff8b8b', display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 transition: 'all 0.2s', flexShrink: 0,
                               }}
                             >
@@ -518,7 +507,7 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
                           width: 26, height: 26, minWidth: 26, borderRadius: '50%',
                           background: visitor?.avatarColor || '#3f7b4a',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: '0.65rem', fontWeight: 700, color: '#fff',
+                          fontSize: '0.75rem', fontWeight: 700, color: '#fff',
                         }}>
                           {(visitor?.displayName || 'G')[0].toUpperCase()}
                         </div>
@@ -527,6 +516,7 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
                         flex: 1, display: 'flex', alignItems: 'center',
                         background: 'rgba(255,255,255,0.04)', borderRadius: '20px',
                         border: '1px solid var(--wa-border)', overflow: 'hidden',
+                        minHeight: 44,
                         transition: 'border-color 0.2s',
                       }}>
                         <input
@@ -541,11 +531,13 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
                           }}
                         />
                         <button
+                          type="button"
                           onClick={() => handleSubmitComment(video)}
                           disabled={!(commentInputs[video.id] || '').trim()}
+                          aria-label={`Post comment on ${video.title}`}
                           style={{
                             background: 'none', border: 'none', cursor: 'pointer',
-                            padding: '0.4rem 0.65rem', display: 'flex', alignItems: 'center',
+                            width: 44, height: 44, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
                             color: (commentInputs[video.id] || '').trim() ? 'var(--wa-gold)' : 'rgba(201,168,76,0.3)',
                             transition: 'color 0.2s',
                           }}
@@ -565,11 +557,12 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
         {hasMore && onViewAll && (
           <div style={{ textAlign: 'center', marginTop: '2.5rem' }}>
             <button
+              type="button"
               onClick={onViewAll}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-                padding: '0.75rem 2rem',
-                background: 'linear-gradient(135deg, var(--wa-gold), #b8892d)',
+                minHeight: 44, padding: '0.75rem 2rem',
+                background: 'var(--wa-gold)',
                 color: '#062013',
                 border: 'none',
                 borderRadius: '50px',
@@ -578,15 +571,12 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
                 letterSpacing: '0.05em',
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
-                boxShadow: '0 4px 15px rgba(201,168,76,0.3)',
               }}
               onMouseOver={(e) => {
                 e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 8px 25px rgba(201,168,76,0.4)';
               }}
               onMouseOut={(e) => {
                 e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 15px rgba(201,168,76,0.3)';
               }}
             >
               View All {videos.length} Videos <ArrowRight size={16} />

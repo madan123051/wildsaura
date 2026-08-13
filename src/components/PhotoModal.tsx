@@ -207,11 +207,10 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
 
   const navArrowStyle = (side: 'left' | 'right'): React.CSSProperties => ({
     position: 'absolute', top: '50%', transform: 'translateY(-50%)',
-    [side]: '0.6rem', zIndex: 3, width: 36, height: 36, borderRadius: '50%',
-    background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(201,168,76,0.35)',
+    [side]: '0.6rem', zIndex: 3, width: 44, height: 44, borderRadius: '50%',
+    background: 'rgba(0,0,0,0.82)', border: '1px solid rgba(201,168,76,0.35)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     cursor: 'pointer', color: '#9fcb8f', transition: 'background 0.2s',
-    backdropFilter: 'blur(4px)',
   });
 
   return (
@@ -219,7 +218,7 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
       className="modal-backdrop photo-modal-backdrop" 
       style={{
         position: 'fixed', inset: 0, zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '0.75rem', background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(12px)',
+        padding: '0.75rem', background: 'rgba(0,0,0,0.94)',
       }}
       onClick={onClose}
     >
@@ -233,7 +232,7 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
           position: 'relative', borderRadius: '1rem', width: 'min(100%, 96vw)', maxWidth: '1400px',
           height: 'min(92dvh, 920px)', overflow: 'hidden',
           background: '#020504', border: '1px solid rgba(201,168,76,0.2)',
-          boxShadow: '0 0 80px rgba(0,0,0,0.8)',
+          boxShadow: '0 16px 42px rgba(0,0,0,0.58)',
         }}
       >
         {/* — Image — */}
@@ -285,9 +284,9 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
           {/* Category badge - top left */}
           <div style={{ position: 'absolute', top: '0.6rem', left: '0.6rem', zIndex: 2 }}>
             <span className="font-cinzel" style={{
-              padding: '0.2rem 0.6rem', borderRadius: '9999px', fontSize: '0.65rem', fontWeight: 500,
+              padding: '0.3rem 0.65rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 600,
               letterSpacing: '0.1em', textTransform: 'uppercase',
-              background: 'rgba(0,0,0,0.6)', color: 'var(--wa-gold)', border: '1px solid rgba(201,168,76,0.3)', backdropFilter: 'blur(8px)',
+              background: 'rgba(0,0,0,0.84)', color: 'var(--wa-gold)', border: '1px solid rgba(201,168,76,0.3)',
             }}>
               {photo.category}
             </span>
@@ -310,7 +309,7 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
               background: 'rgba(2,5,4,0.88)', border: '1px solid rgba(255,255,255,0.28)',
               borderRadius: '50%', width: 44, height: 44, cursor: 'pointer',
               color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              backdropFilter: 'blur(8px)', boxShadow: '0 4px 18px rgba(0,0,0,0.48)',
+              boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
               touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent',
             }}
           >
@@ -321,9 +320,9 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
           {photos && photos.length > 1 && currentIndex >= 0 && (
             <div style={{
               position: 'absolute', top: '2.65rem', left: '0.6rem', zIndex: 2,
-              background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+              background: 'rgba(0,0,0,0.82)',
               borderRadius: '9999px', padding: '0.15rem 0.6rem',
-              fontSize: '0.65rem', color: 'rgba(255,255,255,0.75)', letterSpacing: '0.05em',
+              fontSize: '0.75rem', color: 'rgba(255,255,255,0.9)', letterSpacing: '0.05em',
             }}>
               {currentIndex + 1} / {photos.length}
             </div>
@@ -334,7 +333,7 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
             position: 'absolute', top: 9, right: 66, zIndex: 2,
             padding: '2px 6px', background: 'rgba(0,0,0,0.5)',
             border: '1px solid rgba(201,168,76,0.4)', borderRadius: '4px',
-            color: 'rgba(201,168,76,0.8)', fontSize: '0.5rem', fontWeight: 700,
+            color: 'rgba(201,168,76,0.9)', fontSize: '0.625rem', fontWeight: 700,
             letterSpacing: '0.08em', pointerEvents: 'none', whiteSpace: 'nowrap',
           }}>
             © WILDSAURA PHOTOGRAPHY
@@ -376,8 +375,7 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
             position: 'absolute', left: '0.75rem', right: '0.75rem', bottom: '0.75rem', zIndex: 8,
             maxHeight: 'min(68dvh, 34rem)', overflowY: 'auto', padding: '0.75rem 1rem',
             borderRadius: '0.9rem', background: 'rgba(5, 12, 9, 0.92)',
-            border: '1px solid rgba(201,168,76,0.22)', boxShadow: '0 -16px 60px rgba(0,0,0,0.45)',
-            backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)',
+            border: '1px solid rgba(201,168,76,0.22)', boxShadow: '0 -10px 30px rgba(0,0,0,0.34)',
             transform: isDetailsOpen ? 'translateY(0)' : 'translateY(calc(100% + 1rem))',
             opacity: isDetailsOpen ? 1 : 0, pointerEvents: isDetailsOpen ? 'auto' : 'none',
             transition: 'transform 260ms ease, opacity 220ms ease',
@@ -396,7 +394,7 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
             <h2 className="font-playfair" style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '0.2rem', lineHeight: 1.3 }}>
               {photo.title}
             </h2>
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', fontSize: '0.65rem' }} className="text-wa-muted photo-modal-meta">
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem' }} className="text-wa-muted photo-modal-meta">
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}><User size={10} /> {photo.photographer || 'Unknown'}</span>
               {photo.location && (
                 <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(photo.location)}`} target="_blank" rel="noopener noreferrer"
@@ -423,7 +421,7 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
               display: 'flex', alignItems: 'center', gap: '0.3rem',
               background: 'none', border: 'none', cursor: 'pointer',
               color: photo.liked ? 'var(--wa-gold)' : 'var(--wa-text-muted)',
-              padding: '0.35rem 0.6rem', borderRadius: '0.4rem',
+              minHeight: 44, padding: '0.35rem 0.6rem', borderRadius: '0.4rem',
               fontSize: '0.75rem', transition: 'color 0.2s',
             }}>
               <Heart size={15} fill={photo.liked ? 'currentColor' : 'none'} />
@@ -436,7 +434,7 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
                 display: 'flex', alignItems: 'center', gap: '0.3rem',
                 background: 'none', border: 'none', cursor: 'pointer',
                 color: showShareMenu ? 'var(--wa-gold)' : 'var(--wa-text-muted)',
-                padding: '0.35rem 0.6rem', borderRadius: '0.4rem', fontSize: '0.75rem',
+                minHeight: 44, padding: '0.35rem 0.6rem', borderRadius: '0.4rem', fontSize: '0.75rem',
               }}>
                 <Share2 size={15} />
                 <span>Share</span>
@@ -446,15 +444,15 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
                   position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)',
                   marginBottom: '0.4rem', background: 'rgba(20,20,20,0.95)',
                   border: '1px solid rgba(201,168,76,0.3)', borderRadius: '0.75rem',
-                  padding: '0.4rem', minWidth: '160px', boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
-                  zIndex: 10, backdropFilter: 'blur(12px)',
+                  padding: '0.4rem', minWidth: '160px', boxShadow: '0 8px 24px rgba(0,0,0,0.48)',
+                  zIndex: 10,
                   animation: 'shareMenuFadeIn 0.15s ease-out',
                 }}>
                   <style>{`@keyframes shareMenuFadeIn { from { opacity:0; transform:translateX(-50%) translateY(4px);} to {opacity:1; transform:translateX(-50%) translateY(0);}}`}</style>
                   {shareOptions.map((opt, i) => (
                     <button key={i} onClick={() => { opt.onClick(); if (opt.label !== 'Copied!' && opt.label !== 'Copy Link') setShowShareMenu(false); }} style={{
                       display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%',
-                      padding: '0.45rem 0.65rem', background: 'transparent', border: 'none',
+                      minHeight: 44, padding: '0.45rem 0.65rem', background: 'transparent', border: 'none',
                       borderRadius: '0.5rem', cursor: 'pointer',
                       color: opt.label === 'Copied!' ? '#9fcb8f' : 'rgba(247,251,248,0.7)',
                       fontSize: '0.75rem', textAlign: 'left', whiteSpace: 'nowrap',
@@ -473,7 +471,7 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
             <button onClick={onDownload} disabled={isDownloading} style={{
               display: 'flex', alignItems: 'center', gap: '0.3rem',
               background: 'none', border: 'none', cursor: isDownloading ? 'wait' : 'pointer',
-              color: 'var(--wa-text-muted)', padding: '0.35rem 0.6rem', borderRadius: '0.4rem', fontSize: '0.75rem',
+              color: 'var(--wa-text-muted)', minHeight: 44, padding: '0.35rem 0.6rem', borderRadius: '0.4rem', fontSize: '0.75rem',
             }}>
               <Download size={15} />
               <span>{isDownloading ? 'Downloading...' : 'Download'}</span>
@@ -484,7 +482,7 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
               <button onClick={onGenerateStory} disabled={isGeneratingStory} style={{
                 display: 'flex', alignItems: 'center', gap: '0.3rem',
                 background: 'none', border: 'none', cursor: isGeneratingStory ? 'wait' : 'pointer',
-                color: 'var(--wa-gold)', padding: '0.35rem 0.6rem', borderRadius: '0.4rem', fontSize: '0.75rem',
+                color: 'var(--wa-gold)', minHeight: 44, padding: '0.35rem 0.6rem', borderRadius: '0.4rem', fontSize: '0.75rem',
               }}>
                 <BookOpen size={15} />
                 <span>{isGeneratingStory ? 'Generating...' : 'AI Story'}</span>
@@ -493,7 +491,7 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
 
             {/* Free download badge — inline small chip */}
             <span style={{
-              marginLeft: 'auto', fontSize: '0.6rem', color: '#9fcb8f',
+              marginLeft: 'auto', fontSize: '0.7rem', color: '#9fcb8f',
               background: 'rgba(159,203,143,0.1)', border: '1px solid rgba(159,203,143,0.2)',
               borderRadius: '9999px', padding: '0.2rem 0.5rem',
               display: 'flex', alignItems: 'center', gap: '0.25rem', whiteSpace: 'nowrap',
@@ -506,7 +504,7 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
           <div className="photo-modal-tabs" style={{ display: 'flex', gap: '0.2rem', margin: '0.6rem 0', padding: '0.2rem', borderRadius: '0.4rem', background: 'rgba(255,255,255,0.04)' }}>
             {tabs.map((tab) => (
               <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`tab-btn ${activeTab === tab.id ? 'active' : ''}`}
-                style={{ fontSize: '0.7rem', padding: '0.3rem 0.6rem' }}>
+                style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}>
                 {tab.label}
               </button>
             ))}
@@ -515,7 +513,7 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
           {/* ── Info Tab ── */}
           {activeTab === 'info' && (
             <div>
-              {photo.caption && <p className="text-wa-mid photo-modal-caption" style={{ fontSize: '0.8rem', lineHeight: 1.5, marginBottom: '0.6rem' }}>{photo.caption}</p>}
+              {photo.caption && <p className="text-wa-mid photo-modal-caption" style={{ fontSize: '0.875rem', lineHeight: 1.5, marginBottom: '0.6rem' }}>{photo.caption}</p>}
               <div className="photo-modal-detail-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                 <InfoCard label="Photographer" value={photo.photographer || 'Unknown'} />
                 {photo.location && (
@@ -562,8 +560,8 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
                       </div>
                     )}
                     <div style={{ flex: 1 }}>
-                      <p style={{ fontSize: '0.65rem', fontWeight: 600, opacity: 0.7 }}>{c.displayName}</p>
-                      <p className="text-wa-mid" style={{ fontSize: '0.8rem', marginTop: '0.15rem' }}>{c.content}</p>
+                      <p style={{ fontSize: '0.75rem', fontWeight: 600, opacity: 0.85 }}>{c.displayName}</p>
+                      <p className="text-wa-mid" style={{ fontSize: '0.875rem', marginTop: '0.15rem' }}>{c.content}</p>
                     </div>
                     {isAdmin && c.firestoreId && onDeleteComment && (
                       <button onClick={() => onDeleteComment(c.firestoreId!)} title="Delete comment" style={{ position: 'absolute', top: '0.4rem', right: '0.4rem', background: 'rgba(255,60,60,0.15)', border: '1px solid rgba(255,60,60,0.3)', borderRadius: '4px', cursor: 'pointer', padding: '0.15rem', color: 'rgba(255,100,100,0.8)', display: 'flex', alignItems: 'center' }}>
@@ -584,15 +582,15 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
                         {visitor.displayName.charAt(0).toUpperCase()}
                       </div>
                     )}
-                    <span style={{ fontSize: '0.65rem', color: 'var(--wa-text-muted)' }}>{visitor.displayName}</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--wa-text-muted)' }}>{visitor.displayName}</span>
                   </div>
-                  <textarea className="wa-input" placeholder="Write a comment..." value={commentText} onChange={(e) => setCommentText(e.target.value)} rows={2} style={{ resize: 'none', marginBottom: '0.4rem', fontSize: '0.8rem' }} />
+                  <textarea className="wa-input" placeholder="Write a comment..." value={commentText} onChange={(e) => setCommentText(e.target.value)} rows={2} style={{ resize: 'none', marginBottom: '0.4rem', fontSize: '0.875rem' }} />
                   <button onClick={handlePostComment} className="btn-gold" style={{ width: '100%', padding: '0.45rem' }}>Post Comment</button>
                 </div>
               ) : (
                 <div style={{ borderRadius: '8px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--wa-border)', padding: '0.65rem' }}>
-                  <p style={{ fontSize: '0.65rem', color: 'var(--wa-text-muted)', marginBottom: '0.35rem' }}>Commenting as guest</p>
-                  <textarea className="wa-input" placeholder="Write a comment as guest..." value={commentText} onChange={(e) => setCommentText(e.target.value)} rows={2} style={{ resize: 'none', marginBottom: '0.4rem', fontSize: '0.8rem' }} />
+                  <p style={{ fontSize: '0.75rem', color: 'var(--wa-text-muted)', marginBottom: '0.35rem' }}>Commenting as guest</p>
+                  <textarea className="wa-input" placeholder="Write a comment as guest..." value={commentText} onChange={(e) => setCommentText(e.target.value)} rows={2} style={{ resize: 'none', marginBottom: '0.4rem', fontSize: '0.875rem' }} />
                   <button onClick={handlePostComment} className="btn-gold" style={{ width: '100%', padding: '0.45rem' }}>Post Comment</button>
                 </div>
               )}
@@ -607,16 +605,15 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
             display: flex;
             align-items: center;
             justify-content: center;
-            background: radial-gradient(circle at center, rgba(31,68,43,0.42), rgba(0,0,0,0.65) 58%, rgba(0,0,0,0.95));
+            background: #030704;
           }
 
           .photo-modal-image-loader > div {
             width: min(46vw, 520px);
             aspect-ratio: 4 / 3;
             border-radius: 0.9rem;
-            background: linear-gradient(110deg, #0c2018 8%, #294635 18%, #0c2018 33%);
-            background-size: 200% 100%;
-            animation: photoModalShimmer 1.2s linear infinite;
+            background: #10251a;
+            animation: none;
             border: 1px solid rgba(201,168,76,0.12);
           }
 
@@ -662,9 +659,7 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
             border-radius: 0.9rem;
             background: rgba(5,12,9,0.88);
             border: 1px solid rgba(201,168,76,0.22);
-            box-shadow: 0 -14px 48px rgba(0,0,0,0.42);
-            backdrop-filter: blur(18px);
-            -webkit-backdrop-filter: blur(18px);
+            box-shadow: 0 -8px 24px rgba(0,0,0,0.34);
           }
 
           .photo-modal-collapsed-copy {
@@ -684,7 +679,7 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
           .photo-modal-collapsed-copy p {
             margin: 0.22rem 0 0;
             color: var(--wa-text-muted);
-            font-size: 0.66rem;
+            font-size: 0.75rem;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -701,8 +696,9 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
             background: rgba(201,168,76,0.16);
             color: var(--wa-gold);
             cursor: pointer;
+            min-height: 44px;
             padding: 0.48rem 0.78rem;
-            font-size: 0.72rem;
+            font-size: 0.75rem;
             font-weight: 700;
           }
 
@@ -716,7 +712,7 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
             gap: 0.75rem;
             margin: -0.1rem 0 0.55rem;
             padding-bottom: 0.35rem;
-            background: linear-gradient(to bottom, rgba(5,12,9,0.98), rgba(5,12,9,0));
+            background: rgba(5,12,9,0.98);
           }
 
           .photo-modal-panel-grip {
@@ -777,16 +773,16 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
             }
 
             .photo-modal-collapsed-copy h2 {
-              font-size: 0.86rem !important;
+              font-size: 1rem !important;
             }
 
             .photo-modal-collapsed-copy p {
-              font-size: 0.56rem !important;
+              font-size: 0.75rem !important;
             }
 
             .photo-modal-details-toggle {
               padding: 0.42rem 0.58rem !important;
-              font-size: 0.6rem !important;
+              font-size: 0.75rem !important;
             }
 
             .photo-modal-info {
@@ -812,7 +808,7 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
 
             .photo-modal-meta {
               gap: 0.28rem 0.45rem !important;
-              font-size: 0.58rem !important;
+              font-size: 0.75rem !important;
               line-height: 1.2 !important;
             }
 
@@ -830,7 +826,8 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
 
             .photo-modal-actions button {
               padding: 0.26rem 0.42rem !important;
-              font-size: 0.64rem !important;
+              min-height: 44px !important;
+              font-size: 0.75rem !important;
               flex: 0 0 auto;
             }
 
@@ -850,13 +847,13 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
 
             .photo-modal-tabs .tab-btn {
               padding: 0.25rem 0.35rem !important;
-              font-size: 0.58rem !important;
+              font-size: 0.75rem !important;
               letter-spacing: 0.04em !important;
-              min-height: 28px;
+              min-height: 44px;
             }
 
             .photo-modal-caption {
-              font-size: 0.68rem !important;
+              font-size: 0.8rem !important;
               line-height: 1.35 !important;
               margin-bottom: 0.45rem !important;
               display: -webkit-box;
@@ -876,13 +873,13 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
             }
 
             .photo-modal-detail-card-label {
-              font-size: 0.48rem !important;
+              font-size: 0.7rem !important;
               letter-spacing: 0.08em !important;
               margin-bottom: 0.12rem !important;
             }
 
             .photo-modal-detail-card-value {
-              font-size: 0.66rem !important;
+              font-size: 0.8rem !important;
               line-height: 1.2 !important;
               gap: 0.12rem !important;
             }
@@ -895,7 +892,7 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({
 
 const InfoCard: React.FC<{ label: string; value: string; icon?: React.ReactNode }> = ({ label, value, icon }) => (
   <div className="photo-modal-detail-card" style={{ borderRadius: '0.5rem', padding: '0.5rem 0.65rem', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-    <p className="font-cinzel text-wa-muted photo-modal-detail-card-label" style={{ fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.2rem' }}>{label}</p>
+    <p className="font-cinzel text-wa-muted photo-modal-detail-card-label" style={{ fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '0.2rem' }}>{label}</p>
     <p className="photo-modal-detail-card-value" style={{ fontSize: '0.8rem', fontWeight: 500, opacity: 0.8, display: 'flex', alignItems: 'center', gap: '0.2rem', textTransform: 'capitalize' }}>
       {icon} {value}
     </p>
@@ -906,7 +903,7 @@ const ExifCard: React.FC<{ icon: React.ReactNode; label: string; value: string }
   <div className="exif-card">
     <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginBottom: '0.2rem' }}>
       <span style={{ color: 'var(--wa-gold)' }}>{icon}</span>
-      <p className="font-cinzel text-wa-muted" style={{ fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{label}</p>
+      <p className="font-cinzel text-wa-muted" style={{ fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{label}</p>
     </div>
     <p style={{ fontSize: '0.8rem', fontWeight: 500, opacity: 0.8 }}>{value}</p>
   </div>

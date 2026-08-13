@@ -177,10 +177,9 @@ export const StoryDetail: React.FC<StoryDetailProps> = ({
           style={{
             position: 'absolute', top: 20, left: 20, zIndex: 10,
             display: 'flex', alignItems: 'center', gap: '0.5rem',
-            padding: '0.5rem 1rem', borderRadius: '8px',
-            background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(201,168,76,0.3)',
+            minHeight: 44, padding: '0.5rem 1rem', borderRadius: '8px',
+            background: 'rgba(5,14,9,0.9)', border: '1px solid rgba(201,168,76,0.3)',
             color: 'var(--wa-gold)', cursor: 'pointer', fontSize: '0.8rem',
-            backdropFilter: 'blur(8px)',
           }}
         >
           <ArrowLeft size={16} /> Back
@@ -194,7 +193,7 @@ export const StoryDetail: React.FC<StoryDetailProps> = ({
           <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
             {story.tags.map((tag) => (
               <span key={tag} style={{
-                padding: '0.2rem 0.6rem', borderRadius: '9999px', fontSize: '0.65rem',
+                padding: '0.2rem 0.6rem', borderRadius: '9999px', fontSize: '0.75rem',
                 background: 'rgba(201,168,76,0.15)', color: 'var(--wa-gold)',
                 border: '1px solid rgba(201,168,76,0.25)',
               }}>
@@ -240,7 +239,7 @@ export const StoryDetail: React.FC<StoryDetailProps> = ({
               onClick={onLike}
               style={{
                 display: 'flex', alignItems: 'center', gap: '0.5rem',
-                padding: '0.5rem 1.25rem', borderRadius: '8px',
+                minHeight: 44, padding: '0.5rem 1.25rem', borderRadius: '8px',
                 background: story.liked ? 'rgba(201,168,76,0.2)' : 'rgba(255,255,255,0.05)',
                 border: story.liked ? '1px solid rgba(201,168,76,0.4)' : '1px solid var(--wa-border)',
                 color: story.liked ? 'var(--wa-gold)' : 'var(--wa-text-muted)',
@@ -254,7 +253,7 @@ export const StoryDetail: React.FC<StoryDetailProps> = ({
               onClick={handleShare}
               style={{
                 display: 'flex', alignItems: 'center', gap: '0.5rem',
-                padding: '0.5rem 1.25rem', borderRadius: '8px',
+                minHeight: 44, padding: '0.5rem 1.25rem', borderRadius: '8px',
                 background: 'rgba(255,255,255,0.05)',
                 border: '1px solid var(--wa-border)',
                 color: 'var(--wa-text-muted)',
@@ -263,16 +262,16 @@ export const StoryDetail: React.FC<StoryDetailProps> = ({
             >
               <Share2 size={18} /> Share
             </button>
-            <a href={shareLinks.whatsapp} target="_blank" rel="noopener noreferrer" className="btn-gold-outline" style={{ textDecoration: 'none', padding: '0.5rem 0.9rem' }}>WhatsApp</a>
-            <a href={shareLinks.facebook} target="_blank" rel="noopener noreferrer" className="btn-gold-outline" style={{ textDecoration: 'none', padding: '0.5rem 0.9rem' }}>Facebook</a>
-            <a href={shareLinks.x} target="_blank" rel="noopener noreferrer" className="btn-gold-outline" style={{ textDecoration: 'none', padding: '0.5rem 0.9rem' }}>X</a>
+            <a href={shareLinks.whatsapp} target="_blank" rel="noopener noreferrer" className="btn-gold-outline" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, textDecoration: 'none', padding: '0.5rem 0.9rem' }}>WhatsApp</a>
+            <a href={shareLinks.facebook} target="_blank" rel="noopener noreferrer" className="btn-gold-outline" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, textDecoration: 'none', padding: '0.5rem 0.9rem' }}>Facebook</a>
+            <a href={shareLinks.x} target="_blank" rel="noopener noreferrer" className="btn-gold-outline" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, textDecoration: 'none', padding: '0.5rem 0.9rem' }}>X</a>
             {/* Share Toast */}
             {shareToast && (
               <div style={{
                 position: 'fixed', bottom: 30, left: '50%', transform: 'translateX(-50%)',
-                background: 'linear-gradient(135deg, #3f7b4a 0%, #9fcb8f 55%, #72aa81 100%)', color: '#062013', padding: '0.75rem 1.5rem',
+                background: '#9fcb8f', color: '#062013', padding: '0.75rem 1.5rem',
                 borderRadius: '10px', fontWeight: 600, fontSize: '0.85rem', zIndex: 9999,
-                boxShadow: '0 4px 20px rgba(201,168,76,0.4)',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.22)',
               }}>
                 📋 Story link copied to clipboard!
               </div>
@@ -292,7 +291,7 @@ export const StoryDetail: React.FC<StoryDetailProps> = ({
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
                 {comments.map((c) => (
                   <div key={c.id} style={{
-                    display: 'flex', gap: '0.75rem', padding: '0.75rem',
+                    display: 'flex', gap: '0.75rem', padding: '0.75rem', paddingRight: isAdmin ? '3.75rem' : '0.75rem',
                     borderRadius: '10px', background: 'rgba(255,255,255,0.03)',
                     border: '1px solid var(--wa-border)', position: 'relative',
                   }}>
@@ -313,7 +312,7 @@ export const StoryDetail: React.FC<StoryDetailProps> = ({
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--wa-text)' }}>{c.displayName}</span>
-                        <span style={{ fontSize: '0.65rem', color: 'var(--wa-text-muted)' }}>{c.createdAt}</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--wa-text-muted)' }}>{c.createdAt}</span>
                       </div>
                       <p style={{ fontSize: '0.85rem', color: 'var(--wa-text)', opacity: 0.8, marginTop: '0.25rem', lineHeight: 1.5 }}>{c.content}</p>
                     </div>
@@ -323,9 +322,10 @@ export const StoryDetail: React.FC<StoryDetailProps> = ({
                         title="Delete comment"
                         style={{
                           position: 'absolute', top: '0.5rem', right: '0.5rem',
+                          width: 44, height: 44,
                           background: 'rgba(255,60,60,0.15)', border: '1px solid rgba(255,60,60,0.3)',
-                          borderRadius: '4px', cursor: 'pointer', padding: '0.25rem',
-                          color: 'rgba(255,100,100,0.8)', display: 'flex', alignItems: 'center',
+                          borderRadius: '6px', cursor: 'pointer', padding: 0,
+                          color: 'rgba(255,100,100,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center',
                           transition: 'all 0.2s',
                         }}
                       >

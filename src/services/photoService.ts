@@ -1,6 +1,5 @@
-import { db, storage } from '../firebase';
-import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, serverTimestamp, onSnapshot, Unsubscribe, increment } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { db } from '../firebaseCore';
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, serverTimestamp, onSnapshot, Unsubscribe, increment, limit as queryLimit } from 'firebase/firestore';
 import { sortByCreatedAtDesc } from '../utils/dateSort';
 
 export interface FirestorePhoto {
@@ -60,6 +59,7 @@ export async function uploadPhotoToStorage(
   filename: string,
   onProgress?: (progress: number) => void
 ): Promise<string> {
+  const { storage, ref, uploadBytesResumable, getDownloadURL } = await import('../firebaseStorage');
   const storageRef = ref(storage, `photos/${Date.now()}_${filename}`);
 
   // Always convert to Blob for resumable upload (never use uploadString — it hangs on large files)
@@ -81,7 +81,10 @@ export async function uploadPhotoToStorage(
       reject(new Error('Upload timed out after 90 seconds. Please check your internet connection and try again.'));
     }, 90000);
 
-    const uploadTask = uploadBytesResumable(storageRef, blob, { contentType });
+    const uploadTask = uploadBytesResumable(storageRef, blob, {
+      contentType,
+      cacheControl: 'public,max-age=31536000,immutable',
+    });
 
     uploadTask.on(
       'state_changed',
@@ -119,6 +122,7 @@ export async function uploadThumbnailToStorage(
   input: File | Blob,
   filename: string
 ): Promise<string> {
+  const { storage, ref, uploadBytesResumable, getDownloadURL } = await import('../firebaseStorage');
   const thumbFilename = filename.replace(/\.[^.]+$/, '') + '_thumb.webp';
   const storageRef = ref(storage, `photos-thumbs/${Date.now()}_${thumbFilename}`);
 
@@ -131,7 +135,10 @@ export async function uploadThumbnailToStorage(
       reject(new Error('Thumbnail upload timed out'));
     }, 30000); // 30 sec timeout for tiny thumbnails
 
-    const uploadTask = uploadBytesResumable(storageRef, input, { contentType });
+    const uploadTask = uploadBytesResumable(storageRef, input, {
+      contentType,
+      cacheControl: 'public,max-age=31536000,immutable',
+    });
 
     uploadTask.on(
       'state_changed',
@@ -211,9 +218,12 @@ export async function incrementPhotoCounter(docId: string, field: 'viewCount' | 
  */
 export function subscribeToPhotos(
   onUpdate: (photos: FirestorePhoto[]) => void,
-  onError?: (error: Error) => void
+  onError?: (error: Error) => void,
+  maxResults?: number,
 ): Unsubscribe {
-  const q = query(collection(db, PHOTOS_COLLECTION), orderBy('createdAt', 'desc'));
+  const q = maxResults && maxResults > 0
+    ? query(collection(db, PHOTOS_COLLECTION), orderBy('createdAt', 'desc'), queryLimit(maxResults))
+    : query(collection(db, PHOTOS_COLLECTION), orderBy('createdAt', 'desc'));
   return onSnapshot(q,
     (snapshot) => {
       const allPhotos = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as FirestorePhoto & Record<string, any>));

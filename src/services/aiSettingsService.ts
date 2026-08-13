@@ -1,5 +1,5 @@
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db } from '../firebaseCore';
 import { AISettings } from '../types';
 
 const SETTINGS_REF = doc(db, 'settings', 'ai_config');

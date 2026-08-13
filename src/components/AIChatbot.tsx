@@ -131,20 +131,20 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
           style={{
             position: 'fixed', bottom: 20, right: 20, zIndex: 95,
             width: 50, height: 50, borderRadius: '50%',
-            background: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.22), rgba(201,168,76,0.92))',
-            border: '2px solid rgba(255,255,255,0.7)', cursor: 'pointer',
+            background: '#9fcb8f',
+            border: '2px solid rgba(255,255,255,0.55)', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 10px 36px rgba(0,0,0,0.65), 0 0 0 4px rgba(201,168,76,0.35)',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.34), 0 0 0 2px rgba(201,168,76,0.24)',
             transition: 'transform 0.3s, box-shadow 0.3s',
             fontSize: '20px', color: '#062013',
           }}
           onMouseOver={(e) => {
             e.currentTarget.style.transform = 'scale(1.1)';
-            e.currentTarget.style.boxShadow = '0 14px 40px rgba(0,0,0,0.75), 0 0 0 6px rgba(201,168,76,0.45)';
+            e.currentTarget.style.boxShadow = '0 10px 26px rgba(0,0,0,0.38), 0 0 0 3px rgba(201,168,76,0.3)';
           }}
           onMouseOut={(e) => {
             e.currentTarget.style.transform = 'scale(1)';
-            e.currentTarget.style.boxShadow = '0 10px 36px rgba(0,0,0,0.65), 0 0 0 4px rgba(201,168,76,0.35)';
+            e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.34), 0 0 0 2px rgba(201,168,76,0.24)';
           }}
           aria-label="Open AI Chatbot"
           title="Open AI Chatbot"
@@ -161,9 +161,9 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
             width: 400, maxWidth: 'calc(100vw - 48px)',
             height: 580, maxHeight: 'calc(100vh - 100px)',
             borderRadius: '16px', overflow: 'hidden',
-            background: 'var(--wa-dark-card)',
+            background: '#0d1711',
             border: '1px solid rgba(201,168,76,0.5)',
-            boxShadow: '0 8px 48px rgba(0,0,0,0.6)',
+            boxShadow: '0 12px 34px rgba(0,0,0,0.34)',
             display: 'flex', flexDirection: 'column',
             animation: 'chatSlideUp 0.3s ease',
           }}
@@ -171,14 +171,14 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
           {/* Header */}
           <div style={{
             padding: '0.75rem 1rem',
-            background: 'linear-gradient(135deg, rgba(201,168,76,0.15), rgba(201,168,76,0.05))',
+            background: '#111e16',
             borderBottom: '1px solid rgba(201,168,76,0.15)',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
               <div style={{
                 width: 32, height: 32, borderRadius: '50%',
-                background: 'linear-gradient(135deg, rgba(201,168,76,0.3), rgba(201,168,76,0.1))',
+                background: '#1a2b20',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 border: '1px solid rgba(201,168,76,0.3)',
                 fontSize: '16px',
@@ -187,14 +187,15 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
                 <span className="font-cinzel" style={{ color: 'var(--wa-gold)', fontSize: '0.8rem', fontWeight: 600, letterSpacing: '0.05em' }}>
                   Wilds Aura AI
                 </span>
-                <p style={{ fontSize: '0.6rem', color: 'var(--wa-text-muted)', marginTop: '1px', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                  <Globe size={9} /> Wildlife Expert • English • Hindi
+                <p style={{ fontSize: '0.75rem', color: 'var(--wa-text-muted)', marginTop: '1px', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                  <Globe size={12} /> Wildlife Expert • English • Hindi
                 </p>
               </div>
             </div>
             <button
               onClick={() => setIsOpen(false)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--wa-text-muted)', padding: '4px' }}
+              aria-label="Close AI chatbot"
+              style={{ width: 44, height: 44, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, cursor: 'pointer', color: 'var(--wa-text-muted)', padding: 0, display: 'grid', placeItems: 'center' }}
             >
               <X size={18} />
             </button>
@@ -212,7 +213,7 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
                     padding: '0.6rem 0.8rem',
                     borderRadius: msg.sender === 'user' ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
                     background: msg.sender === 'user'
-                      ? 'linear-gradient(135deg, rgba(201,168,76,0.25), rgba(201,168,76,0.15))'
+                      ? '#243222'
                       : 'rgba(255,255,255,0.08)',
                     border: msg.sender === 'user'
                       ? '1px solid rgba(201,168,76,0.3)'
@@ -236,7 +237,7 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
                     background: 'rgba(201,168,76,0.06)',
                     border: '1px solid rgba(201,168,76,0.15)',
                   }}>
-                    <p style={{ fontSize: '0.65rem', color: 'var(--wa-gold)', marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.3rem', fontWeight: 600 }}>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--wa-gold)', marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.3rem', fontWeight: 600 }}>
                       <ImageIcon size={11} /> Gallery mein photos ({msg.matchedPhotos.length})
                     </p>
                     <div style={{
@@ -280,7 +281,7 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
                             position: 'absolute', bottom: 0, left: 0, right: 0,
                           }}>
                             <p style={{
-                              fontSize: '0.58rem', color: 'rgba(255,255,255,0.9)',
+                              fontSize: '0.75rem', color: 'rgba(255,255,255,0.9)',
                               lineHeight: 1.2, overflow: 'hidden',
                               textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                             }}>
@@ -291,7 +292,7 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
                       ))}
                     </div>
                     {onPhotoClick && (
-                      <p style={{ fontSize: '0.55rem', color: 'var(--wa-text-muted)', marginTop: '0.3rem', textAlign: 'center' }}>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--wa-text-muted)', marginTop: '0.3rem', textAlign: 'center' }}>
                         Tap to view full photo
                       </p>
                     )}
@@ -308,7 +309,7 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
                     background: 'rgba(201,168,76,0.05)',
                     border: '1px solid rgba(201,168,76,0.15)',
                   }}>
-                    <p style={{ fontSize: '0.62rem', color: 'var(--wa-gold)', marginBottom: '0.3rem', fontWeight: 600 }}>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--wa-gold)', marginBottom: '0.3rem', fontWeight: 600 }}>
                       🔍 Ye animals gallery mein hain:
                     </p>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
@@ -317,12 +318,13 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
                           key={i}
                           onClick={() => handleSuggestionClick(animal)}
                           style={{
+                            minHeight: 44,
                             padding: '0.2rem 0.5rem',
                             borderRadius: '12px',
                             background: 'rgba(201,168,76,0.12)',
                             border: '1px solid rgba(201,168,76,0.25)',
                             color: 'var(--wa-gold)',
-                            fontSize: '0.68rem',
+                            fontSize: '0.75rem',
                             cursor: 'pointer',
                             transition: 'all 0.2s',
                             display: 'flex', alignItems: 'center', gap: '0.2rem',
@@ -374,12 +376,13 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
                   key={i}
                   onClick={() => handleChipClick(chip)}
                   style={{
+                    minHeight: 44,
                     padding: '0.3rem 0.6rem',
                     borderRadius: '16px',
                     background: 'rgba(201,168,76,0.1)',
                     border: '1px solid rgba(201,168,76,0.2)',
                     color: 'var(--wa-gold)',
-                    fontSize: '0.72rem',
+                    fontSize: '0.75rem',
                     cursor: 'pointer',
                     transition: 'all 0.2s',
                   }}
@@ -404,7 +407,7 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
               placeholder="Ask about any animal... 🐾"
               disabled={isThinking}
               style={{
-                flex: 1, padding: '0.55rem 0.75rem',
+                flex: 1, minHeight: 44, padding: '0.55rem 0.75rem',
                 background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(201,168,76,0.25)',
                 borderRadius: '10px', color: 'var(--wa-text)', fontSize: '0.82rem',
                 outline: 'none', boxSizing: 'border-box',
@@ -418,10 +421,10 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ photos = [], onPhotoClick 
               onClick={() => handleSend()}
               disabled={isThinking || !input.trim()}
               style={{
-                width: 38, height: 38, borderRadius: '10px',
+                width: 44, height: 44, borderRadius: '10px',
                 background: (isThinking || !input.trim()) 
                   ? 'rgba(201,168,76,0.2)' 
-                  : 'linear-gradient(135deg, var(--wa-gold), var(--wa-gold-light))',
+                  : 'var(--wa-gold)',
                 border: 'none', 
                 cursor: (isThinking || !input.trim()) ? 'default' : 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',

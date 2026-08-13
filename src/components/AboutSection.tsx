@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { ArrowRight, Camera, Heart, MapPin, Send } from 'lucide-react';
-import { saveContactMessage } from '../services/contactService';
 
 interface AboutSectionProps {
   onMapClick?: () => void;
@@ -15,13 +14,14 @@ export const AboutSection: React.FC<AboutSectionProps> = ({ onMapClick }) => {
         <div className="photographer-section__grid">
           <div className="photographer-section__portrait">
             <img
-              src="/madan-about.png"
-              srcSet="/images/optimized/madan-about-png-280.webp 280w, /madan-about.png 1024w"
-              sizes="(max-width: 760px) 100vw, 46vw"
+              src="/images/optimized/madan-about-png-800.webp"
+              srcSet="/images/optimized/madan-about-png-280.webp 280w, /images/optimized/madan-about-png-560.webp 560w, /images/optimized/madan-about-png-800.webp 800w, /images/optimized/madan-about-png-1024.webp 1024w"
+              sizes="(max-width: 760px) calc(100vw - 2rem), 46vw"
               alt="Madan Shrestha, wildlife and nature photographer"
               width={1024}
               height={1024}
               loading="lazy"
+              fetchPriority="low"
               decoding="async"
             />
             <div className="photographer-section__portrait-note">
@@ -108,6 +108,7 @@ const ContactForm: React.FC = () => {
     setSending(true);
     setError('');
     try {
+      const { saveContactMessage } = await import('../services/contactService');
       await saveContactMessage(form);
       setForm({ name: '', email: '', message: '' });
       setSent(true);

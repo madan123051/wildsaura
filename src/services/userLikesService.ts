@@ -1,4 +1,4 @@
-import { db } from '../firebase';
+import { db } from '../firebaseCore';
 import { doc, setDoc, deleteDoc, collection, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
 
 const LIKES_COLLECTION = 'user_likes';

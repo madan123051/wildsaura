@@ -1,8 +1,12 @@
 import React, { useState, useCallback } from 'react';
 import { X, Mail, Eye, EyeOff, ArrowLeft, Camera } from 'lucide-react';
 import { Visitor } from '../types';
-import { auth, googleProvider, facebookProvider, appleProvider } from '../firebase';
-import { signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { auth } from '../firebaseAuth';
+import { signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, GoogleAuthProvider, FacebookAuthProvider, OAuthProvider } from 'firebase/auth';
+
+const googleProvider = new GoogleAuthProvider();
+const facebookProvider = new FacebookAuthProvider();
+const appleProvider = new OAuthProvider('apple.com');
 
 interface VisitorLoginProps {
   isOpen: boolean;
@@ -160,20 +164,20 @@ export const VisitorLogin: React.FC<VisitorLoginProps> = ({ isOpen, onClose, onL
   const modalStyle: React.CSSProperties = {
     position: 'fixed', inset: 0, zIndex: 55,
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    padding: '1rem', background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)',
+    padding: '1rem', background: 'rgba(3,8,5,0.88)',
   };
 
   const cardStyle: React.CSSProperties = {
     width: '100%', maxWidth: 420,
-    background: 'linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%)',
+    background: '#0d1711',
     border: '1px solid rgba(201,168,76,0.2)',
     borderRadius: '20px', padding: '2rem',
-    boxShadow: '0 20px 60px rgba(0,0,0,0.8), 0 0 40px rgba(201,168,76,0.05)',
+    boxShadow: '0 12px 34px rgba(0,0,0,0.34)',
     position: 'relative' as const, overflow: 'hidden' as const,
   };
 
   const socialBtnBase: React.CSSProperties = {
-    width: '100%', padding: '0.75rem 1rem',
+    width: '100%', minHeight: 44, padding: '0.75rem 1rem',
     borderRadius: '12px', border: 'none',
     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem',
     fontSize: '0.9rem', fontWeight: 600,
@@ -182,7 +186,7 @@ export const VisitorLogin: React.FC<VisitorLoginProps> = ({ isOpen, onClose, onL
   };
 
   const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '0.75rem 1rem',
+    width: '100%', minHeight: 44, padding: '0.75rem 1rem',
     background: 'rgba(255,255,255,0.06)',
     border: '1px solid rgba(201,168,76,0.2)',
     borderRadius: '12px', color: '#fff',
@@ -196,14 +200,14 @@ export const VisitorLogin: React.FC<VisitorLoginProps> = ({ isOpen, onClose, onL
     fontSize: '0.75rem', letterSpacing: '0.1em',
   };
 
-  const lineStyle: React.CSSProperties = { flex: 1, height: '1px', background: 'linear-gradient(90deg, transparent, rgba(201,168,76,0.3), transparent)' };
+  const lineStyle: React.CSSProperties = { flex: 1, height: '1px', background: 'rgba(201,168,76,0.24)' };
 
   const goldGradientTop = (
-    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'linear-gradient(90deg, #c9a84c, #e6c35a, #c9a84c)' }} />
+    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: '#9fcb8f' }} />
   );
 
   const closeBtn = (
-    <button onClick={handleClose} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', padding: '4px' }}>
+    <button onClick={handleClose} aria-label="Close sign in" style={{ position: 'absolute', top: '0.75rem', right: '0.75rem', width: 44, height: 44, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, cursor: 'pointer', color: 'rgba(255,255,255,0.6)', padding: 0, display: 'grid', placeItems: 'center' }}>
       <X size={20} />
     </button>
   );
@@ -219,7 +223,7 @@ export const VisitorLogin: React.FC<VisitorLoginProps> = ({ isOpen, onClose, onL
           {goldGradientTop}
           {closeBtn}
           <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
-            <div style={{ width: 56, height: 56, borderRadius: '50%', margin: '0 auto 1rem', background: 'linear-gradient(135deg, rgba(201,168,76,0.15), rgba(201,168,76,0.05))', border: '2px solid rgba(201,168,76,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: 56, height: 56, borderRadius: '50%', margin: '0 auto 1rem', background: 'rgba(201,168,76,0.11)', border: '2px solid rgba(201,168,76,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Camera size={24} style={{ color: '#c9a84c' }} />
             </div>
             <h2 style={{ fontFamily: "'Cinzel', serif", fontSize: '1.15rem', color: '#fff', letterSpacing: '0.06em', margin: 0 }}>Welcome to Wilds Aura</h2>
@@ -253,7 +257,7 @@ export const VisitorLogin: React.FC<VisitorLoginProps> = ({ isOpen, onClose, onL
         <div onClick={e => e.stopPropagation()} style={cardStyle}>
           {goldGradientTop}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-            <button onClick={() => { setMode('main'); setError(''); }} style={{ background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: '10px', padding: '0.5rem', cursor: 'pointer', color: 'rgba(255,255,255,0.6)', display: 'flex' }}><ArrowLeft size={18} /></button>
+            <button onClick={() => { setMode('main'); setError(''); }} aria-label="Back to sign-in options" style={{ width: 44, height: 44, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: 0, cursor: 'pointer', color: 'rgba(255,255,255,0.6)', display: 'grid', placeItems: 'center' }}><ArrowLeft size={18} /></button>
             <h2 style={{ fontFamily: "'Cinzel', serif", fontSize: '1.05rem', color: '#fff', letterSpacing: '0.06em', margin: 0 }}>Log In</h2>
           </div>
           <form onSubmit={handleEmailLogin}>
@@ -264,14 +268,14 @@ export const VisitorLogin: React.FC<VisitorLoginProps> = ({ isOpen, onClose, onL
             <div style={{ marginBottom: '1.25rem' }}>
               <label style={{ display: 'block', fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', marginBottom: '0.4rem', letterSpacing: '0.05em' }}>PASSWORD</label>
               <div style={{ position: 'relative' }}>
-                <input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="Enter password" required style={{ ...inputStyle, paddingRight: '2.5rem' }} />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', padding: '2px' }}>
+                <input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="Enter password" required style={{ ...inputStyle, paddingRight: '3.25rem' }} />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'Hide password' : 'Show password'} style={{ position: 'absolute', right: 0, top: '50%', width: 44, height: 44, transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.55)', padding: 0, display: 'grid', placeItems: 'center' }}>
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
             </div>
             {errorBox}
-            <button type="submit" disabled={loading} style={{ width: '100%', padding: '0.8rem', background: loading ? 'rgba(201,168,76,0.5)' : 'linear-gradient(135deg, #c9a84c, #daa520)', color: '#000', fontWeight: 700, border: 'none', borderRadius: '12px', fontSize: '0.9rem', cursor: loading ? 'not-allowed' : 'pointer', letterSpacing: '0.04em' }}>
+            <button type="submit" disabled={loading} style={{ width: '100%', minHeight: 44, padding: '0.8rem', background: loading ? 'rgba(201,168,76,0.5)' : '#9fcb8f', color: '#062013', fontWeight: 700, border: 'none', borderRadius: '12px', fontSize: '0.9rem', cursor: loading ? 'not-allowed' : 'pointer', letterSpacing: '0.04em' }}>
               {loading ? 'Logging in...' : 'Log In'}
             </button>
             <p style={{ textAlign: 'center', fontSize: '0.75rem', color: 'rgba(255,255,255,0.35)', marginTop: '1rem' }}>
@@ -289,7 +293,7 @@ export const VisitorLogin: React.FC<VisitorLoginProps> = ({ isOpen, onClose, onL
       <div onClick={e => e.stopPropagation()} style={cardStyle}>
         {goldGradientTop}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-          <button onClick={() => { setMode('main'); setError(''); }} style={{ background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: '10px', padding: '0.5rem', cursor: 'pointer', color: 'rgba(255,255,255,0.6)', display: 'flex' }}><ArrowLeft size={18} /></button>
+          <button onClick={() => { setMode('main'); setError(''); }} aria-label="Back to sign-in options" style={{ width: 44, height: 44, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: 0, cursor: 'pointer', color: 'rgba(255,255,255,0.6)', display: 'grid', placeItems: 'center' }}><ArrowLeft size={18} /></button>
           <h2 style={{ fontFamily: "'Cinzel', serif", fontSize: '1.05rem', color: '#fff', letterSpacing: '0.06em', margin: 0 }}>Create Account</h2>
         </div>
         <form onSubmit={handleEmailSignup}>
@@ -304,14 +308,14 @@ export const VisitorLogin: React.FC<VisitorLoginProps> = ({ isOpen, onClose, onL
           <div style={{ marginBottom: '1.25rem' }}>
             <label style={{ display: 'block', fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', marginBottom: '0.4rem', letterSpacing: '0.05em' }}>PASSWORD</label>
             <div style={{ position: 'relative' }}>
-              <input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="At least 6 characters" required minLength={6} style={{ ...inputStyle, paddingRight: '2.5rem' }} />
-              <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', padding: '2px' }}>
+              <input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="At least 6 characters" required minLength={6} style={{ ...inputStyle, paddingRight: '3.25rem' }} />
+              <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'Hide password' : 'Show password'} style={{ position: 'absolute', right: 0, top: '50%', width: 44, height: 44, transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.55)', padding: 0, display: 'grid', placeItems: 'center' }}>
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
           </div>
           {errorBox}
-          <button type="submit" disabled={loading} style={{ width: '100%', padding: '0.8rem', background: loading ? 'rgba(201,168,76,0.5)' : 'linear-gradient(135deg, #c9a84c, #daa520)', color: '#000', fontWeight: 700, border: 'none', borderRadius: '12px', fontSize: '0.9rem', cursor: loading ? 'not-allowed' : 'pointer', letterSpacing: '0.04em' }}>
+          <button type="submit" disabled={loading} style={{ width: '100%', minHeight: 44, padding: '0.8rem', background: loading ? 'rgba(201,168,76,0.5)' : '#9fcb8f', color: '#062013', fontWeight: 700, border: 'none', borderRadius: '12px', fontSize: '0.9rem', cursor: loading ? 'not-allowed' : 'pointer', letterSpacing: '0.04em' }}>
             {loading ? 'Creating account...' : 'Create Account'}
           </button>
           <p style={{ textAlign: 'center', fontSize: '0.75rem', color: 'rgba(255,255,255,0.35)', marginTop: '1rem' }}>

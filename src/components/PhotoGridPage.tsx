@@ -107,11 +107,8 @@ export const PhotoGridPage: React.FC<PhotoGridPageProps> = ({
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--wa-bg)', paddingBottom: '3rem' }}>
-      {/* Sticky Header */}
       <div style={{
-        position: 'sticky', top: 0, zIndex: 50,
-        background: 'rgba(10,20,15,0.97)',
-        backdropFilter: 'blur(12px)',
+        background: 'var(--wa-dark)',
         borderBottom: '1px solid rgba(201,168,76,0.15)',
         padding: '0.875rem 1rem',
       }}>
@@ -121,7 +118,7 @@ export const PhotoGridPage: React.FC<PhotoGridPageProps> = ({
             aria-label="Back to home"
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              width: 38, height: 38, flexShrink: 0,
+              width: 44, height: 44, flexShrink: 0,
               background: 'rgba(201,168,76,0.12)',
               border: '1px solid rgba(201,168,76,0.3)',
               borderRadius: '50%', cursor: 'pointer',
@@ -140,8 +137,10 @@ export const PhotoGridPage: React.FC<PhotoGridPageProps> = ({
             }}>
               Photographic Archive
             </h1>
-            <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--wa-text-muted)' }}>
-              {filtered.length} of {published.length} photos
+            <p role="status" aria-live="polite" style={{ margin: 0, fontSize: '0.75rem', color: 'var(--wa-text-muted)' }}>
+              {isLoading && published.length === 0
+                ? 'Loading photos…'
+                : `${filtered.length} of ${published.length} photos`}
             </p>
           </div>
 
@@ -151,7 +150,7 @@ export const PhotoGridPage: React.FC<PhotoGridPageProps> = ({
             aria-controls="photo-archive-filters"
             style={{
               display: 'flex', alignItems: 'center', gap: '0.4rem',
-              padding: '0.45rem 0.875rem',
+              minHeight: 44, padding: '0.45rem 0.875rem',
               background: showFilters ? 'rgba(201,168,76,0.2)' : 'rgba(201,168,76,0.08)',
               border: '1px solid rgba(201,168,76,0.3)',
               borderRadius: 20, cursor: 'pointer',
@@ -169,17 +168,18 @@ export const PhotoGridPage: React.FC<PhotoGridPageProps> = ({
             maxWidth: WIDE_PAGE_MAX, margin: '0.75rem auto 0',
             display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end',
           }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.65rem', color: 'var(--wa-gold)', fontWeight: 700, letterSpacing: '0.1em', marginBottom: 4, textTransform: 'uppercase' }}>
+            <div role="group" aria-labelledby="photo-category-label">
+              <span id="photo-category-label" style={{ display: 'block', fontSize: '0.75rem', color: 'var(--wa-gold-light)', fontWeight: 700, letterSpacing: '0.1em', marginBottom: 4, textTransform: 'uppercase' }}>
                 Category
-              </label>
+              </span>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
                 {filterTabs.map(tab => (
                   <button
                     key={tab.key}
                     onClick={() => setSelectedCategory(tab.key)}
+                    aria-pressed={selectedCategory === tab.key}
                     style={{
-                      padding: '0.3rem 0.75rem', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600,
+                      minHeight: 44, padding: '0.3rem 0.75rem', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600,
                       cursor: 'pointer', transition: 'all 0.2s',
                       background: selectedCategory === tab.key ? 'var(--wa-gold)' : 'rgba(255,255,255,0.05)',
                       color: selectedCategory === tab.key ? '#062013' : 'var(--wa-text-muted)',
@@ -193,16 +193,17 @@ export const PhotoGridPage: React.FC<PhotoGridPageProps> = ({
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.65rem', color: 'var(--wa-gold)', fontWeight: 700, letterSpacing: '0.1em', marginBottom: 4, textTransform: 'uppercase' }}>
+              <label htmlFor="photo-year-filter" style={{ display: 'block', fontSize: '0.75rem', color: 'var(--wa-gold-light)', fontWeight: 700, letterSpacing: '0.1em', marginBottom: 4, textTransform: 'uppercase' }}>
                 Year
               </label>
               <select
+                id="photo-year-filter"
                 value={selectedYear}
                 onChange={e => { setSelectedYear(e.target.value); setSelectedMonth('all'); }}
                 style={{
                   background: '#1a2a1f', color: 'var(--wa-text)',
                   border: '1px solid rgba(201,168,76,0.3)', borderRadius: 8,
-                  padding: '0.4rem 0.75rem', fontSize: '0.8rem', cursor: 'pointer',
+                  minHeight: 44, padding: '0.4rem 0.75rem', fontSize: '0.8rem', cursor: 'pointer',
                 }}
               >
                 {years.map(y => <option key={y} value={y}>{y === 'all' ? 'All Years' : y}</option>)}
@@ -210,16 +211,17 @@ export const PhotoGridPage: React.FC<PhotoGridPageProps> = ({
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.65rem', color: 'var(--wa-gold)', fontWeight: 700, letterSpacing: '0.1em', marginBottom: 4, textTransform: 'uppercase' }}>
+              <label htmlFor="photo-month-filter" style={{ display: 'block', fontSize: '0.75rem', color: 'var(--wa-gold-light)', fontWeight: 700, letterSpacing: '0.1em', marginBottom: 4, textTransform: 'uppercase' }}>
                 Month
               </label>
               <select
+                id="photo-month-filter"
                 value={selectedMonth}
                 onChange={e => setSelectedMonth(e.target.value)}
                 style={{
                   background: '#1a2a1f', color: 'var(--wa-text)',
                   border: '1px solid rgba(201,168,76,0.3)', borderRadius: 8,
-                  padding: '0.4rem 0.75rem', fontSize: '0.8rem', cursor: 'pointer',
+                  minHeight: 44, padding: '0.4rem 0.75rem', fontSize: '0.8rem', cursor: 'pointer',
                 }}
               >
                 {months.map(m => <option key={m} value={m}>{m === 'all' ? 'All Months' : m}</option>)}
@@ -231,7 +233,7 @@ export const PhotoGridPage: React.FC<PhotoGridPageProps> = ({
                 onClick={() => { setSelectedCategory('all'); setSelectedYear('all'); setSelectedMonth('all'); }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '0.3rem',
-                  padding: '0.4rem 0.75rem',
+                  minHeight: 44, padding: '0.4rem 0.75rem',
                   background: 'rgba(255,80,80,0.1)', border: '1px solid rgba(255,80,80,0.3)',
                   borderRadius: 8, cursor: 'pointer', color: '#ff6b6b', fontSize: '0.78rem', fontWeight: 600,
                 }}
@@ -245,16 +247,8 @@ export const PhotoGridPage: React.FC<PhotoGridPageProps> = ({
 
       <div style={{ maxWidth: WIDE_PAGE_MAX, margin: '0 auto', padding: '1.5rem 1rem' }}>
         {isLoading && published.length === 0 ? (
-          <div className="photo-archive-grid">
-            {Array.from({ length: 8 }).map((_, index) => (
-              <div key={index} className="skeleton-card" style={{ overflow: 'hidden', borderRadius: '0.75rem' }}>
-                <div className="skeleton-image" style={{ width: '100%', aspectRatio: '1/1' }} />
-                <div style={{ padding: '0.75rem' }}>
-                  <div className="skeleton-text medium" />
-                  <div className="skeleton-text short" />
-                </div>
-              </div>
-            ))}
+          <div role="status" aria-live="polite" style={{ minHeight: 240, display: 'grid', placeItems: 'center', color: 'var(--wa-text-muted)', fontSize: '0.875rem' }}>
+            Loading photos…
           </div>
         ) : filtered.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '6rem 0' }}>
@@ -265,7 +259,7 @@ export const PhotoGridPage: React.FC<PhotoGridPageProps> = ({
             <button
               onClick={() => { setSelectedCategory('all'); setSelectedYear('all'); setSelectedMonth('all'); }}
               style={{
-                marginTop: '1rem', padding: '0.5rem 1.5rem',
+                minHeight: 44, marginTop: '1rem', padding: '0.5rem 1.5rem',
                 background: 'var(--wa-gold)', color: '#062013',
                 border: 'none', borderRadius: 20, cursor: 'pointer', fontWeight: 700,
               }}

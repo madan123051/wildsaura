@@ -30,8 +30,7 @@ export const LiveStats: React.FC<LiveStatsProps> = ({
       {expanded && (
         <div
           style={{
-            background: 'rgba(10, 10, 10, 0.92)',
-            backdropFilter: 'blur(16px)',
+            background: '#0b1710',
             border: '1px solid rgba(63, 123, 74, 0.35)',
             borderRadius: '14px',
             padding: '1rem 1.25rem',
@@ -39,11 +38,11 @@ export const LiveStats: React.FC<LiveStatsProps> = ({
             flexDirection: 'column',
             gap: '0.75rem',
             minWidth: '180px',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+            boxShadow: '0 6px 20px rgba(0,0,0,0.3)',
             animation: 'fadeInUp 0.3s ease',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.7rem', color: 'var(--wa-gold)', letterSpacing: '0.1em', fontWeight: 600 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', color: 'var(--wa-gold)', letterSpacing: '0.1em', fontWeight: 600 }}>
             <div style={{
               width: 8, height: 8, borderRadius: '50%',
               background: '#22c55e',
@@ -68,15 +67,15 @@ export const LiveStats: React.FC<LiveStatsProps> = ({
           alignItems: 'center',
           gap: '0.5rem',
           padding: '0.5rem 0.85rem',
-          background: 'rgba(10, 10, 10, 0.9)',
-          backdropFilter: 'blur(12px)',
+          minHeight: 44,
+          background: '#0b1710',
           border: '1px solid rgba(63, 123, 74, 0.4)',
           borderRadius: '24px',
           cursor: 'pointer',
           color: 'var(--wa-gold)',
           fontSize: '0.75rem',
           fontWeight: 600,
-          boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+          boxShadow: '0 4px 14px rgba(0,0,0,0.25)',
           transition: 'all 0.3s ease',
         }}
         onMouseOver={(e) => {
@@ -96,7 +95,7 @@ export const LiveStats: React.FC<LiveStatsProps> = ({
         }} />
         <Users size={14} />
         <span>{onlineCount}</span>
-        <span style={{ fontSize: '0.6rem', opacity: 0.7 }}>LIVE</span>
+        <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>LIVE</span>
       </button>
 
       <style>{`

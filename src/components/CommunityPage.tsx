@@ -3,9 +3,8 @@ import {
   collection, addDoc, onSnapshot, orderBy, query,
   doc, updateDoc, deleteDoc, serverTimestamp, arrayUnion, arrayRemove, getDoc, setDoc, getDocs
 } from 'firebase/firestore';
-import { onAuthStateChanged } from 'firebase/auth';
-import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, auth, storage } from '../firebase';
+import { db } from '../firebaseCore';
+import { observeAuthState } from '../firebaseAuth';
 import { sendToAiControlCenter } from '../services/aiControlWebhook';
 import { Footer } from './Footer';
 import { AvatarDisplay } from './AvatarDisplay';
@@ -216,7 +215,7 @@ export function CommunityPage({
 
   // Track Firebase auth state for uid
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (user) => {
+    const unsub = observeAuthState((user) => {
       setAuthUid(user ? user.uid : null);
     });
     return () => unsub();
@@ -348,6 +347,12 @@ export function CommunityPage({
         setUploadProgress(`📷 Compressing image${attempt > 1 ? ` (retry ${attempt})` : ''}...`);
         const compressed = await compressImage(file);
         setUploadProgress(`☁️ Uploading photo${attempt > 1 ? ` (retry ${attempt})` : ''}...`);
+        const {
+          storage,
+          ref: storageRef,
+          uploadBytes,
+          getDownloadURL,
+        } = await import('../firebaseStorage');
         const sRef = storageRef(storage, `community_posts/${uid}/${Date.now()}_post.jpg`);
         const snapshot = await uploadBytes(sRef, compressed);
         const url = await getDownloadURL(snapshot.ref);
@@ -614,16 +619,14 @@ export function CommunityPage({
   const s: Record<string, React.CSSProperties> = {
     page: { minHeight: '100vh', background: 'var(--wa-bg, #0b0c0e)', display: 'flex', flexDirection: 'column', fontFamily: "'Segoe UI', 'Inter', system-ui, sans-serif" },
 
-    // ── Community Header (Glassmorphism) ──
+    // ── Community Header ──
     communityHeader: {
       position: 'sticky' as const,
       top: 0,
       zIndex: 100,
-      background: 'rgba(11,12,14,0.92)',
-      backdropFilter: 'blur(20px)',
-      WebkitBackdropFilter: 'blur(20px)',
+      background: '#08120d',
       borderBottom: '1px solid rgba(212,163,115,0.12)',
-      boxShadow: '0 4px 24px rgba(0,0,0,0.4)',
+      boxShadow: '0 3px 14px rgba(0,0,0,0.24)',
       padding: '0.7rem 1rem',
     },
     headerRow: {
@@ -649,18 +652,18 @@ export function CommunityPage({
       color: '#d4a373',
       cursor: 'pointer',
       fontSize: '1.2rem',
-      padding: '0.3rem',
+      width: 44,
+      height: 44,
+      padding: 0,
       display: 'flex',
       alignItems: 'center',
+      justifyContent: 'center',
       flexShrink: 0,
     },
     headerTitle: {
       fontSize: '1.05rem',
       fontWeight: 700,
-      background: 'linear-gradient(135deg, #d4a373, #e9c46a)',
-      WebkitBackgroundClip: 'text',
-      WebkitTextFillColor: 'transparent',
-      backgroundClip: 'text',
+      color: '#d4a373',
       whiteSpace: 'nowrap' as const,
       overflow: 'hidden',
       textOverflow: 'ellipsis',
@@ -680,6 +683,7 @@ export function CommunityPage({
       flexShrink: 0,
       cursor: 'pointer',
       transition: 'all 0.2s',
+      minHeight: 44,
     },
     headerRight: {
       display: 'flex',
@@ -699,9 +703,10 @@ export function CommunityPage({
       fontWeight: 600,
       whiteSpace: 'nowrap' as const,
       transition: 'all 0.2s',
+      minHeight: 44,
     },
     joinHeaderBtn: {
-      background: 'linear-gradient(135deg, #d4a373, #e9c46a)',
+      background: '#d4a373',
       color: '#0b0c0e',
     },
     joinedHeaderBadge: {
@@ -728,7 +733,7 @@ export function CommunityPage({
     guestTitle: { color: '#e9c46a', fontWeight: 700, fontSize: '1.1rem' },
     guestText: { color: '#b0b5c0', fontSize: '0.9rem', lineHeight: 1.5 },
     guestActions: { display: 'flex', gap: '0.8rem', flexWrap: 'wrap' as const, justifyContent: 'center' },
-    loginBtn: { background: 'linear-gradient(135deg, #d4a373, #e9c46a)', color: '#0b0c0e', fontWeight: 700, cursor: 'pointer', border: 'none', padding: '0.6rem 1.6rem', borderRadius: 30, fontSize: '0.95rem' },
+    loginBtn: { background: '#d4a373', color: '#0b0c0e', fontWeight: 700, cursor: 'pointer', border: 'none', padding: '0.6rem 1.6rem', borderRadius: 30, fontSize: '0.95rem', minHeight: 44 },
     loginLink: { color: '#d4a373', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', fontSize: '0.9rem', background: 'none', border: 'none' },
 
     card: { background: '#16181c', borderRadius: 18, padding: '1.2rem', border: '1px solid #262a31', position: 'relative' as const },
@@ -737,7 +742,7 @@ export function CommunityPage({
     timestamp: { fontSize: '0.75rem', color: '#8a8f98' },
     categoryTag: {
       display: 'inline-block',
-      fontSize: '0.7rem',
+      fontSize: '0.75rem',
       fontWeight: 600,
       background: 'rgba(212,163,115,0.15)',
       color: '#d4a373',
@@ -774,14 +779,14 @@ export function CommunityPage({
     },
     postImage: { width: '100%', borderRadius: 14, marginBottom: '1rem', maxHeight: 500, objectFit: 'cover' as const },
     actions: { display: 'flex', alignItems: 'center', gap: '1.8rem', paddingTop: '0.8rem', borderTop: '1px solid #252830' },
-    actionBtn: { display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: '#a1a5b0', cursor: 'pointer', fontSize: '0.95rem', fontWeight: 500 },
+    actionBtn: { display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: '#a1a5b0', cursor: 'pointer', fontSize: '0.95rem', fontWeight: 500, minHeight: 44 },
     commentSection: { marginTop: '1rem' },
     commentList: { listStyle: 'none', padding: 0, maxHeight: 200, overflowY: 'auto' as const, marginBottom: '0.8rem' },
     commentItem: { padding: '0.5rem 0', borderBottom: '1px solid #23262e', fontSize: '0.9rem', color: '#d1d5db', display: 'flex', alignItems: 'flex-start', gap: '0.5rem' },
     commentUser: { fontWeight: 600, color: '#d4a373', marginRight: 6 },
     commentInputArea: { display: 'flex', gap: 8, alignItems: 'center' },
-    commentInput: { flex: 1, background: '#1f2126', border: '1px solid #2e323a', borderRadius: 20, padding: '0.6rem 1rem', color: '#e4e4e7', outline: 'none', fontSize: '0.9rem' },
-    commentSubmitBtn: { background: '#d4a373', color: '#0b0c0e', border: 'none', borderRadius: 20, padding: '0.5rem 1.2rem', fontWeight: 700, cursor: 'pointer' },
+    commentInput: { flex: 1, minHeight: 44, background: '#152019', border: '1px solid #2e3b32', borderRadius: 20, padding: '0.6rem 1rem', color: '#e4e4e7', outline: 'none', fontSize: '0.9rem' },
+    commentSubmitBtn: { minHeight: 44, background: '#d4a373', color: '#0b0c0e', border: 'none', borderRadius: 20, padding: '0.5rem 1.2rem', fontWeight: 700, cursor: 'pointer' },
     emptyState: { textAlign: 'center', padding: '3rem 1rem', color: '#6b7280', fontSize: '1rem' },
 
     // Three-dot menu
@@ -794,9 +799,14 @@ export function CommunityPage({
       color: '#8a8f98',
       fontSize: '1.2rem',
       cursor: 'pointer',
-      padding: '0.2rem 0.4rem',
+      width: 44,
+      height: 44,
+      padding: 0,
       borderRadius: 8,
       lineHeight: 1,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     menuDropdown: {
       position: 'absolute' as const,
@@ -808,7 +818,7 @@ export function CommunityPage({
       padding: '0.3rem 0',
       zIndex: 50,
       minWidth: 120,
-      boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+      boxShadow: '0 4px 14px rgba(0,0,0,0.28)',
     },
     menuItem: {
       display: 'block',
@@ -826,15 +836,16 @@ export function CommunityPage({
     },
 
     // Modals
-    overlay: { position: 'fixed' as const, top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 },
-    modal: { background: '#16181c', width: '90%', maxWidth: 520, borderRadius: 24, padding: '2rem', border: '1px solid #2e323a', maxHeight: '90vh', overflowY: 'auto' as const },
+    overlay: { position: 'fixed' as const, top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(3,8,5,0.88)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 },
+    modal: { background: '#101a14', width: '90%', maxWidth: 520, borderRadius: 24, padding: '2rem', border: '1px solid #2e3b32', boxShadow: '0 12px 34px rgba(0,0,0,0.3)', maxHeight: '90vh', overflowY: 'auto' as const },
     modalTitle: { marginBottom: '1.5rem', fontWeight: 700, color: '#d4a373', fontSize: '1.3rem' },
     label: { display: 'block', marginBottom: '0.4rem', fontWeight: 500, color: '#b0b5c0', fontSize: '0.9rem' },
-    textarea: { width: '100%', background: '#1f2126', border: '1px solid #2e323a', borderRadius: 14, padding: '0.8rem', color: '#e4e4e7', resize: 'vertical' as const, fontFamily: 'inherit', fontSize: '1rem', marginBottom: '1.2rem', outline: 'none', boxSizing: 'border-box' as const },
+    textarea: { width: '100%', minHeight: 88, background: '#152019', border: '1px solid #2e3b32', borderRadius: 14, padding: '0.8rem', color: '#e4e4e7', resize: 'vertical' as const, fontFamily: 'inherit', fontSize: '1rem', marginBottom: '1.2rem', outline: 'none', boxSizing: 'border-box' as const },
     selectInput: {
       width: '100%',
-      background: '#1f2126',
-      border: '1px solid #2e323a',
+      minHeight: 44,
+      background: '#152019',
+      border: '1px solid #2e3b32',
       borderRadius: 14,
       padding: '0.7rem 0.8rem',
       color: '#e4e4e7',
@@ -845,13 +856,13 @@ export function CommunityPage({
       appearance: 'none' as const,
       cursor: 'pointer',
     },
-    fileUploadBtn: { display: 'flex', alignItems: 'center', gap: 8, background: '#1f2126', border: '1px dashed #3a3f4a', borderRadius: 14, padding: '0.8rem 1.2rem', color: '#a1a5b0', cursor: 'pointer', fontSize: '0.9rem', marginBottom: '1.2rem', width: '100%', justifyContent: 'center' },
+    fileUploadBtn: { display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, background: '#152019', border: '1px dashed #3a493e', borderRadius: 14, padding: '0.8rem 1.2rem', color: '#a1a5b0', cursor: 'pointer', fontSize: '0.9rem', marginBottom: '1.2rem', width: '100%', justifyContent: 'center' },
     imagePreviewBox: { position: 'relative' as const, marginBottom: '1.2rem' },
     previewImg: { width: '100%', borderRadius: 12, maxHeight: 200, objectFit: 'cover' as const },
-    removeImgBtn: { position: 'absolute' as const, top: 8, right: 8, background: 'rgba(0,0,0,0.65)', border: 'none', color: '#fff', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+    removeImgBtn: { position: 'absolute' as const, top: 8, right: 8, background: '#07100b', border: '1px solid rgba(255,255,255,0.16)', color: '#fff', borderRadius: '50%', width: 44, height: 44, cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' },
     modalActions: { display: 'flex', gap: '1rem', justifyContent: 'flex-end' },
-    cancelBtn: { background: '#1f2126', border: 'none', color: '#e4e4e7', padding: '0.6rem 1.4rem', borderRadius: 30, fontWeight: 600, cursor: 'pointer' },
-    submitBtn: { background: '#d4a373', color: '#0b0c0e', border: 'none', padding: '0.6rem 1.6rem', borderRadius: 30, fontWeight: 700, cursor: 'pointer' },
+    cancelBtn: { minHeight: 44, background: '#152019', border: '1px solid #2e3b32', color: '#e4e4e7', padding: '0.6rem 1.4rem', borderRadius: 30, fontWeight: 600, cursor: 'pointer' },
+    submitBtn: { minHeight: 44, background: '#d4a373', color: '#0b0c0e', border: 'none', padding: '0.6rem 1.6rem', borderRadius: 30, fontWeight: 700, cursor: 'pointer' },
     progressBar: {
       background: 'rgba(76,205,196,0.12)',
       border: '1px solid rgba(76,205,196,0.3)',
@@ -865,14 +876,14 @@ export function CommunityPage({
     },
 
     // Share Modal
-    shareModal: { background: '#16181c', width: '90%', maxWidth: 420, borderRadius: 24, padding: '2rem', border: '1px solid #2e323a', textAlign: 'center' as const },
+    shareModal: { background: '#101a14', width: '90%', maxWidth: 420, borderRadius: 24, padding: '2rem', border: '1px solid #2e3b32', boxShadow: '0 12px 34px rgba(0,0,0,0.3)', textAlign: 'center' as const },
     shareTitle: { marginBottom: '0.5rem', fontWeight: 700, color: '#d4a373', fontSize: '1.3rem' },
     shareSubtitle: { color: '#8a8f98', fontSize: '0.9rem', marginBottom: '1.5rem' },
     qrContainer: { display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' },
     shareGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem', marginBottom: '1.2rem' },
     shareOption: {
       display: 'flex', alignItems: 'center', gap: '0.6rem',
-      background: '#1f2126', border: '1px solid #2e323a', borderRadius: 14,
+      minHeight: 44, background: '#152019', border: '1px solid #2e3b32', borderRadius: 14,
       padding: '0.8rem 1rem', cursor: 'pointer', color: '#e4e4e7',
       fontSize: '0.9rem', fontWeight: 500, transition: 'all 0.2s',
     },
@@ -885,8 +896,8 @@ export function CommunityPage({
 
     // Members Modal
     membersModal: {
-      background: '#16181c', width: '90%', maxWidth: 420, borderRadius: 24,
-      padding: '1.5rem', border: '1px solid #2e323a', maxHeight: '80vh', display: 'flex', flexDirection: 'column' as const,
+      background: '#101a14', width: '90%', maxWidth: 420, borderRadius: 24,
+      padding: '1.5rem', border: '1px solid #2e3b32', boxShadow: '0 12px 34px rgba(0,0,0,0.3)', maxHeight: '80vh', display: 'flex', flexDirection: 'column' as const,
     },
     membersTitle: { fontWeight: 700, color: '#d4a373', fontSize: '1.2rem', marginBottom: '1rem', textAlign: 'center' as const },
     membersList: {
@@ -916,26 +927,26 @@ export function CommunityPage({
           <div style={{ display: 'flex', gap: '0.15rem' }}>
             {NAV_SITES.map(site => (
               <a key={site.href} href={site.href} target="_blank" rel="noopener noreferrer"
-                style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#8a8f98', fontSize: '0.72rem', fontWeight: 500, textDecoration: 'none', padding: '0.2rem 0.55rem', borderRadius: 20 }}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', minHeight: 44, color: '#8a8f98', fontSize: '0.75rem', fontWeight: 500, textDecoration: 'none', padding: '0.2rem 0.55rem', borderRadius: 20 }}
                 onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#d4a373'; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#8a8f98'; }}>
                 <span>{site.emoji}</span> {site.label}
               </a>
             ))}
           </div>
-          <span style={{ fontSize: '0.7rem', color: 'rgba(212,163,115,0.45)', letterSpacing: '0.08em', fontWeight: 600, textTransform: 'uppercase' }}>wildsaura.com</span>
+          <span style={{ fontSize: '0.75rem', color: 'rgba(212,163,115,0.6)', letterSpacing: '0.08em', fontWeight: 600, textTransform: 'uppercase' }}>wildsaura.com</span>
         </div>
       </div>
 
-      {/* ── Community Header (Glassmorphism) ── */}
+      {/* ── Community Header ── */}
       <div style={s.communityHeader}>
         <div style={s.headerRow}>
           <div style={s.headerLeft}>
             <button style={s.backArrow} onClick={onBack} title="Back to Home">←</button>
-            <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg, #1a1200, #2e1f00)', border: '1.5px solid rgba(212,163,115,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', flexShrink: 0 }}>🌿</div>
+            <div style={{ width: 34, height: 34, borderRadius: '50%', background: '#192016', border: '1.5px solid rgba(212,163,115,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', flexShrink: 0 }}>🌿</div>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: '0.98rem', fontWeight: 800, background: 'linear-gradient(135deg, #d4a373 0%, #e9c46a 50%, #d4a373 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', whiteSpace: 'nowrap' as const }}>WildSaura</div>
-              <div style={{ fontSize: '0.65rem', color: 'rgba(212,163,115,0.5)', fontWeight: 500, letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>Community</div>
+              <div style={{ fontSize: '0.98rem', fontWeight: 800, color: '#d4a373', whiteSpace: 'nowrap' as const }}>WildSaura</div>
+              <div style={{ fontSize: '0.75rem', color: 'rgba(212,163,115,0.68)', fontWeight: 500, letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>Community</div>
             </div>
             <div style={s.memberBadge} onClick={() => setShowMembersModal(true)} title="View members">
               <span>👥</span><span>{memberCount}</span>

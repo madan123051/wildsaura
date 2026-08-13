@@ -1,7 +1,7 @@
-import { db } from '../firebase';
+import { db } from '../firebaseCore';
 import {
   collection, query, getDocs, onSnapshot, orderBy, limit,
-  where, doc, setDoc, getDoc, serverTimestamp, increment,
+  where, doc, setDoc, serverTimestamp, increment,
   Unsubscribe
 } from 'firebase/firestore';
 
@@ -98,18 +98,6 @@ export interface VisitorRecord {
   topCategory?: string;
   lastPage?: string;
   date?: string;
-}
-
-export interface AdSenseSettings {
-  publisherId: string;       // ca-pub-XXXX
-  bannerSlot: string;
-  inFeedSlot: string;
-  inArticleSlot: string;
-  sidebarSlot: string;
-  multiplexSlot: string;
-  enabled: boolean;
-  verificationCode?: string;
-  updatedAt?: any;
 }
 
 // ── Tracking Collections ─────────────────────────────────────────────────
@@ -537,35 +525,6 @@ export async function fetchRecentVisitors(max: number = 10): Promise<VisitorReco
       return [];
     }
   }
-}
-
-// ── AdSense Settings (Firestore) ─────────────────────────────────────────
-const ADSENSE_DOC = 'settings/adsense';
-
-export async function getAdSenseSettings(): Promise<AdSenseSettings> {
-  try {
-    const snap = await getDoc(doc(db, ADSENSE_DOC));
-    if (snap.exists()) return snap.data() as AdSenseSettings;
-  } catch (err) {
-    console.warn('AdSense settings fetch failed:', err);
-  }
-  return {
-    publisherId: '',
-    bannerSlot: '',
-    inFeedSlot: '',
-    inArticleSlot: '',
-    sidebarSlot: '',
-    multiplexSlot: '',
-    enabled: false,
-    verificationCode: '',
-  };
-}
-
-export async function saveAdSenseSettings(settings: AdSenseSettings): Promise<void> {
-  await setDoc(doc(db, ADSENSE_DOC), {
-    ...settings,
-    updatedAt: serverTimestamp(),
-  });
 }
 
 // ── Subscribe to online count (real-time) ────────────────────────────────

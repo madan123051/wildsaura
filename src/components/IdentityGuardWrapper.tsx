@@ -4,8 +4,7 @@
 // Identity verification portal before they can access the app.
 // =====================================================================
 import { useEffect, useState } from 'react';
-import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '../firebase';
+import { observeAuthState } from '../firebaseAuth';
 import { isIdentityVerified, redirectToIdentityVerify } from '../lib/identityGuard';
 
 interface Props {
@@ -21,7 +20,7 @@ export function IdentityGuardWrapper({ children }: Props) {
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    const unsubscribe = observeAuthState(async (user) => {
       // Not logged in or anonymous → no check needed
       if (!user || user.isAnonymous) {
         setChecking(false);

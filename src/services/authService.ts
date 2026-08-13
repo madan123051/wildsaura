@@ -9,7 +9,12 @@ import {
   updateEmail,
   updatePassword,
 } from 'firebase/auth';
-import { auth, googleProvider, facebookProvider, appleProvider } from '../firebase';
+import { auth } from '../firebaseAuth';
+import { GoogleAuthProvider, FacebookAuthProvider, OAuthProvider } from 'firebase/auth';
+
+const googleProvider = new GoogleAuthProvider();
+const facebookProvider = new FacebookAuthProvider();
+const appleProvider = new OAuthProvider('apple.com');
 
 /**
  * Create a new user account with email and password

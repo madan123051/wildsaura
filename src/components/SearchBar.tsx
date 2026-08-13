@@ -16,10 +16,20 @@ export const SearchBar: React.FC<SearchBarProps> = ({ isOpen, onClose, query, on
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 200);
-    }
-  }, [isOpen]);
+    if (!isOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    const focusTimer = window.setTimeout(() => inputRef.current?.focus(), 50);
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.clearTimeout(focusTimer);
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
 
   const filtered = query.trim().length > 0
     ? photos.filter((p) => {
@@ -39,12 +49,14 @@ export const SearchBar: React.FC<SearchBarProps> = ({ isOpen, onClose, query, on
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Search photographs"
       style={{
-        position: 'fixed', inset: 0, zIndex: 60,
-        background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(16px)',
+        position: 'fixed', inset: 0, zIndex: 10000,
+        background: 'rgba(3,9,6,0.96)',
         display: 'flex', flexDirection: 'column', alignItems: 'center',
-        paddingTop: '100px',
-        animation: 'fadeIn 0.3s ease',
+        paddingTop: 'max(88px, calc(env(safe-area-inset-top) + 72px))',
       }}
       onClick={onClose}
     >
@@ -65,15 +77,18 @@ export const SearchBar: React.FC<SearchBarProps> = ({ isOpen, onClose, query, on
               background: 'var(--wa-dark-card)', border: '1px solid rgba(201,168,76,0.3)',
               borderRadius: '12px', color: 'var(--wa-text)', fontSize: '1rem',
               outline: 'none', boxSizing: 'border-box',
-              fontFamily: "'Playfair Display', serif",
+              fontFamily: 'var(--wa-font-sans)',
             }}
           />
           <button
+            type="button"
+            aria-label="Close search"
             onClick={onClose}
             style={{
               position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
               background: 'none', border: 'none', cursor: 'pointer',
-              color: 'var(--wa-text-muted)', padding: '4px',
+              color: 'var(--wa-text)', padding: 0, width: 44, height: 44,
+              display: 'grid', placeItems: 'center', borderRadius: '50%',
             }}
           >
             <X size={20} />
@@ -90,48 +105,39 @@ export const SearchBar: React.FC<SearchBarProps> = ({ isOpen, onClose, query, on
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '0.75rem' }}>
                 {filtered.map((p) => (
-                  <div
+                  <button
+                    type="button"
                     key={p.id}
                     onClick={() => { onPhotoClick(p); onClose(); }}
                     style={{
-                      cursor: 'pointer', borderRadius: '10px', overflow: 'hidden',
+                      padding: 0, cursor: 'pointer', borderRadius: '10px', overflow: 'hidden',
                       background: 'var(--wa-dark-card)', border: '1px solid var(--wa-border)',
-                      transition: 'border-color 0.3s, transform 0.2s',
-                    }}
-                    onMouseOver={(e) => {
-                      e.currentTarget.style.borderColor = 'rgba(201,168,76,0.4)';
-                      e.currentTarget.style.transform = 'scale(1.03)';
-                    }}
-                    onMouseOut={(e) => {
-                      e.currentTarget.style.borderColor = 'var(--wa-border)';
-                      e.currentTarget.style.transform = 'scale(1)';
+                      color: 'inherit', font: 'inherit', textAlign: 'left',
                     }}
                   >
                     <img
                       src={getOptimizedImageUrl(p.thumbnailUrl || p.imageUrl, { width: 320, height: 200, quality: 70 }) || p.thumbnailUrl || p.imageUrl}
                       alt={p.title}
                       style={{ width: '100%', height: 100, objectFit: 'cover' }}
+                      width={320}
+                      height={200}
                       loading="lazy"
                       decoding="async"
                     />
                     <div style={{ padding: '0.5rem' }}>
                       <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--wa-text)', marginBottom: '0.15rem' }}>{p.title}</p>
-                      <p style={{ fontSize: '0.6rem', color: 'var(--wa-gold)', textTransform: 'capitalize' }}>{p.category}{p.location ? ` · ${p.location}` : ''}</p>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--wa-text-muted)', textTransform: 'capitalize' }}>{p.category}{p.location ? ` · ${p.location}` : ''}</p>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
-            <p style={{ textAlign: 'center', fontSize: '0.7rem', color: 'var(--wa-text-muted)', marginTop: '1rem' }}>
+            <p aria-live="polite" style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--wa-text-muted)', marginTop: '1rem' }}>
               {filtered.length} result{filtered.length !== 1 ? 's' : ''} found
             </p>
           </div>
         )}
       </div>
-
-      <style>{`
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-      `}</style>
     </div>
   );
 };
