@@ -8,6 +8,10 @@ export interface Photo {
   thumbnailUrl?: string;       // Optimized gallery thumbnail (WebP ~200-300KB, 720px)
   location?: string;
   caption?: string;
+  altText?: string;
+  seoTitle?: string;
+  seoDescription?: string;
+  seoPhrases?: string[];
   type: 'photo' | 'video';
   cameraModel?: string;
   lens?: string;

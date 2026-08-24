@@ -1,7 +1,7 @@
 import React from 'react';
 import { ArrowUpRight, Download, Heart, MapPin, Share2 } from 'lucide-react';
 import { Photo } from '../types';
-import { getOptimizedImageUrl, getOptimizedSrcSet } from '../utils/imageUrl';
+import { getDirectImageUrl, getOptimizedImageUrl, getOptimizedSrcSet } from '../utils/imageUrl';
 
 const PHOTO_PLACEHOLDER = '/images/placeholder-card.svg';
 
@@ -41,6 +41,8 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({
 }) => {
   const photoSlug = photo.slug || photo.firestoreId || photo.id;
   const sourceImage = photo.thumbnailUrl || photo.imageUrl || PHOTO_PLACEHOLDER;
+  const directSourceImage = getDirectImageUrl(sourceImage);
+  const directFullImage = getDirectImageUrl(photo.imageUrl);
   const optimizedImage = getOptimizedImageUrl(sourceImage, {
     width: variant === 'wide' ? 1200 : 800,
     quality: 78,
@@ -51,8 +53,8 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({
     fit: 'cover',
   });
   const imageCandidates = React.useMemo(
-    () => Array.from(new Set([optimizedImage, sourceImage, PHOTO_PLACEHOLDER].filter(Boolean))),
-    [optimizedImage, sourceImage],
+    () => Array.from(new Set([optimizedImage, directSourceImage, directFullImage, PHOTO_PLACEHOLDER].filter(Boolean))),
+    [optimizedImage, directSourceImage, directFullImage],
   );
   const [candidateIndex, setCandidateIndex] = React.useState(0);
   const [loaded, setLoaded] = React.useState(false);
@@ -60,7 +62,7 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({
   React.useEffect(() => {
     setCandidateIndex(0);
     setLoaded(false);
-  }, [optimizedImage, sourceImage]);
+  }, [optimizedImage, directSourceImage, directFullImage]);
 
   const stopAndRun = (action: () => void) => (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();

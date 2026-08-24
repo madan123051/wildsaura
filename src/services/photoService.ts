@@ -7,6 +7,10 @@ export interface FirestorePhoto {
   slug?: string;
   title: string;
   caption: string;
+  altText?: string;
+  seoTitle?: string;
+  seoDescription?: string;
+  seoPhrases?: string[];
   category: string;
   imageUrl: string;
   thumbnailUrl?: string;       // ← Optimized gallery thumbnail (WebP, ~200-300KB)

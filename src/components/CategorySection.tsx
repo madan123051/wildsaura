@@ -1,9 +1,10 @@
 import React from 'react';
-import { ArrowRight } from 'lucide-react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { Category } from '../types';
-import { getOptimizedImageUrl, getOptimizedSrcSet } from '../utils/imageUrl';
+import { getDirectImageUrl, getOptimizedImageUrl, getOptimizedSrcSet } from '../utils/imageUrl';
 
 const CATEGORY_PLACEHOLDER = '/images/placeholder-card.svg';
+const COLLECTION_SCROLLER_ID = 'collections-scroller';
 
 interface CategorySectionProps {
   categories: Category[];
@@ -25,15 +26,19 @@ const CategoryCard: React.FC<{
     quality: 76,
     fit: 'cover',
   });
-  const [src, setSrc] = React.useState(optimizedImage);
+  const imageCandidates = React.useMemo(
+    () => Array.from(new Set([optimizedImage, getDirectImageUrl(category.imageUrl), CATEGORY_PLACEHOLDER].filter(Boolean))),
+    [category.imageUrl, optimizedImage],
+  );
+  const [candidateIndex, setCandidateIndex] = React.useState(0);
 
-  React.useEffect(() => setSrc(optimizedImage), [optimizedImage]);
+  React.useEffect(() => setCandidateIndex(0), [optimizedImage, category.imageUrl]);
 
   return (
     <button type="button" className="collection-card" onClick={onClick}>
       <img
-        src={src}
-        srcSet={src === optimizedImage ? optimizedSrcSet : undefined}
+        src={imageCandidates[candidateIndex] || CATEGORY_PLACEHOLDER}
+        srcSet={candidateIndex === 0 ? optimizedSrcSet : undefined}
         sizes="(max-width: 640px) 72vw, (max-width: 1100px) 34vw, 24vw"
         alt=""
         width={720}
@@ -41,8 +46,7 @@ const CategoryCard: React.FC<{
         loading="lazy"
         decoding="async"
         onError={() => {
-          if (src !== category.imageUrl && category.imageUrl) setSrc(category.imageUrl);
-          else setSrc(CATEGORY_PLACEHOLDER);
+          if (candidateIndex < imageCandidates.length - 1) setCandidateIndex((index) => index + 1);
         }}
       />
       <span className="collection-card__wash" />
@@ -59,33 +63,132 @@ export const CategorySection: React.FC<CategorySectionProps> = ({
   categories,
   onCategoryClick,
   loading = false,
-}) => (
-  <section className="collection-rail" aria-labelledby="collections-title">
-    <div className="wa-container collection-rail__header">
-      <div>
-        <p className="section-kicker"><span>00</span> Collections</p>
-        <h2 id="collections-title">Follow a trail</h2>
-      </div>
-      <p>Browse the archive by subject and landscape.</p>
-    </div>
+}) => {
+  const scrollerRef = React.useRef<HTMLDivElement>(null);
+  const [canScrollBack, setCanScrollBack] = React.useState(false);
+  const [canScrollForward, setCanScrollForward] = React.useState(false);
 
-    <div className="collection-rail__scroller">
-      <div className="collection-rail__track">
-        {loading
-          ? Array.from({ length: 6 }).map((_, index) => (
-              <div className="collection-card collection-card--loading" key={index}>
-                <span className="skeleton-image" />
-              </div>
-            ))
-          : categories.map((category, index) => (
-              <CategoryCard
-                key={category.key}
-                category={category}
-                index={index}
-                onClick={() => onCategoryClick(category.key)}
-              />
-            ))}
+  const updateControls = React.useCallback(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+
+    const maxScroll = Math.max(0, scroller.scrollWidth - scroller.clientWidth);
+    const canGoBack = scroller.scrollLeft > 1;
+    const canGoForward = scroller.scrollLeft < maxScroll - 1;
+
+    setCanScrollBack((current) => current === canGoBack ? current : canGoBack);
+    setCanScrollForward((current) => current === canGoForward ? current : canGoForward);
+  }, []);
+
+  React.useEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+
+    const frame = window.requestAnimationFrame(updateControls);
+    const resizeObserver = new ResizeObserver(updateControls);
+    resizeObserver.observe(scroller);
+    scroller.addEventListener('scroll', updateControls, { passive: true });
+    window.addEventListener('resize', updateControls);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      resizeObserver.disconnect();
+      scroller.removeEventListener('scroll', updateControls);
+      window.removeEventListener('resize', updateControls);
+    };
+  }, [categories.length, loading, updateControls]);
+
+  const scrollRail = React.useCallback((direction: -1 | 1) => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+
+    scroller.scrollBy({
+      left: direction * Math.max(280, Math.round(scroller.clientWidth * 0.8)),
+      behavior: 'smooth',
+    });
+  }, []);
+
+  const handleScrollerKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.currentTarget !== event.target) return;
+
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      scrollRail(-1);
+    } else if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      scrollRail(1);
+    } else if (event.key === 'Home') {
+      event.preventDefault();
+      scrollerRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
+    } else if (event.key === 'End') {
+      event.preventDefault();
+      scrollerRef.current?.scrollTo({
+        left: scrollerRef.current.scrollWidth,
+        behavior: 'smooth',
+      });
+    }
+  };
+
+  return (
+    <section className="collection-rail" aria-labelledby="collections-title">
+      <div className="wa-container collection-rail__header">
+        <div>
+          <p className="section-kicker"><span>00</span> Collections</p>
+          <h2 id="collections-title">Follow a trail</h2>
+        </div>
+        <div className="collection-rail__header-actions">
+          <p>Browse the archive by subject and landscape.</p>
+          <div className="collection-rail__controls" role="group" aria-label="Collection navigation">
+            <button
+              type="button"
+              className="collection-rail__control"
+              aria-label="Show previous collections"
+              aria-controls={COLLECTION_SCROLLER_ID}
+              disabled={!canScrollBack}
+              onClick={() => scrollRail(-1)}
+            >
+              <ArrowLeft size={19} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              className="collection-rail__control"
+              aria-label="Show next collections"
+              aria-controls={COLLECTION_SCROLLER_ID}
+              disabled={!canScrollForward}
+              onClick={() => scrollRail(1)}
+            >
+              <ArrowRight size={19} aria-hidden="true" />
+            </button>
+          </div>
+        </div>
       </div>
-    </div>
-  </section>
-);
+
+      <div
+        id={COLLECTION_SCROLLER_ID}
+        ref={scrollerRef}
+        className="collection-rail__scroller"
+        role="region"
+        aria-label="Collection categories"
+        tabIndex={0}
+        onKeyDown={handleScrollerKeyDown}
+      >
+        <div className="collection-rail__track">
+          {loading
+            ? Array.from({ length: 6 }).map((_, index) => (
+                <div className="collection-card collection-card--loading" key={index}>
+                  <span className="skeleton-image" />
+                </div>
+              ))
+            : categories.map((category, index) => (
+                <CategoryCard
+                  key={category.key}
+                  category={category}
+                  index={index}
+                  onClick={() => onCategoryClick(category.key)}
+                />
+              ))}
+        </div>
+      </div>
+    </section>
+  );
+};
