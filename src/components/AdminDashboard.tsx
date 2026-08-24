@@ -260,6 +260,10 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
   const [imageUrl, setImageUrl] = useState(initial?.imageUrl || '');
   const [location, setLocation] = useState(initial?.location || '');
   const [caption, setCaption] = useState(initial?.caption || '');
+  const [altText, setAltText] = useState(initial?.altText || '');
+  const [seoTitle, setSeoTitle] = useState(initial?.seoTitle || initial?.title || '');
+  const [seoDescription, setSeoDescription] = useState(initial?.seoDescription || initial?.caption || '');
+  const [seoPhrasesInput, setSeoPhrasesInput] = useState(initial?.seoPhrases?.join(', ') || '');
   const [cameraModel, setCameraModel] = useState(initial?.cameraModel || '');
   const [lens, setLens] = useState(initial?.lens || '');
   const [aperture, setAperture] = useState(initial?.aperture || '');
@@ -395,12 +399,18 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
           // AI worked! Fill fields
           const analysis = result.data;
           if (analysis.title) setTitle(analysis.title);
-          if (analysis.caption) setCaption(analysis.caption);
+          if (analysis.title && !seoTitle) setSeoTitle(analysis.title);
+          if (analysis.caption) {
+            setCaption(analysis.caption);
+            if (!altText) setAltText(analysis.caption);
+            if (!seoDescription) setSeoDescription(analysis.caption);
+          }
           setCategory(analysis.category);
           if (analysis.location) setLocation(analysis.location);
           if (analysis.tags?.length) {
             setTags(analysis.tags);
             setTagsInput(analysis.tags.join(', '));
+            if (!seoPhrasesInput) setSeoPhrasesInput(analysis.tags.join(', '));
           }
           if (analysis.animalName) setAnimalName(analysis.animalName);
 
@@ -438,7 +448,7 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
     }
     setTimeout(() => setAiStatus(''), 8000);
     setAiGenerating(false);
-  }, [previewDataUrl, uploadedFileName, category, title, caption, location, cameraModel, lens, aperture, shutterSpeed, iso, focalLength]);
+  }, [previewDataUrl, uploadedFileName, category, title, caption, location, cameraModel, lens, aperture, shutterSpeed, iso, focalLength, altText, seoDescription, seoPhrasesInput, seoTitle]);
 
   const [saving, setSaving] = useState(false);
 
@@ -447,6 +457,7 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
     if (!imageUrl) return;
     setSaving(true);
     const finalTags = tagsInput ? tagsInput.split(',').map(t => t.trim()).filter(Boolean) : tags;
+    const finalSeoPhrases = seoPhrasesInput.split(',').map(t => t.trim()).filter(Boolean);
     
     // Parse lat/lng safely - strip any non-numeric chars except dot and minus
     const cleanLat = latitudeStr.replace(/[^0-9.\-]/g, '').trim();
@@ -457,7 +468,7 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
     const hasValidLng = !isNaN(parsedLng) && isFinite(parsedLng);
     
     let finalImageUrl = imageUrl;
-    let thumbnailUrl = '';
+    let thumbnailUrl = initial?.thumbnailUrl || '';
     let firestoreId: string | undefined;
     
     try {
@@ -506,7 +517,10 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
       // Build Firestore data object (never include undefined values)
       const slug = toSeoSlug(title);
       const photoData: Record<string, any> = {
-        title, caption: caption || '', category, imageUrl: finalImageUrl,
+        title, caption: caption || '', altText: altText || caption || title,
+        seoTitle: seoTitle || title, seoDescription: seoDescription || caption || '',
+        seoPhrases: finalSeoPhrases,
+        category, imageUrl: finalImageUrl,
         slug,
         thumbnailUrl: thumbnailUrl || '',
         location: location || '', tags: finalTags, animalName: animalName || '',
@@ -553,6 +567,10 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
       firestoreId,
       slug: toSeoSlug(title),
       title, category, imageUrl: finalImageUrl, thumbnailUrl: thumbnailUrl || '', location, caption,
+      altText: altText || caption || title,
+      seoTitle: seoTitle || title,
+      seoDescription: seoDescription || caption || '',
+      seoPhrases: finalSeoPhrases,
       type: mediaType === 'video' ? 'video' : 'photo',
       cameraModel, lens, aperture, shutterSpeed, iso, focalLength,
       tags: finalTags, animalName: animalName || '', wikiSummary: wikiSummary || '',
@@ -569,9 +587,19 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
   };
 
   return (
-    <form onSubmit={handleSubmit} noValidate>
+    <form onSubmit={handleSubmit} noValidate className="admin-photo-studio">
+      <aside className="admin-photo-studio__intro">
+        <p>01 / Select &amp; describe</p>
+        <h2>One frame.<br />A complete story.</h2>
+        <p>Select the original photograph, then review its title, story, accessibility and search details before publishing.</p>
+        <div className="admin-photo-studio__review-note">
+          <strong>Human reviewed</strong>
+          <span>Nothing publishes until every suggestion is checked.</span>
+        </div>
+      </aside>
+      <div className="admin-photo-studio__workspace">
       {/* Upload Zone */}
-      <div style={{ marginBottom: '1.5rem' }}>
+      <div className="admin-photo-studio__upload" style={{ marginBottom: '1.5rem' }}>
         <UploadZone
           onFileSelected={handleFileSelected}
           previewUrl={previewDataUrl}
@@ -597,7 +625,7 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
       )}
 
       {/* OR use URL */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: '1rem 0' }}>
+      <div className="admin-photo-url-divider" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: '1rem 0' }}>
         <div style={{ flex: 1, height: 1, background: 'rgba(201,168,76,0.15)' }} />
         <span style={{ fontSize: '0.7rem', color: 'rgba(235,230,220,0.3)', letterSpacing: '0.1em' }}>OR PASTE URL</span>
         <div style={{ flex: 1, height: 1, background: 'rgba(201,168,76,0.15)' }} />
@@ -615,27 +643,32 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
       </div>
 
       {/* AI Auto-Fill Button */}
-      <div style={{ marginBottom: '1.5rem' }}>
+      <div className="admin-metadata-assistant" style={{ marginBottom: '1.5rem' }}>
+        <div className="admin-metadata-assistant__heading">
+          <span><Sparkles size={17} /></span>
+          <div><small>Vision + search language</small><strong>WildSaura metadata assistant</strong></div>
+        </div>
+        <p>Generate an editable title, description, tags, alt text and search metadata from the selected photograph.</p>
         <button
           type="button"
           onClick={handleAiFill}
           disabled={aiGenerating}
           style={{
             width: '100%', padding: '0.75rem 1.25rem',
-            background: 'linear-gradient(135deg, rgba(201,168,76,0.2), rgba(201,168,76,0.05))',
+            background: '#b8dc16',
             border: '1px solid rgba(201,168,76,0.3)',
             borderRadius: '10px', cursor: aiGenerating ? 'wait' : 'pointer',
-            color: 'var(--wa-gold)', fontSize: '0.85rem', fontWeight: 600,
+            color: '#10130f', fontSize: '0.85rem', fontWeight: 700,
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
             transition: 'all 0.3s',
           }}
-          onMouseOver={(e) => { if (!aiGenerating) e.currentTarget.style.background = 'linear-gradient(135deg, rgba(201,168,76,0.3), rgba(201,168,76,0.1))'; }}
-          onMouseOut={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(201,168,76,0.2), rgba(201,168,76,0.05))'; }}
+          onMouseOver={(e) => { if (!aiGenerating) e.currentTarget.style.background = '#c7eb2b'; }}
+          onMouseOut={(e) => { e.currentTarget.style.background = '#b8dc16'; }}
         >
           {aiGenerating ? (
             <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> {aiStatus || 'AI is analyzing...'}</>
           ) : (
-            <><Sparkles size={18} /> 🤖 AI Auto-Fill + Wikipedia</>
+            <><Sparkles size={18} /> Generate editorial details</>
           )}
         </button>
         {aiStatus && !aiGenerating && (
@@ -643,10 +676,10 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
         )}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
+      <div className="admin-photo-metadata-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
         <div style={{ gridColumn: '1 / -1' }}>
-          <label style={labelStyle}>Title *</label>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="Photo title" style={inputStyle} />
+          <label style={labelStyle}>Photograph title *</label>
+          <input value={title} onChange={(e) => { setTitle(e.target.value); if (!seoTitle || seoTitle === title) setSeoTitle(e.target.value); }} required placeholder="A clear, memorable title" style={inputStyle} />
         </div>
         <div>
           <label style={labelStyle}>Category *</label>
@@ -666,24 +699,24 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
           <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. Chitwan, Nepal" style={inputStyle} />
         </div>
         <div style={{ marginBottom: '0.75rem' }}>
-          <label style={labelStyle}>📸 Photographer Name</label>
+          <label style={labelStyle}>Photographer name</label>
           <input value={photographer} onChange={(e) => setPhotographer(e.target.value)} placeholder="e.g. Madan Shrestha" style={inputStyle} />
         </div>
         <div style={{ gridColumn: '1 / -1' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
             <div>
-              <label style={labelStyle}>📍 Latitude</label>
+              <label style={labelStyle}>Latitude</label>
               <input type="text" inputMode="decimal" value={latitudeStr} onChange={(e) => setLatitudeStr(e.target.value.replace(/[^0-9.\-]/g, ''))} placeholder="e.g. 27.7172" style={inputStyle} />
             </div>
             <div>
-              <label style={labelStyle}>📍 Longitude</label>
+              <label style={labelStyle}>Longitude</label>
               <input type="text" inputMode="decimal" value={longitudeStr} onChange={(e) => setLongitudeStr(e.target.value.replace(/[^0-9.\-]/g, ''))} placeholder="e.g. 85.3240" style={inputStyle} />
             </div>
           </div>
         </div>
         <div style={{ gridColumn: '1 / -1' }}>
-          <label style={labelStyle}>Caption</label>
-          <textarea value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="Photo description..." rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
+          <label style={labelStyle}>Story or description</label>
+          <textarea value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="Describe the visible story, setting and moment..." rows={5} style={{ ...inputStyle, resize: 'vertical' }} />
         </div>
 
         {/* AI-detected Tags */}
@@ -702,6 +735,33 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
             </div>
           )}
         </div>
+
+        <div>
+          <label style={labelStyle}>SEO phrases</label>
+          <input value={seoPhrasesInput} onChange={(e) => setSeoPhrasesInput(e.target.value)} placeholder="natural phrases, comma separated" style={inputStyle} />
+        </div>
+
+        <div style={{ gridColumn: '1 / -1' }}>
+          <label style={labelStyle}>Accessible media description</label>
+          <textarea value={altText} onChange={(e) => setAltText(e.target.value)} placeholder="Describe what is visibly present in the photograph" rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
+        </div>
+
+        <section className="admin-photo-search-preview" style={{ gridColumn: '1 / -1' }}>
+          <p>Search preview</p>
+          <div>
+            <label style={labelStyle}>SEO title</label>
+            <input value={seoTitle} onChange={(e) => setSeoTitle(e.target.value)} placeholder="Search result title" maxLength={70} style={inputStyle} />
+          </div>
+          <div>
+            <label style={labelStyle}>SEO description</label>
+            <textarea value={seoDescription} onChange={(e) => setSeoDescription(e.target.value)} placeholder="A concise search result description" maxLength={170} rows={4} style={{ ...inputStyle, resize: 'vertical' }} />
+          </div>
+          <div className="admin-photo-search-preview__result">
+            <small>wildsaura.com/photo/{toSeoSlug(title) || 'photograph'}</small>
+            <strong>{seoTitle || title || 'Photograph title'}</strong>
+            <span>{seoDescription || caption || 'The search description will appear here.'}</span>
+          </div>
+        </section>
 
         {/* Animal Identification */}
         <div>
@@ -726,7 +786,7 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
         )}
 
         <div style={{ gridColumn: '1 / -1', borderTop: '1px solid rgba(201,168,76,0.1)', paddingTop: '1rem', marginTop: '0.5rem' }}>
-          <span className="font-cinzel" style={{ fontSize: '0.7rem', color: 'var(--wa-gold)', letterSpacing: '0.1em' }}>📷 Camera & EXIF Data (auto-filled from photo)</span>
+          <span className="font-cinzel" style={{ fontSize: '0.7rem', color: 'var(--wa-gold)', letterSpacing: '0.1em' }}>Camera &amp; EXIF data (auto-filled from photo)</span>
           {exifStatus && <span style={{ fontSize: '0.7rem', marginLeft: '0.5rem', color: exifStatus.startsWith('✅') ? '#4ade80' : exifStatus.startsWith('⚠') ? '#fbbf24' : '#f87171' }}>{exifStatus}</span>}
         </div>
         <div><label style={labelStyle}>Camera Model</label><input value={cameraModel} onChange={(e) => setCameraModel(e.target.value)} placeholder="Auto-detected from JPEG" style={inputStyle} /></div>
@@ -737,7 +797,7 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
         <div><label style={labelStyle}>Focal Length</label><input value={focalLength} onChange={(e) => setFocalLength(e.target.value)} placeholder="400mm" style={inputStyle} /></div>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>
+      <div className="admin-photo-studio__actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>
         <button type="button" onClick={onCancel} style={{
           padding: '0.6rem 1.25rem', background: 'rgba(255,255,255,0.05)',
           border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px',
@@ -747,6 +807,7 @@ const PhotoForm: React.FC<PhotoFormProps> = ({ initial, onSave, onCancel, nextId
           padding: '0.6rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem',
           opacity: saving ? 0.5 : 1, pointerEvents: saving ? 'none' : 'auto',
         }}><Save size={16} /> {saving ? (uploadProgress > 0 && uploadProgress < 100 ? `Uploading ${uploadProgress}%` : 'Saving...') : initial ? 'Update Photo' : 'Add Photo'}</button>
+      </div>
       </div>
     </form>
   );

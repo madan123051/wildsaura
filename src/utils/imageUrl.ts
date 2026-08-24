@@ -18,11 +18,23 @@ function shouldProxy(url: string): boolean {
   return !LOCAL_PREFIXES.some((prefix) => url.startsWith(prefix));
 }
 
-function withFirebaseMediaParam(url: string): string {
+export function getDirectImageUrl(url: string | undefined | null): string {
+  if (!url) return '';
   if (!url.includes('firebasestorage.googleapis.com') || url.includes('alt=media')) {
     return url;
   }
   return `${url}${url.includes('?') ? '&' : '?'}alt=media`;
+}
+
+function isFirebaseThumbnail(url: string): boolean {
+  if (!url.includes('firebasestorage.googleapis.com')) return false;
+  try {
+    const decoded = decodeURIComponent(url).toLowerCase();
+    return decoded.includes('/photos-thumbs/') || decoded.includes('/video-thumbnails/');
+  } catch {
+    const normalized = url.toLowerCase();
+    return normalized.includes('photos-thumbs') || normalized.includes('video-thumbnails');
+  }
 }
 
 function stripQuery(url: string): string {
@@ -49,9 +61,10 @@ export function getOptimizedImageUrl(url: string | undefined | null, options: Op
   if (url.startsWith(LOCAL_PHOTO_PREFIX)) {
     return getLocalOptimizedPath(url, options.width) || url;
   }
-  if (!shouldProxy(url)) return withFirebaseMediaParam(url);
+  if (isFirebaseThumbnail(url)) return getDirectImageUrl(url);
+  if (!shouldProxy(url)) return getDirectImageUrl(url);
 
-  const sourceUrl = withFirebaseMediaParam(url);
+  const sourceUrl = getDirectImageUrl(url);
   const params = new URLSearchParams({
     url: sourceUrl,
     w: String(options.width),
@@ -85,7 +98,7 @@ export function getOptimizedSrcSet(
     return entries.length ? entries.join(', ') : undefined;
   }
 
-  if (!shouldProxy(url)) return undefined;
+  if (!shouldProxy(url) || isFirebaseThumbnail(url)) return undefined;
 
   return widths
     .map((width) => `${getOptimizedImageUrl(url, { ...options, width })} ${width}w`)
