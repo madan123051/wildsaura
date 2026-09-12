@@ -1482,7 +1482,7 @@ a {
 
 /* Collection rail */
 .collection-rail {
-  padding: clamp(5rem, 8vw, 8rem) 0 clamp(4.5rem, 7vw, 7rem);
+  padding: clamp(3rem, 5vw, 5rem) 0;
   overflow: hidden;
   border-bottom: 1px solid var(--wa-border);
   background: var(--wa-bg-alt);
@@ -1567,12 +1567,12 @@ a {
   width: max-content;
   display: flex;
   gap: clamp(0.8rem, 1.2vw, 1.25rem);
-  padding: 0 max(1rem, calc((100vw - 1280px) / 2 + 2rem));
+  padding: 0 max(1rem, calc((100vw - 1440px) / 2 + 2rem));
 }
 
 .collection-card {
   position: relative;
-  width: clamp(210px, 23vw, 340px);
+  width: clamp(250px, 27vw, 400px);
   aspect-ratio: 4 / 5;
   flex: 0 0 auto;
   overflow: hidden;
@@ -1600,6 +1600,10 @@ a {
   inset: 0;
   background: linear-gradient(180deg, rgba(5, 8, 6, 0.2), transparent 40%, rgba(5, 8, 6, 0.84));
 }
+
+.collection-card--empty { background: #1b3328; border: 1px solid var(--wa-border); }
+.collection-card__empty-copy { position: absolute; top: 42%; left: 1.2rem; right: 1.2rem; font: italic 1.7rem var(--wa-font-serif); color: #aabca3; }
+.collection-card:focus-visible, .collection-rail__control:focus-visible { outline: 2px solid var(--wa-gold); outline-offset: -4px; }
 
 .collection-card__number {
   position: absolute;
@@ -1653,9 +1657,12 @@ a {
 }
 
 @media (max-width: 640px) {
-  .collection-rail { padding: 4.5rem 0; }
+  .collection-rail { padding: 3rem 0; }
   .collection-rail__header { align-items: flex-start; margin-bottom: 2rem; }
-  .collection-rail__header-actions { display: none; }
+  .collection-rail__header-actions > p { display: none; }
+  .collection-rail__header { gap: .75rem; align-items: end; }
+  .collection-rail__header h2 { font-size: 2.6rem; }
+  .collection-rail__controls { gap: .35rem; }
   .collection-card { width: min(72vw, 290px); }
   .collection-rail__track { padding-left: 1rem; padding-right: 1rem; }
 }

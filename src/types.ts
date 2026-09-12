@@ -38,6 +38,7 @@ export interface Category {
   key: string;
   label: string;
   imageUrl: string;
+  fallbackImageUrls?: string[];
 }
 
 export interface FilterTab {

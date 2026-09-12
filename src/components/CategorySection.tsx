@@ -1,9 +1,8 @@
 import React from 'react';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { Category } from '../types';
-import { getDirectImageUrl, getOptimizedImageUrl, getOptimizedSrcSet } from '../utils/imageUrl';
+import { getDirectImageUrl, getOptimizedImageUrl } from '../utils/imageUrl';
 
-const CATEGORY_PLACEHOLDER = '/images/placeholder-card.svg';
 const COLLECTION_SCROLLER_ID = 'collections-scroller';
 
 interface CategorySectionProps {
@@ -17,38 +16,44 @@ const CategoryCard: React.FC<{
   index: number;
   onClick: () => void;
 }> = ({ category, index, onClick }) => {
-  const optimizedImage = getOptimizedImageUrl(category.imageUrl, {
-    width: 720,
-    quality: 76,
-    fit: 'cover',
-  }) || category.imageUrl || CATEGORY_PLACEHOLDER;
-  const optimizedSrcSet = getOptimizedSrcSet(category.imageUrl, [320, 480, 640, 720], {
-    quality: 76,
-    fit: 'cover',
-  });
   const imageCandidates = React.useMemo(
-    () => Array.from(new Set([optimizedImage, getDirectImageUrl(category.imageUrl), CATEGORY_PLACEHOLDER].filter(Boolean))),
-    [category.imageUrl, optimizedImage],
+    () => Array.from(new Set([category.imageUrl, ...(category.fallbackImageUrls || [])].filter(Boolean).flatMap((url) => {
+      const direct = getDirectImageUrl(url);
+      // Firebase already serves compressed uploads. Avoid a second proxy request.
+      return url.includes('firebasestorage.googleapis.com') ? [direct] :
+        [getOptimizedImageUrl(url, { width: 720, quality: 80, fit: 'cover' }), direct];
+    }))),
+    [category.imageUrl, category.fallbackImageUrls],
   );
   const [candidateIndex, setCandidateIndex] = React.useState(0);
+  const [lastWorkingSrc, setLastWorkingSrc] = React.useState('');
 
-  React.useEffect(() => setCandidateIndex(0), [optimizedImage, category.imageUrl]);
+  const src = imageCandidates[candidateIndex] || lastWorkingSrc;
 
   return (
-    <button type="button" className="collection-card" onClick={onClick}>
-      <img
-        src={imageCandidates[candidateIndex] || CATEGORY_PLACEHOLDER}
-        srcSet={candidateIndex === 0 ? optimizedSrcSet : undefined}
+    <button type="button" className={`collection-card${src ? '' : ' collection-card--empty'}`} onClick={onClick}>
+      {src ? <img
+        src={src}
         sizes="(max-width: 640px) 72vw, (max-width: 1100px) 34vw, 24vw"
         alt=""
         width={720}
         height={900}
         loading="lazy"
         decoding="async"
-        onError={() => {
-          if (candidateIndex < imageCandidates.length - 1) setCandidateIndex((index) => index + 1);
+        onLoad={(event) => {
+          // Legacy covers can be only 200px wide. Try the original or another
+          // photograph from this collection; keep the small cover as a backup.
+          if (event.currentTarget.naturalWidth < 480 &&
+            candidateIndex + 1 < imageCandidates.length) {
+            setLastWorkingSrc(src);
+            setCandidateIndex((index) => index + 1);
+          }
         }}
-      />
+        onError={() => {
+          if (candidateIndex >= imageCandidates.length) setLastWorkingSrc('');
+          else setCandidateIndex((index) => index + 1);
+        }}
+      /> : <span className="collection-card__empty-copy">Explore the collection</span>}
       <span className="collection-card__wash" />
       <span className="collection-card__number">{String(index + 1).padStart(2, '0')}</span>
       <span className="collection-card__content">
@@ -134,10 +139,10 @@ export const CategorySection: React.FC<CategorySectionProps> = ({
       <div className="wa-container collection-rail__header">
         <div>
           <p className="section-kicker"><span>00</span> Collections</p>
-          <h2 id="collections-title">Follow a trail</h2>
+          <h2 id="collections-title">Find your wild.</h2>
         </div>
         <div className="collection-rail__header-actions">
-          <p>Browse the archive by subject and landscape.</p>
+          <p>Small details. Wide-open places.<br />Choose a collection and take a closer look.</p>
           <div className="collection-rail__controls" role="group" aria-label="Collection navigation">
             <button
               type="button"
@@ -181,7 +186,7 @@ export const CategorySection: React.FC<CategorySectionProps> = ({
               ))
             : categories.map((category, index) => (
                 <CategoryCard
-                  key={category.key}
+                  key={`${category.key}:${category.imageUrl}:${category.fallbackImageUrls?.join('|')}`}
                   category={category}
                   index={index}
                   onClick={() => onCategoryClick(category.key)}

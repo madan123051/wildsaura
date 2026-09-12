@@ -1,8 +1,10 @@
 import React, { lazy, Suspense, useState, useRef, useCallback, useEffect } from 'react';
-import { Photo, Category, FilterTab, Visitor, Story, Comment, Video, GalleryPhoto } from './types';
+import { Photo, FilterTab, Visitor, Story, Comment, Video, GalleryPhoto } from './types';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
 import { CategorySection } from './components/CategorySection';
+import { buildCollectionCovers } from './utils/collectionCovers';
+import type { FirestorePhoto } from './services/photoService';
 import { Gallery } from './components/Gallery';
 import { AboutSection } from './components/AboutSection';
 import { Footer } from './components/Footer';
@@ -241,6 +243,7 @@ const App: React.FC = () => {
   const [videosLoading, setVideosLoading] = useState(true);
   const [deferNonCritical, setDeferNonCritical] = useState(false);
   const [galleryPhotos, setGalleryPhotos] = useState<GalleryPhoto[]>([]);
+  const [collectionPhotos, setCollectionPhotos] = useState<FirestorePhoto[]>([]);
   const [loadHomeGallery, setLoadHomeGallery] = useState(false);
   const [galleryIsFull, setGalleryIsFull] = useState(false);
   const [galleryLoadingAll, setGalleryLoadingAll] = useState(false);
@@ -406,6 +409,15 @@ const App: React.FC = () => {
       setGalleryLoadingAll(false);
     }
   }, [galleryIsFull, galleryLoadingAll]);
+
+  useEffect(() => {
+    if (view !== 'home') return;
+    let disposed = false;
+    import('./services/photoService').then((service) => service.getCollectionPhotoPreviews())
+      .then((items) => { if (!disposed) setCollectionPhotos(items); })
+      .catch((error) => console.warn('Collection previews unavailable:', error));
+    return () => { disposed = true; };
+  }, [view]);
 
   useEffect(() => {
     const event = {
@@ -2375,59 +2387,9 @@ const App: React.FC = () => {
   if (view === 'about') return <StaticPage title="A field journal made between two homes." text="Wilds Aura connects photographers, nature lovers, and a mission to protect animals through patient visual storytelling from Nepal and Japan." image="/images/optimized/madan-about-png-1024.webp" imageSrcSet="/images/optimized/madan-about-png-560.webp 560w, /images/optimized/madan-about-png-800.webp 800w, /images/optimized/madan-about-png-1024.webp 1024w" imageSizes="(max-width: 760px) calc(100vw - 2rem), 50vw" />;
   if (view === 'contact') return <StaticPage title="Let’s start a thoughtful collaboration." text="For assignments, print licensing, conservation partnerships, volunteering, or media enquiries, use the contact form on the homepage or email hello@wildsaura.com." image="/photos/photo-landscape.jpeg" />;
 
-  // ── Smart Category Thumbnails ────────────────────────────────────────────
-  // Priority:
-  //   1. Admin manual override via Site Settings (dashboard upload)
-  //   2. Best photo from Firestore for that exact category (sorted by most liked = most engaging)
-  //      Uses thumbnailUrl if available for fast loading
-  //   3. Gallery photos (rotates daily)
-  const todayDayIndex = Math.floor(Date.now() / (1000 * 60 * 60 * 24));
-
-  const getAutoCategoryThumbnail = (
-    settingsKey: keyof NonNullable<SiteSettings['categoryImages']>,
-    galleryCategories: string[],
-    photoCategory: string
-  ): string => {
-    // 1. Admin manual override takes priority
-    const manual = siteSettings.categoryImages?.[settingsKey];
-    if (manual) return manual;
-
-    // 2. Best photo from Firestore for this category — match by category field OR tags
-    const fromPhotos = photos
-      .filter(
-        p => (
-          p.category === (photoCategory as any) ||
-          p.tags?.some(t => t.toLowerCase() === photoCategory.toLowerCase())
-        ) &&
-             p.published !== false &&
-             p.imageUrl
-      )
-      .sort((a, b) => (b.likeCount || 0) - (a.likeCount || 0));
-    if (fromPhotos.length > 0) {
-      const best = fromPhotos[0];
-      // Use thumbnailUrl if available for faster loading
-      return best.thumbnailUrl || best.imageUrl;
-    }
-
-    // 3. Gallery photos (rotates daily)
-    const fromGallery = galleryPhotos.filter(p => galleryCategories.includes(p.category) && p.imageUrl);
-    if (fromGallery.length > 0) {
-      return fromGallery[todayDayIndex % fromGallery.length].imageUrl;
-    }
-
-    return '';
-  };
-
-  const dynamicCategories: Category[] = [
-    { key: 'wildlife',  label: 'Wildlife',        imageUrl: getAutoCategoryThumbnail('wildlife',  ['wildlife'],   'wildlife') },
-    { key: 'birds',     label: 'Birds',            imageUrl: getAutoCategoryThumbnail('birds',     ['birds'],      'birds') },
-    { key: 'macro',     label: 'Macro',            imageUrl: getAutoCategoryThumbnail('macro',     ['others'],     'macro') },
-    { key: 'domestic',  label: 'Domestic Animals', imageUrl: getAutoCategoryThumbnail('domestic',  ['others'],     'domestic') },
-    { key: 'landscape', label: 'Landscapes',       imageUrl: getAutoCategoryThumbnail('landscape', ['landscapes'], 'landscape') },
-    { key: 'nature',    label: 'Nature',           imageUrl: getAutoCategoryThumbnail('nature',    ['others'],     'nature') },
-    { key: 'street',    label: 'Street',           imageUrl: photos.find(p => p.category === 'street' && p.published !== false)?.thumbnailUrl || photos.find(p => p.category === 'street' && p.published !== false)?.imageUrl || '' },
-    { key: 'other',     label: 'Portraits',        imageUrl: getAutoCategoryThumbnail('portraits', ['portraits'],  'other') },
-  ];
+  const dynamicCategories = buildCollectionCovers(
+    [...photos, ...collectionPhotos], siteSettings.categoryImages, galleryPhotos,
+  );
 
   const searchablePhotos: Photo[] = [
     ...(searchPhotos || photos),
