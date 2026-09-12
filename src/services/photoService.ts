@@ -1,5 +1,6 @@
 import { db } from '../firebaseCore';
-import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, serverTimestamp, onSnapshot, Unsubscribe, increment, limit as queryLimit } from 'firebase/firestore';
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, where, orderBy, serverTimestamp, onSnapshot, Unsubscribe, increment, limit as queryLimit } from 'firebase/firestore';
+import { COLLECTIONS } from '../utils/collectionCovers';
 import { sortByCreatedAtDesc } from '../utils/dateSort';
 
 export interface FirestorePhoto {
@@ -37,6 +38,21 @@ export interface FirestorePhoto {
 }
 
 const PHOTOS_COLLECTION = 'photos';
+
+/** Covers must be independent of the homepage's latest-ten-photo preview. */
+export async function getCollectionPhotoPreviews(): Promise<FirestorePhoto[]> {
+  const results = await Promise.allSettled(COLLECTIONS.map(async ({ key }) => {
+    const snapshot = await getDocs(query(collection(db, PHOTOS_COLLECTION),
+      where('category', '==', key), where('source', '==', 'wildsaura'),
+      where('published', '==', true), queryLimit(3)));
+    return snapshot.docs.map((entry) => ({ ...entry.data(), id: entry.id } as FirestorePhoto));
+  }));
+  return results.flatMap((result) => {
+    if (result.status === 'fulfilled') return result.value;
+    console.warn('Collection cover lookup failed:', result.reason);
+    return [];
+  });
+}
 
 /** Convert a data URL to a Blob (for resumable upload) */
 function dataUrlToBlob(dataUrl: string): Blob {
