@@ -1,7 +1,7 @@
 {
   "rules": {
     "analytics": {
-      ".read": "auth != null",
+      ".read": "auth != null && (auth.token.admin == true || auth.token.email == 'madan123050@gmail.com')",
       "sessions": {
         "$sessionId": {
           ".write": "$sessionId.matches(/^anon_[0-9]+_[A-Za-z0-9]+$/)",
@@ -10,7 +10,7 @@
       },
       "events": {
         "$eventId": {
-          ".write": "newData.exists() && newData.child('sessionId').val().matches(/^anon_[0-9]+_[A-Za-z0-9]+$/)",
+          ".write": "!data.exists() && newData.exists() && newData.child('sessionId').val().matches(/^anon_[0-9]+_[A-Za-z0-9]+$/)",
           ".validate": "newData.hasChildren(['type','page','sessionId','visitorType','date','month','year','timestamp']) && newData.child('timestamp').isNumber()"
         }
       }
@@ -21,6 +21,8 @@
         ".write": "$sessionId.matches(/^anon_[0-9]+_[A-Za-z0-9]+$/)",
         ".validate": "!newData.exists() || (newData.hasChildren(['displayName','avatarUrl','lastSeen','online']) && newData.child('lastSeen').isNumber() && newData.child('online').val() == true)"
       }
-    }
+    },
+    ".read": false,
+    ".write": false
   }
 }

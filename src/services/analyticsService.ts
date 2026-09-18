@@ -1,137 +1,172 @@
-import { realtimeDb } from '../firebaseCore';
-import { get, onValue, push, ref, runTransaction, set, update, type Unsubscribe } from 'firebase/database';
+import { db, realtimeDb } from '../firebaseCore';
+import { get, onValue, push, ref, update, increment, serverTimestamp, type Unsubscribe } from 'firebase/database';
+import { collection, getDocs } from 'firebase/firestore';
+import { buildAnalytics, sessionRows, recentVisitors, localParts, number, timestamp, type AnalyticsRow, type SiteAnalytics, type VisitorRecord, type VisitorEventInput } from './analyticsModel';
+export type { SiteAnalytics, VisitorRecord, VisitorEventInput, VisitorEventType, AnalyticsTrendPoint, CategoryMetric, PageMetric } from './analyticsModel';
 
-export type VisitorEventType =
-  | 'page_view' | 'category_view' | 'photo_view' | 'story_view' | 'video_view'
-  | 'share' | 'download' | 'like' | 'comment';
-
-export interface VisitorEventInput {
-  type: VisitorEventType;
-  page?: string;
-  category?: string;
-  targetId?: string;
-  targetTitle?: string;
-  visitor?: { email?: string; displayName?: string; avatarUrl?: string; loginMethod?: string } | null;
-}
-export interface AnalyticsTrendPoint { label: string; visitors: number; pageViews: number; events: number; }
-export interface CategoryMetric { category: string; views: number; shares: number; downloads: number; likes: number; comments: number; total: number; }
-export interface PageMetric { page: string; views: number; }
-export interface SiteAnalytics {
-  totalVisitors: number; totalPageViews: number; totalEvents: number; totalLikes: number;
-  totalShares: number; totalDownloads: number; totalComments: number; totalCommunityPosts: number;
-  onlineNow: number; anonymousVisitors: number; loggedInVisitors: number;
-  todayVisitors: number; weekVisitors: number; monthVisitors: number; yearVisitors: number;
-  todayPageViews: number; weekPageViews: number; monthPageViews: number; yearPageViews: number;
-  dailyTrend: AnalyticsTrendPoint[]; monthlyTrend: AnalyticsTrendPoint[]; yearlyTrend: AnalyticsTrendPoint[];
-  topCategories: CategoryMetric[]; todayTopCategories: CategoryMetric[]; weekTopCategories: CategoryMetric[];
-  monthTopCategories: CategoryMetric[]; yearTopCategories: CategoryMetric[]; topPages: PageMetric[];
-}
-export interface VisitorRecord {
-  email?: string; displayName: string; avatarUrl?: string; createdAt?: number; lastSeen?: number;
-  downloadCount?: number; sessionId?: string; visitorType?: 'anonymous' | 'logged-in';
-  pageViews?: number; events?: number; topCategory?: string; lastPage?: string; date?: string;
-}
-
-const ROOT = 'analytics';
-const ADMIN_EMAIL = (import.meta.env.VITE_ADMIN_EMAIL || '').trim().toLowerCase();
-
-function localParts(d = new Date()) {
-  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
-  const day = local.toISOString().slice(0, 10);
-  return { day, month: day.slice(0, 7), year: day.slice(0, 4) };
-}
+const ADMIN_EMAIL = (import.meta.env.VITE_ADMIN_EMAIL || 'madan123050@gmail.com').trim().toLowerCase();
+const CONFIG_ERROR = 'Live tracking is unavailable: set VITE_FIREBASE_DATABASE_URL in Vercel and redeploy.';
+const READ_TIMEOUT_MS = 15000;
+let memorySession = '';
 function sessionId() {
-  let id = sessionStorage.getItem('wa_session_id');
-  if (!id) { id = `anon_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`; sessionStorage.setItem('wa_session_id', id); }
-  return id;
+  if (!memorySession) memorySession = `anon_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+  try {
+    const stored = sessionStorage.getItem('wa_session_id');
+    if (stored && /^anon_[0-9]+_[A-Za-z0-9]+$/.test(stored)) memorySession = stored;
+    else sessionStorage.setItem('wa_session_id', memorySession);
+  } catch { /* Safari/storage restrictions should not disable tracking. */ }
+  return memorySession;
 }
-function safeKey(v: string) { return v.replace(/[.#$\[\]\/]/g, '_').slice(0, 160); }
-function isAdminVisitor(input?: VisitorEventInput['visitor']) {
-  return !!ADMIN_EMAIL && (input?.email || '').trim().toLowerCase() === ADMIN_EMAIL;
+function isAdmin(visitor: VisitorEventInput['visitor']) {
+  if ((visitor?.email || '').trim().toLowerCase() === ADMIN_EMAIL) return true;
+  try { return localStorage.getItem('wa_admin_session') === 'true'; } catch { return false; }
 }
-function empty(): SiteAnalytics {
-  return { totalVisitors:0,totalPageViews:0,totalEvents:0,totalLikes:0,totalShares:0,totalDownloads:0,totalComments:0,totalCommunityPosts:0,
-    onlineNow:0,anonymousVisitors:0,loggedInVisitors:0,todayVisitors:0,weekVisitors:0,monthVisitors:0,yearVisitors:0,
-    todayPageViews:0,weekPageViews:0,monthPageViews:0,yearPageViews:0,dailyTrend:[],monthlyTrend:[],yearlyTrend:[],
-    topCategories:[],todayTopCategories:[],weekTopCategories:[],monthTopCategories:[],yearTopCategories:[],topPages:[] };
-}
-const n=(v:any)=>Number(v||0);
-const categoryKey=(v?:string)=>safeKey((v||'').trim().toLowerCase());
 
 export async function trackVisitorEvent(input: VisitorEventInput): Promise<void> {
-  if (!realtimeDb || isAdminVisitor(input.visitor) || localStorage.getItem('wa_admin_session') === 'true') return;
-  const sid=sessionId(), {day,month,year}=localParts(), now=Date.now();
-  const visitorType=input.visitor?.email?'logged-in':'anonymous';
-  const page=input.page || window.location.pathname || '/';
-  const cat=categoryKey(input.category);
-  const base=`${ROOT}/sessions/${safeKey(sid)}`;
-  const counters:any={ events:1 };
-  if(input.type==='page_view') counters.pageViews=1;
-  if(input.type==='photo_view') counters.photoViews=1;
-  if(input.type==='story_view') counters.storyViews=1;
-  if(input.type==='video_view') counters.videoViews=1;
-  if(input.type==='category_view') counters.categoryViews=1;
-  if(input.type==='share') counters.shares=1;
-  if(input.type==='download') counters.downloads=1;
-  if(input.type==='like') counters.likes=1;
-  if(input.type==='comment') counters.comments=1;
-
-  const profile:any={sessionId:sid,visitorType,email:input.visitor?.email||'',displayName:input.visitor?.displayName||(visitorType==='logged-in'?'Visitor':'Anonymous visitor'),
-    avatarUrl:input.visitor?.avatarUrl||'',lastSeen:now,lastPage:page,lastCategory:input.category||'',date:day,month,year};
-  const existing=(await get(ref(realtimeDb,base))).val();
-  if(!existing) profile.createdAt=now;
-  await update(ref(realtimeDb,base),profile);
-  for(const [key,amount] of Object.entries(counters)) {
-    await runTransaction(ref(realtimeDb,`${base}/${key}`),(v)=>n(v)+n(amount));
+  if (isAdmin(input.visitor)) return;
+  if (!realtimeDb) throw new Error(CONFIG_ERROR);
+  const sid = sessionId(), { day, month, year } = localParts();
+  const page = (input.page || window.location.pathname || '/').slice(0, 1000);
+  const visitorType = input.visitor?.email ? 'logged-in' : 'anonymous';
+  const category = (input.category || '').slice(0, 160);
+  const categoryKey = category.toLowerCase().replace(/[.#$\[\]\/]/g, '_');
+  const base = `analytics/sessions/${sid}`;
+  const eventRef = push(ref(realtimeDb, 'analytics/events'));
+  const changes: Record<string, any> = {};
+  const profile = {
+    sessionId: sid, visitorType, email: input.visitor?.email || '',
+    displayName: input.visitor?.displayName || (visitorType === 'logged-in' ? 'Visitor' : 'Anonymous visitor'),
+    avatarUrl: input.visitor?.avatarUrl || '', lastSeen: serverTimestamp(), lastPage: page,
+    lastCategory: category, date: day, month, year,
+  };
+  for (const [key, value] of Object.entries(profile)) changes[`${base}/${key}`] = value;
+  const counterByType: Record<string, string> = {
+    page_view: 'pageViews', photo_view: 'photoViews', story_view: 'storyViews', video_view: 'videoViews',
+    category_view: 'categoryViews', share: 'shares', download: 'downloads', like: 'likes', comment: 'comments',
+  };
+  const counters = ['events', counterByType[input.type]].filter(Boolean);
+  for (const counter of counters) {
+    changes[`${base}/${counter}`] = increment(1);
+    changes[`${base}/days/${day}/${counter}`] = increment(1);
   }
-  if(cat) {
-    await runTransaction(ref(realtimeDb,`${base}/categoryCounts/${cat}`),(v)=>n(v)+1);
-    await set(ref(realtimeDb,`${base}/categoryLabels/${cat}`),input.category||cat);
+  changes[`${base}/days/${day}/lastSeen`] = serverTimestamp();
+  if (categoryKey && categoryKey !== 'all') {
+    changes[`${base}/categoryCounts/${categoryKey}`] = increment(1);
+    changes[`${base}/categoryLabels/${categoryKey}`] = category;
   }
-  await push(ref(realtimeDb,`${ROOT}/events`),{type:input.type,page,category:input.category||'',categoryKey:cat,targetId:input.targetId||'',targetTitle:input.targetTitle||'',
-    sessionId:sid,visitorType,date,month,year,timestamp:now,referrer:document.referrer||''});
+  changes[`analytics/events/${eventRef.key}`] = {
+    type: input.type, page, category, categoryKey, targetId: input.targetId || '', targetTitle: input.targetTitle || '',
+    sessionId: sid, visitorType, date: day, month, year, timestamp: serverTimestamp(), referrer: document.referrer || '',
+  };
+  // One all-or-nothing write. Neither get() nor transactions: visitors cannot read private analytics.
+  await update(ref(realtimeDb), changes);
 }
 
-function buildAnalytics(sessions:any={},events:any={},presence:any={}):SiteAnalytics {
-  const a=empty(), now=new Date(), {day:today,year:cy}=localParts(now);
-  const weekAgo=Date.now()-7*86400000, monthAgo=Date.now()-30*86400000;
-  const daily=new Map<string,any>(), monthly=new Map<string,any>(), yearly=new Map<string,any>();
-  const cats=new Map<string,CategoryMetric>(), tc=new Map<string,CategoryMetric>(), wc=new Map<string,CategoryMetric>(), mc=new Map<string,CategoryMetric>(), yc=new Map<string,CategoryMetric>();
-  const pages=new Map<string,PageMetric>();
-  const addTrend=(m:Map<string,any>,k:string,sid:string,pv:number,ev:number)=>{if(!k)return;const x=m.get(k)||{sessions:new Set<string>(),pageViews:0,events:0};x.sessions.add(sid);x.pageViews+=pv;x.events+=ev;m.set(k,x);};
-  const addCat=(m:Map<string,CategoryMetric>,k:string,label:string,type:VisitorEventType)=>{if(!k)return;const x=m.get(k)||{category:label||k,views:0,shares:0,downloads:0,likes:0,comments:0,total:0};if(['photo_view','category_view','page_view'].includes(type))x.views++;if(type==='share')x.shares++;if(type==='download')x.downloads++;if(type==='like')x.likes++;if(type==='comment')x.comments++;x.total++;m.set(k,x);};
-  Object.values(sessions||{}).forEach((s:any)=>{
-    if(!s?.sessionId)return; const pv=n(s.pageViews), ev=n(s.events), seen=n(s.lastSeen||s.createdAt);
-    a.totalVisitors++;a.totalPageViews+=pv;a.totalEvents+=ev;a.totalShares+=n(s.shares);a.totalDownloads+=n(s.downloads);a.totalLikes+=n(s.likes);a.totalComments+=n(s.comments);
-    if(s.visitorType==='logged-in')a.loggedInVisitors++;else a.anonymousVisitors++;
-    if(s.date===today){a.todayVisitors++;a.todayPageViews+=pv;} if(seen>=weekAgo){a.weekVisitors++;a.weekPageViews+=pv;} if(seen>=monthAgo){a.monthVisitors++;a.monthPageViews+=pv;} if(s.year===cy){a.yearVisitors++;a.yearPageViews+=pv;}
-    addTrend(daily,s.date,s.sessionId,pv,ev);addTrend(monthly,s.month,s.sessionId,pv,ev);addTrend(yearly,s.year,s.sessionId,pv,ev);
+function withTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label} timed out. Check connection and database permissions.`)), READ_TIMEOUT_MS);
+    promise.then(value => { clearTimeout(timer); resolve(value); }, error => { clearTimeout(timer); reject(error); });
   });
-  Object.values(events||{}).forEach((e:any)=>{const type=e.type as VisitorEventType,k=e.categoryKey||categoryKey(e.category),ts=n(e.timestamp);if(type==='page_view'){const x=pages.get(e.page)||{page:e.page||'/',views:0};x.views++;pages.set(x.page,x);}addCat(cats,k,e.category||k,type);if(e.date===today)addCat(tc,k,e.category||k,type);if(ts>=weekAgo)addCat(wc,k,e.category||k,type);if(ts>=monthAgo)addCat(mc,k,e.category||k,type);if(e.year===cy)addCat(yc,k,e.category||k,type);});
-  a.onlineNow=Object.values(presence||{}).filter((p:any)=>p?.online && n(p.lastSeen)>Date.now()-90000).length;
-  const trend=(m:Map<string,any>)=>Array.from(m.entries()).sort(([x],[y])=>x.localeCompare(y)).map(([label,x])=>({label,visitors:x.sessions.size,pageViews:x.pageViews,events:x.events}));
-  const cm=(m:Map<string,CategoryMetric>)=>Array.from(m.values()).sort((x,y)=>y.total-x.total).slice(0,8);
-  a.dailyTrend=trend(daily).slice(-30);a.monthlyTrend=trend(monthly).slice(-12);a.yearlyTrend=trend(yearly).slice(-5);
-  a.topCategories=cm(cats);a.todayTopCategories=cm(tc);a.weekTopCategories=cm(wc);a.monthTopCategories=cm(mc);a.yearTopCategories=cm(yc);a.topPages=Array.from(pages.values()).sort((x,y)=>y.views-x.views).slice(0,8);
-  return a;
 }
-export async function fetchSiteAnalytics():Promise<SiteAnalytics>{
-  if(!realtimeDb)return empty();
-  const [s,e,p]=await Promise.all([get(ref(realtimeDb,`${ROOT}/sessions`)),get(ref(realtimeDb,`${ROOT}/events`)),get(ref(realtimeDb,'presence'))]);
-  return buildAnalytics(s.val(),e.val(),p.val());
+interface History {
+  rows: AnalyticsRow[]; events: AnalyticsRow[];
+  likes: number; downloads: number; comments: number; communityPosts: number; errors: string[];
 }
-export async function fetchRecentVisitors(max=10):Promise<VisitorRecord[]>{
-  if(!realtimeDb)return[];
-  const snap=await get(ref(realtimeDb,`${ROOT}/sessions`));
-  return Object.values(snap.val()||{}).sort((a:any,b:any)=>n(b.lastSeen)-n(a.lastSeen)).slice(0,max).map((s:any)=>({...s,downloadCount:n(s.downloads),topCategory:Object.entries(s.categoryCounts||{}).sort((a:any,b:any)=>n(b[1])-n(a[1]))[0]?.[0]||''}));
+async function loadHistory(): Promise<History> {
+  const names = ['visitor_daily_stats', 'visitor_events', 'visitors', 'photos', 'comments', 'community_posts'];
+  const results = await Promise.allSettled(names.map(name => withTimeout(getDocs(collection(db, name)), name)));
+  const errors: string[] = [];
+  const data = results.map((result, i): AnalyticsRow[] => {
+    if (result.status === 'rejected') { errors.push(`Historical ${names[i]} could not load (${result.reason?.code || result.reason?.message || 'read failed'}).`); return []; }
+    return result.value.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+  });
+  const [stats, events, visitors, photos, comments, posts] = data;
+  // No writes, deletion or migration of the historical collections.
+  const rows = stats.length ? stats.map(s => ({ ...s, sessionId: s.sessionId || s.id })) : visitors.map(v => {
+    const created = timestamp(v.createdAt), parts = created ? localParts(new Date(created)) : null;
+    return { ...v, sessionId: v.email || v.id, visitorType: 'logged-in', lastSeen: v.lastSeen || v.createdAt,
+      date: parts?.day || '', month: parts?.month || '', year: parts?.year || '' };
+  });
+  return { rows, events, errors,
+    likes: photos.reduce((sum, p) => sum + number(p.likeCount), 0),
+    downloads: visitors.reduce((sum, v) => sum + number(v.downloadCount), 0),
+    comments: comments.length, communityPosts: posts.length };
 }
-export function subscribeToOnlineCount(cb:(count:number)=>void):Unsubscribe{
-  if(!realtimeDb){cb(0);return()=>{};}
-  return onValue(ref(realtimeDb,'presence'),snap=>cb(Object.values(snap.val()||{}).filter((p:any)=>p?.online&&n(p.lastSeen)>Date.now()-90000).length),()=>cb(0));
+function combined(history: History, sessions: Record<string, AnalyticsRow>, events: Record<string, AnalyticsRow>) {
+  const rows = [...history.rows, ...sessionRows(sessions)];
+  const analytics = buildAnalytics(rows, [...history.events, ...Object.values(events)]);
+  // Content counts describe the same actions; adding them would double count.
+  analytics.totalLikes = Math.max(analytics.totalLikes, history.likes);
+  analytics.totalDownloads = Math.max(analytics.totalDownloads, history.downloads);
+  analytics.totalComments = Math.max(analytics.totalComments, history.comments);
+  analytics.totalCommunityPosts = history.communityPosts;
+  return { analytics, visitors: recentVisitors(rows) };
 }
-export function subscribeToAnalytics(cb:(data:SiteAnalytics,visitors:VisitorRecord[])=>void):Unsubscribe{
-  if(!realtimeDb){cb(empty(),[]);return()=>{};}
-  return onValue(ref(realtimeDb,ROOT),snap=>{const v=snap.val()||{};const data=buildAnalytics(v.sessions,v.events,v.presence);const visitors=Object.values(v.sessions||{}).sort((a:any,b:any)=>n(b.lastSeen)-n(a.lastSeen)).slice(0,8) as VisitorRecord[];cb(data,visitors);});
+const blankHistory = (): History => ({ rows: [], events: [], likes: 0, downloads: 0, comments: 0, communityPosts: 0, errors: [] });
+
+export function subscribeToAnalytics(
+  cb: (data: SiteAnalytics, visitors: VisitorRecord[]) => void,
+  onError: (message: string | null) => void = console.warn,
+): Unsubscribe {
+  let active = true, historyReady = false, sessionsReady = false, eventsReady = false;
+  let history = blankHistory(), sessions: Record<string, AnalyticsRow> = {}, events: Record<string, AnalyticsRow> = {};
+  const errors = new Map<string, string>();
+  const emit = () => {
+    if (!active) return;
+    onError([...errors.values(), ...history.errors].join(' ') || null);
+    if (historyReady && sessionsReady && eventsReady) {
+      const result = combined(history, sessions, events);
+      cb(result.analytics, result.visitors);
+    }
+  };
+  void loadHistory().then(value => { if (!active) return; history = value; historyReady = true; emit(); });
+  const cleanups: Unsubscribe[] = [];
+  if (!realtimeDb) {
+    errors.set('config', CONFIG_ERROR); sessionsReady = eventsReady = true; emit();
+  } else {
+    // Separate listeners avoid retransferring the event tree on session updates.
+    for (const name of ['sessions', 'events'] as const) {
+      const ready = () => { if (name === 'sessions') sessionsReady = true; else eventsReady = true; };
+      const timer = setTimeout(() => { errors.set(name, `Live ${name} has not connected. Check the database URL and connection.`); ready(); emit(); }, READ_TIMEOUT_MS);
+      const unsub = onValue(ref(realtimeDb, `analytics/${name}`), snap => {
+        clearTimeout(timer); errors.delete(name);
+        if (name === 'sessions') sessions = snap.val() || {}; else events = snap.val() || {};
+        ready(); emit();
+      }, error => {
+        clearTimeout(timer); errors.set(name, `Live ${name} could not load (${error.message}). Check your admin login and Realtime Database rules.`);
+        ready(); emit();
+      });
+      cleanups.push(() => { clearTimeout(timer); unsub(); });
+    }
+  }
+  return () => { active = false; cleanups.forEach(stop => stop()); };
 }
-export async function trackPageView(page:string){await trackVisitorEvent({type:'page_view',page});}
-export async function trackShare(photoId:string){await trackVisitorEvent({type:'share',targetId:photoId});}
+export function subscribeToOnlineCount(cb: (count: number) => void, onError?: (message: string | null) => void): Unsubscribe {
+  if (!realtimeDb) { onError?.(CONFIG_ERROR); return () => {}; }
+  let presence: Record<string, AnalyticsRow> = {};
+  const emit = () => cb(Object.values(presence).filter(p => p.online && number(p.lastSeen) > Date.now() - 90000).length);
+  const timeout = setTimeout(() => onError?.('Online visitor count has not connected. Check the database URL and connection.'), READ_TIMEOUT_MS);
+  const unsub = onValue(ref(realtimeDb, 'presence'), snap => {
+    clearTimeout(timeout); presence = snap.val() || {}; onError?.(null); emit();
+  }, error => { clearTimeout(timeout); onError?.(`Online visitor count unavailable: ${error.message}`); });
+  const timer = setInterval(emit, 30000);
+  return () => { clearTimeout(timeout); clearInterval(timer); unsub(); };
+}
+export async function fetchSiteAnalytics(): Promise<SiteAnalytics> {
+  if (!realtimeDb) throw new Error(CONFIG_ERROR);
+  const [history, sessions, events, presence] = await Promise.all([
+    loadHistory(), ...['analytics/sessions', 'analytics/events', 'presence'].map(path => withTimeout(get(ref(realtimeDb!, path)), path)),
+  ]);
+  if (history.errors.length) throw new Error(history.errors.join(' '));
+  const result = combined(history, sessions.val() || {}, events.val() || {}).analytics;
+  result.onlineNow = Object.values(presence.val() || {}).filter((p: any) => p.online && number(p.lastSeen) > Date.now() - 90000).length;
+  return result;
+}
+export async function fetchRecentVisitors(max = 10): Promise<VisitorRecord[]> {
+  if (!realtimeDb) throw new Error(CONFIG_ERROR);
+  const [history, sessions] = await Promise.all([loadHistory(), withTimeout(get(ref(realtimeDb, 'analytics/sessions')), 'sessions')]);
+  if (history.errors.length) throw new Error(history.errors.join(' '));
+  return recentVisitors([...history.rows, ...sessionRows(sessions.val() || {})], max);
+}
+export async function trackPageView(page: string) { await trackVisitorEvent({ type: 'page_view', page }); }
+export async function trackShare(photoId: string) { await trackVisitorEvent({ type: 'share', targetId: photoId }); }
