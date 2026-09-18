@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
+import { getDatabase } from 'firebase/database';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -9,10 +10,11 @@ const firebaseConfig = {
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
 };
 
 const missingFirebaseKeys = Object.entries(firebaseConfig)
-  .filter(([key, value]) => key !== 'measurementId' && !value)
+  .filter(([key, value]) => !['measurementId', 'databaseURL'].includes(key) && !value)
   .map(([key]) => `VITE_FIREBASE_${key.replace(/[A-Z]/g, (letter) => `_${letter}`).toUpperCase()}`);
 
 if (missingFirebaseKeys.length) {
@@ -22,5 +24,6 @@ if (missingFirebaseKeys.length) {
 const app = initializeApp(firebaseConfig);
 
 export const db = getFirestore(app);
+export const realtimeDb = import.meta.env.VITE_FIREBASE_DATABASE_URL ? getDatabase(app) : null;
 
 export default app;
