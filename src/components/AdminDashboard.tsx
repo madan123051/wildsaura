@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   LayoutDashboard, Image, Plus, Pencil, Trash2, LogOut, Eye, EyeOff, CheckSquare, Check,
   MapPin, Heart, BarChart3, TrendingUp, X, Save, Search, BookOpen,
@@ -2590,7 +2590,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       if (!cancelled) setOnlineCount(count);
     });
 
-    return () => { cancelled = true; unsub(); };
+    return () => { cancelled = true; unsubAnalytics(); unsub(); };
   }, [view]);
 
   const nextPhotoId = Math.max(0, ...photos.map((p) => p.id)) + 1;
