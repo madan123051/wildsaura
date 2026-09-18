@@ -2878,8 +2878,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
               {(analyticsError || onlineError) && (
                 <div role="alert" style={{ padding: '1rem', marginBottom: '1rem', border: '1px solid #f59e0b', borderRadius: 12, color: '#fcd34d' }}>
-                  <strong>Analytics data is incomplete.</strong> {analyticsError} {onlineError}
-                  <p style={{ marginBottom: 0 }}>Available history is shown below. Missing counts do not mean there were no visitors.</p>
+                  <strong>Analytics data is incomplete.</strong>
+                  <p>Firebase has not returned all data. Check the connection and Firebase App Check configuration. Missing counts do not mean there were no visitors.</p>
+                  <details>
+                    <summary style={{ cursor: 'pointer' }}>Connection details</summary>
+                    <p style={{ overflowWrap: 'anywhere' }}>{analyticsError} {onlineError}</p>
+                  </details>
                 </div>
               )}
 
