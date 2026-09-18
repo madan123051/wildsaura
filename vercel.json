@@ -45,5 +45,183 @@
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
+  ],
+  "redirects": [
+    {
+      "source": "/about/contact.php",
+      "has": [
+        {
+          "type": "host",
+          "value": "roxiesplacephotography.com"
+        }
+      ],
+      "destination": "https://www.wildsaura.com/contact",
+      "permanent": true
+    },
+    {
+      "source": "/about/contact.php",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.roxiesplacephotography.com"
+        }
+      ],
+      "destination": "https://www.wildsaura.com/contact",
+      "permanent": true
+    },
+    {
+      "source": "/about/default.php",
+      "has": [
+        {
+          "type": "host",
+          "value": "roxiesplacephotography.com"
+        }
+      ],
+      "destination": "https://www.wildsaura.com/about",
+      "permanent": true
+    },
+    {
+      "source": "/about/default.php",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.roxiesplacephotography.com"
+        }
+      ],
+      "destination": "https://www.wildsaura.com/about",
+      "permanent": true
+    },
+    {
+      "source": "/about/mission.php",
+      "has": [
+        {
+          "type": "host",
+          "value": "roxiesplacephotography.com"
+        }
+      ],
+      "destination": "https://www.wildsaura.com/about",
+      "permanent": true
+    },
+    {
+      "source": "/about/mission.php",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.roxiesplacephotography.com"
+        }
+      ],
+      "destination": "https://www.wildsaura.com/about",
+      "permanent": true
+    },
+    {
+      "source": "/contest.php",
+      "has": [
+        {
+          "type": "host",
+          "value": "roxiesplacephotography.com"
+        }
+      ],
+      "destination": "https://www.wildsaura.com/photos",
+      "permanent": true
+    },
+    {
+      "source": "/contest.php",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.roxiesplacephotography.com"
+        }
+      ],
+      "destination": "https://www.wildsaura.com/photos",
+      "permanent": true
+    },
+    {
+      "source": "/-/roxiesplacephotography/default.php",
+      "has": [
+        {
+          "type": "host",
+          "value": "roxiesplacephotography.com"
+        }
+      ],
+      "destination": "https://www.wildsaura.com/category/landscape",
+      "permanent": true
+    },
+    {
+      "source": "/-/roxiesplacephotography/default.php",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.roxiesplacephotography.com"
+        }
+      ],
+      "destination": "https://www.wildsaura.com/category/landscape",
+      "permanent": true
+    },
+    {
+      "source": "/-/roxiesplacephotography",
+      "has": [
+        {
+          "type": "host",
+          "value": "roxiesplacephotography.com"
+        }
+      ],
+      "destination": "https://www.wildsaura.com/category/landscape",
+      "permanent": true
+    },
+    {
+      "source": "/-/roxiesplacephotography",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.roxiesplacephotography.com"
+        }
+      ],
+      "destination": "https://www.wildsaura.com/category/landscape",
+      "permanent": true
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "roxiesplacephotography.com"
+        }
+      ],
+      "destination": "https://www.wildsaura.com/",
+      "permanent": true
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.roxiesplacephotography.com"
+        }
+      ],
+      "destination": "https://www.wildsaura.com/",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "roxiesplacephotography.com"
+        }
+      ],
+      "destination": "https://www.wildsaura.com/",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.roxiesplacephotography.com"
+        }
+      ],
+      "destination": "https://www.wildsaura.com/",
+      "permanent": true
+    }
   ]
 }
