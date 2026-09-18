@@ -1,11 +1,11 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   LayoutDashboard, Image, Plus, Pencil, Trash2, LogOut, Eye, EyeOff, CheckSquare, Check,
   MapPin, Heart, BarChart3, TrendingUp, X, Save, Search, BookOpen,
   Upload, Sparkles, Film, Camera, FileImage, Loader2, Info,
   Settings, Cpu, MessageCircle, Globe, Mail, Users, Activity, Share2, Wifi, Download, MessageSquare
 } from 'lucide-react';
-import { fetchSiteAnalytics, fetchRecentVisitors, subscribeToOnlineCount, SiteAnalytics, VisitorRecord } from '../services/analyticsService';
+import { subscribeToAnalytics, subscribeToOnlineCount, SiteAnalytics, VisitorRecord } from '../services/analyticsService';
 import { 
   fetchAllSelfAds, createSelfAd, updateSelfAd, deleteSelfAd, toggleSelfAd, 
   uploadAdImage, SelfAd 
@@ -2576,21 +2576,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     if (view !== 'dashboard') return;
     let cancelled = false;
     
-    const loadAnalytics = async () => {
-      setAnalyticsLoading(true);
-      try {
-        const [data, visitors] = await Promise.all([
-          fetchSiteAnalytics(),
-          fetchRecentVisitors(8),
-        ]);
-        if (!cancelled) {
-          setAnalytics(data);
-          setRecentVisitors(visitors);
-        }
-      } catch (err) { console.error('Analytics load failed:', err); }
-      if (!cancelled) setAnalyticsLoading(false);
-    };
-    loadAnalytics();
+    // Realtime Database keeps dashboard analytics live without manual refresh.
+    const unsubAnalytics = subscribeToAnalytics((data, visitors) => {
+      if (!cancelled) {
+        setAnalytics(data);
+        setRecentVisitors(visitors);
+        setAnalyticsLoading(false);
+      }
+    });
 
     // Subscribe to online count
     const unsub = subscribeToOnlineCount((count) => {
