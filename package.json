@@ -8,7 +8,8 @@
     "build": "vite build && node scripts/generate-static-pages.mjs",
     "optimize:images": "python scripts/generate-responsive-images.py",
     "preview": "vite preview",
-    "seo:validate": "node scripts/seo-validate.mjs"
+    "seo:validate": "node scripts/seo-validate.mjs",
+    "test:analytics": "node --experimental-vm-modules --test tests/analytics-regression.test.mjs"
   },
   "dependencies": {
     "react": "^18.2.0",

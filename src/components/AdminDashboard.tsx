@@ -2568,13 +2568,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [analytics, setAnalytics] = useState<SiteAnalytics | null>(null);
   const [recentVisitors, setRecentVisitors] = useState<VisitorRecord[]>([]);
   const [onlineCount, setOnlineCount] = useState(0);
-  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+  const [onlineError, setOnlineError] = useState<string | null>(null);
   const [analyticsRange, setAnalyticsRange] = useState<'today' | 'week' | 'month' | 'year' | 'all'>('today');
   
   // Load analytics on dashboard view
   React.useEffect(() => {
     if (view !== 'dashboard') return;
     let cancelled = false;
+    setAnalyticsLoading(true);
+    setAnalyticsError(null);
+    setOnlineError(null);
     
     // Realtime Database keeps dashboard analytics live without manual refresh.
     const unsubAnalytics = subscribeToAnalytics((data, visitors) => {
@@ -2583,12 +2588,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         setRecentVisitors(visitors);
         setAnalyticsLoading(false);
       }
-    });
+    }, (message) => { if (!cancelled) setAnalyticsError(message); });
 
     // Subscribe to online count
     const unsub = subscribeToOnlineCount((count) => {
       if (!cancelled) setOnlineCount(count);
-    });
+    }, (message) => { if (!cancelled) setOnlineError(message); });
 
     return () => { cancelled = true; unsubAnalytics(); unsub(); };
   }, [view]);
@@ -2871,9 +2876,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
               </section>
 
+              {(analyticsError || onlineError) && (
+                <div role="alert" style={{ padding: '1rem', marginBottom: '1rem', border: '1px solid #f59e0b', borderRadius: 12, color: '#fcd34d' }}>
+                  <strong>Analytics data is incomplete.</strong> {analyticsError} {onlineError}
+                  <p style={{ marginBottom: 0 }}>Available history is shown below. Missing counts do not mean there were no visitors.</p>
+                </div>
+              )}
+
               <div className="admin-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(145px, 1fr))', gap: '0.7rem', marginBottom: '1rem' }}>
                 <StatCard icon={<Users size={21} />} label="All Visitors" value={analyticsLoading ? '...' : formatMetric(analytics?.totalVisitors)} color="blue" hint={`${formatMetric(analytics?.anonymousVisitors)} anonymous`} />
-                <StatCard icon={<Wifi size={21} />} label="Online Now" value={onlineCount} color="green" hint="live sessions" />
+                <StatCard icon={<Wifi size={21} />} label="Online Now" value={onlineError ? "Unavailable" : onlineCount} color="green" hint="live sessions" />
                 <StatCard icon={<Eye size={21} />} label="Page Views" value={analyticsLoading ? '...' : formatMetric(analytics?.totalPageViews)} color="gold" hint={`${formatMetric(analytics?.totalEvents)} actions`} />
                 <StatCard icon={<BarChart3 size={21} />} label="Top Category" value={topCategory?.category || '-'} color="green" hint={topCategory ? `${topCategory.total} actions` : 'waiting for data'} />
                 <StatCard icon={<Heart size={21} />} label="Likes" value={formatMetric(analytics?.totalLikes || totalLikes)} color="red" />
@@ -2943,7 +2955,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </div>
                 ) : (
                   <p style={{ color: 'rgba(235,230,220,0.42)', fontSize: '0.72rem', margin: 0 }}>
-                    Tracking data will appear after visitors browse the site with the updated code.
+                    {analyticsLoading ? 'Loading visitor history…' : analyticsError ? 'Some tracking data could not be loaded. See the message above.' : 'No visits recorded for this period. Select All to view historical totals.'}
                   </p>
                 )}
               </div>
