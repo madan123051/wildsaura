@@ -1,6 +1,6 @@
 import { db, realtimeDb } from '../firebaseCore';
 import { onDisconnect, onValue, ref as rtdbRef, remove, set, update as rtdbUpdate, type Unsubscribe as RtdbUnsubscribe } from 'firebase/database';
-import { doc, setDoc, getDoc, updateDoc, serverTimestamp, collection, query, where, onSnapshot, deleteDoc, Unsubscribe } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 
 const VISITORS_COLLECTION = 'visitors';
 
