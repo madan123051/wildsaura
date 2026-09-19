@@ -2888,7 +2888,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               )}
 
               <div className="admin-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(145px, 1fr))', gap: '0.7rem', marginBottom: '1rem' }}>
-                <StatCard icon={<Users size={21} />} label="All Visitors" value={analyticsLoading ? '...' : formatMetric(analytics?.totalVisitors)} color="blue" hint={`${formatMetric(analytics?.anonymousVisitors)} anonymous`} />
+                <StatCard icon={<Users size={21} />} label="All Visitors" value={analyticsLoading ? '...' : analyticsError && !analytics?.totalVisitors ? 'Unavailable' : formatMetric(analytics?.totalVisitors)} color="blue" hint={analyticsError ? 'Partial data — reconnecting' : `${formatMetric(analytics?.anonymousVisitors)} anonymous`} />
                 <StatCard icon={<Wifi size={21} />} label="Online Now" value={onlineError ? "Unavailable" : onlineCount} color="green" hint="live sessions" />
                 <StatCard icon={<Eye size={21} />} label="Page Views" value={analyticsLoading ? '...' : formatMetric(analytics?.totalPageViews)} color="gold" hint={`${formatMetric(analytics?.totalEvents)} actions`} />
                 <StatCard icon={<BarChart3 size={21} />} label="Top Category" value={topCategory?.category || '-'} color="green" hint={topCategory ? `${topCategory.total} actions` : 'waiting for data'} />

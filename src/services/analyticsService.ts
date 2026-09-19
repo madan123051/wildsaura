@@ -1,6 +1,8 @@
 import { db, realtimeDb } from '../firebaseCore';
 import { get, onValue, push, ref, update, increment, serverTimestamp, type Unsubscribe } from 'firebase/database';
-import { collection, getDocs } from 'firebase/firestore';
+import { auth } from '../firebaseAuth';
+import { onIdTokenChanged } from 'firebase/auth';
+import { collection, getDocs, onSnapshot } from 'firebase/firestore';
 import { buildAnalytics, sessionRows, recentVisitors, localParts, number, timestamp, type AnalyticsRow, type SiteAnalytics, type VisitorRecord, type VisitorEventInput } from './analyticsModel';
 export type { SiteAnalytics, VisitorRecord, VisitorEventInput, VisitorEventType, AnalyticsTrendPoint, CategoryMetric, PageMetric } from './analyticsModel';
 
@@ -80,6 +82,9 @@ async function loadHistory(): Promise<History> {
     if (result.status === 'rejected') { errors.push(`Historical ${names[i]} could not load (${result.reason?.code || result.reason?.message || 'read failed'}).`); return []; }
     return result.value.docs.map(doc => ({ ...doc.data(), id: doc.id }));
   });
+  return historyFromRows(data, errors);
+}
+function historyFromRows(data: AnalyticsRow[][], errors: string[]): History {
   const [stats, events, visitors, photos, comments, posts] = data;
   // No writes, deletion or migration of the historical collections.
   const rows = stats.length ? stats.map(s => ({ ...s, sessionId: s.sessionId || s.id })) : visitors.map(v => {
@@ -104,7 +109,63 @@ function combined(history: History, sessions: Record<string, AnalyticsRow>, even
 }
 const blankHistory = (): History => ({ rows: [], events: [], likes: 0, downloads: 0, comments: 0, communityPosts: 0, errors: [] });
 
+// Keep listeners alive after the warning deadline: late server responses and
+// Firebase's automatic network reconnect must still replace incomplete results.
+function subscribeToHistory(cb: (history: History) => void): Unsubscribe {
+  const names = ['visitor_daily_stats', 'visitor_events', 'visitors', 'photos', 'comments', 'community_posts'];
+  const data: AnalyticsRow[][] = names.map(() => []);
+  const ready = new Set<string>();
+  const errors = new Map<string, string>();
+  let active = true;
+  const emit = () => {
+    if (active && ready.size === names.length) cb(historyFromRows(data, [...errors.values()]));
+  };
+  const stops = names.map((name, i) => {
+    const timer = setTimeout(() => {
+      errors.set(name, `Historical ${name} is taking longer to load. Reconnecting; totals may be incomplete.`);
+      ready.add(name); emit();
+    }, READ_TIMEOUT_MS);
+    const stop = onSnapshot(collection(db, name), { includeMetadataChanges: true }, snapshot => {
+      if (!active) return;
+      // An empty offline cache does not prove that the collection is empty.
+      if (snapshot.metadata.fromCache) return;
+      clearTimeout(timer);
+      data[i] = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+      errors.delete(name); ready.add(name); emit();
+    }, error => {
+      if (!active) return;
+      clearTimeout(timer);
+      errors.set(name, `Historical ${name} could not load (${error.code || error.message}).`);
+      ready.add(name); emit();
+    });
+    return () => { clearTimeout(timer); stop(); };
+  });
+  return () => { active = false; stops.forEach(stop => stop()); };
+}
+
 export function subscribeToAnalytics(
+  cb: (data: SiteAnalytics, visitors: VisitorRecord[]) => void,
+  onError: (message: string | null) => void = console.warn,
+): Unsubscribe {
+  let stopReads: Unsubscribe = () => {};
+  // A local dashboard flag is not Firebase authentication. Reattach canceled
+  // permission-denied listeners when sign-in or the ID token changes.
+  const stopAuth = onIdTokenChanged(auth, user => {
+    stopReads();
+    stopReads = () => {};
+    if (!user) {
+      onError('Sign in with your admin account to load analytics.');
+      const empty = combined(blankHistory(), {}, {});
+      cb(empty.analytics, empty.visitors);
+      return;
+    }
+    onError(null);
+    stopReads = subscribeAuthenticatedAnalytics(cb, onError);
+  });
+  return () => { stopAuth(); stopReads(); };
+}
+
+function subscribeAuthenticatedAnalytics(
   cb: (data: SiteAnalytics, visitors: VisitorRecord[]) => void,
   onError: (message: string | null) => void = console.warn,
 ): Unsubscribe {
@@ -119,8 +180,10 @@ export function subscribeToAnalytics(
       cb(result.analytics, result.visitors);
     }
   };
-  void loadHistory().then(value => { if (!active) return; history = value; historyReady = true; emit(); });
-  const cleanups: Unsubscribe[] = [];
+  const cleanups: Unsubscribe[] = [subscribeToHistory(value => {
+    if (!active) return;
+    history = value; historyReady = true; emit();
+  })];
   if (!realtimeDb) {
     errors.set('config', CONFIG_ERROR); sessionsReady = eventsReady = true; emit();
   } else {
