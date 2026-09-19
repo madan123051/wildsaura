@@ -6,13 +6,16 @@ import ts from 'typescript';
 
 // SDK boundary doubles deliberately deny reads to anonymous tracking clients.
 // Run with: node --experimental-vm-modules --test tests/analytics-regression.test.mjs
-async function setup({ history = {}, live = {}, noDatabase = false, readError = false, admin = false, blockedStorage = false } = {}) {
+async function setup({ history = {}, live = {}, noDatabase = false, readError = false, admin = false, blockedStorage = false, deferAuth = false, deferHistory = false } = {}) {
   const writes = [], subscriptions = [], errors = [];
   const timers = new Set();
+  const deadlines = new Map(), historyListeners = new Map();
+  let authListener;
+  let stoppedReads = 0;
   const context = vm.createContext({
     console, Date, Math, Map, Set, Promise,
-    setTimeout: (fn, delay) => { const timer = setTimeout(fn, delay); timers.add(timer); return timer; },
-    clearTimeout: timer => { clearTimeout(timer); timers.delete(timer); }, setInterval, clearInterval,
+    setTimeout: (fn, delay) => { const timer = setTimeout(fn, delay); timers.add(timer); deadlines.set(timer, fn); return timer; },
+    clearTimeout: timer => { clearTimeout(timer); timers.delete(timer); deadlines.delete(timer); }, setInterval, clearInterval,
     localStorage: { getItem: () => { if (blockedStorage) throw Error('Storage blocked'); return admin ? 'true' : null; } },
     sessionStorage: { getItem: () => { if (blockedStorage) throw Error('Storage blocked'); return 'anon_123_abc'; }, setItem() {} },
     window: { location: { pathname: '/' } }, document: { referrer: '' },
@@ -23,13 +26,15 @@ async function setup({ history = {}, live = {}, noDatabase = false, readError = 
     }, { context });
   }
   const mocks = {
+    '../firebaseAuth': synthetic({ auth: {} }),
+    'firebase/auth': synthetic({ onIdTokenChanged: (_auth, cb) => { authListener = cb; if (!deferAuth) queueMicrotask(() => cb({ uid: 'admin' })); return () => { authListener = null; }; } }),
     '../firebaseCore': synthetic({ db: {}, realtimeDb: noDatabase ? null : {} }),
     'firebase/database': synthetic({
       get: () => { throw Error('Anonymous analytics must never read private data'); },
       onValue: (ref, success, fail) => {
         subscriptions.push(ref.path);
         if (readError) fail(new Error('PERMISSION_DENIED')); else success({ val: () => live[ref.path] || null });
-        return () => {};
+        return () => { stoppedReads++; };
       },
       push: () => ({ key: 'event123' }), ref: (_db, path = '') => ({ path }),
       increment: amount => ({ '.sv': { increment: amount } }), serverTimestamp: () => ({ '.sv': 'timestamp' }),
@@ -37,6 +42,15 @@ async function setup({ history = {}, live = {}, noDatabase = false, readError = 
     }),
     'firebase/firestore': synthetic({
       collection: (_db, name) => name,
+      onSnapshot: (name, _options, success, fail) => {
+        historyListeners.set(name, success);
+        if (!deferHistory) queueMicrotask(() => {
+          if (!historyListeners.has(name)) return;
+          if (history[name] instanceof Error) fail(history[name]);
+          else success({ metadata: { fromCache: false }, docs: (history[name] || []).map((value, i) => ({ id: `${name}_${i}`, data: () => value })) });
+        });
+        return () => historyListeners.delete(name);
+      },
       getDocs: async name => {
         if (history[name] instanceof Error) throw history[name];
         return { docs: (history[name] || []).map((value, i) => ({ id: `${name}_${i}`, data: () => value })) };
@@ -59,7 +73,11 @@ async function setup({ history = {}, live = {}, noDatabase = false, readError = 
       queueMicrotask(() => { stop(); close(); resolve({ analytics, visitors, errors }); });
     }, message => { if (message) errors.push(message); });
   });
-  return { service: service.namespace, model: model.namespace, writes, snapshot, close };
+  return { service: service.namespace, model: model.namespace, writes, snapshot, close, subscriptions,
+    signIn: user => authListener?.(user), stoppedReads: () => stoppedReads,
+    expire: () => { for (const [timer, fn] of [...deadlines]) { clearTimeout(timer); deadlines.delete(timer); fn(); } },
+    historyResult: (name, rows, fromCache = false) => historyListeners.get(name)?.({ metadata: { fromCache }, docs: rows.map((value, i) => ({ id: `${name}_${i}`, data: () => value })) }),
+  };
 }
 
 test('anonymous tracking submits one atomic write with no reads and no login', async () => {
@@ -131,4 +149,42 @@ test('denied live and historical reads are reported rather than silently present
   const { errors } = await h.snapshot();
   assert.match(errors.join(' '), /PERMISSION_DENIED/);
   assert.match(errors.join(' '), /Historical visitor_daily_stats could not load/);
+});
+
+
+test('private reads wait for auth restoration and restart after token changes', async () => {
+  const h = await setup({ deferAuth: true });
+  const stop = h.service.subscribeToAnalytics(() => {}, () => {});
+  assert.equal(h.subscriptions.length, 0);
+  h.signIn(null);
+  assert.equal(h.subscriptions.length, 0);
+  h.signIn({ uid: 'admin' });
+  assert.equal(h.subscriptions.length, 2);
+  h.signIn({ uid: 'admin' });
+  assert.equal(h.stoppedReads(), 2);
+  assert.equal(h.subscriptions.length, 4);
+  stop();
+  assert.equal(h.stoppedReads(), 4);
+  h.signIn({ uid: 'admin' });
+  assert.equal(h.subscriptions.length, 4);
+  h.close();
+});
+
+test('history arriving after timeout recovers totals and clears warnings without remount', async () => {
+  const h = await setup({ deferHistory: true });
+  let result, error;
+  const stop = h.service.subscribeToAnalytics(data => { result = data; }, value => { error = value; });
+  await Promise.resolve();
+  h.expire();
+  assert.match(error, /taking longer/);
+  h.historyResult('visitor_daily_stats', [{ sessionId: 'old', pageViews: 940 }]);
+  assert.equal(result.totalPageViews, 940);
+  for (const name of ['visitor_events', 'visitors', 'photos', 'comments', 'community_posts']) h.historyResult(name, []);
+  assert.equal(error, null);
+  h.historyResult('visitor_daily_stats', [], true);
+  assert.equal(result.totalPageViews, 940, 'empty offline cache cannot erase received totals');
+  stop();
+  h.historyResult('visitor_daily_stats', []);
+  assert.equal(result.totalPageViews, 940, 'disposed listeners cannot update dashboard');
+  h.close();
 });
