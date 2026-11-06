@@ -12,9 +12,18 @@ const LOCAL_PREFIXES = ['/photos/', '/images/', 'data:', 'blob:'];
 const LOCAL_PHOTO_PREFIX = '/photos/';
 const PLACEHOLDER_CARD = '/images/placeholder-card.svg';
 
+/**
+ * Vercel's first-party image optimization endpoint.
+ * Replaces the third-party wsrv.nl proxy, which was the main bottleneck for
+ * gallery photos: free tier rate limits, cold-cache fetches of multi-MB
+ * originals, and a single point of failure made photos slow (or blank).
+ * Docs: https://vercel.com/docs/image-optimization
+ */
+const VERCEL_IMAGE_ENDPOINT = '/_vercel/image';
+
 function shouldProxy(url: string): boolean {
   if (!url) return false;
-  if (url.includes('wsrv.nl')) return false;
+  if (url.includes(VERCEL_IMAGE_ENDPOINT)) return false;
   return !LOCAL_PREFIXES.some((prefix) => url.startsWith(prefix));
 }
 
@@ -65,18 +74,14 @@ export function getOptimizedImageUrl(url: string | undefined | null, options: Op
   if (!shouldProxy(url)) return getDirectImageUrl(url);
 
   const sourceUrl = getDirectImageUrl(url);
+  // URLSearchParams percent-encodes the nested URL automatically.
   const params = new URLSearchParams({
     url: sourceUrl,
     w: String(options.width),
-    fit: options.fit ?? 'cover',
-    output: 'webp',
-    q: String(options.quality ?? 72),
-    maxage: options.maxAge ?? '30d',
+    q: String(options.quality ?? 75),
   });
 
-  if (options.height) params.set('h', String(options.height));
-
-  return `https://wsrv.nl/?${params.toString()}`;
+  return `${VERCEL_IMAGE_ENDPOINT}?${params.toString()}`;
 }
 
 export function getOptimizedSrcSet(
